@@ -1,12 +1,4 @@
-import { config } from "dotenv";
-
-config();
-
-const dbEnv = process.env.DB_ENV || "dev";
-config({
-  path: [`.env.${dbEnv}`],
-  override: true,
-});
+import "dotenv/config";
 
 export const env = {
   port: Number(process.env.PORT),
