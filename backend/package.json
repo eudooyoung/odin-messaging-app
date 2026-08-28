@@ -1,0 +1,56 @@
+{
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "argon2": "^0.45.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.20.0",
+    "ws": "^8.21.3",
+    "zod": "^4.4.3"
+  },
+  "name": "odin-express-template",
+  "version": "1.0.2",
+  "description": "",
+  "main": "dist/src/server.js",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "@types/supertest": "^7.2.1",
+    "@types/ws": "^8.18.1",
+    "eslint": "^10.4.0",
+    "prisma": "^7.8.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4",
+    "vitest": "^4.1.10"
+  },
+  "scripts": {
+    "build": "prisma generate && rm -rf dist/ && tsc",
+    "start": "node dist/src/server.js",
+    "dev": "DB_ENV=dev NODE_ENV=development tsx --watch src/server.ts",
+    "prod": "DB_ENV=prod NODE_ENV=production node dist/src/server.js",
+    "test": "vitest",
+    "lint": "eslint ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "argon2@0.45.1": true,
+    "prisma@7.10.0": true,
+    "@prisma/engines@7.10.0": true
+  },
+  "overrides": {
+    "@hono/node-server": "^1.19.13"
+  }
+}
