@@ -15,7 +15,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "target": "es2023",
-    "types": ["node"],
+    "types": ["node", "vitest"],
     "esModuleInterop": true,
     "ignoreDeprecations": "6.0",
     // For nodejs:
@@ -50,6 +50,7 @@
     "skipLibCheck": true,
     "rewriteRelativeImportExtensions": true
   },
-  "include": ["src/**/*", "prisma.config.ts"],
-  "exclude": ["dist", "node_modules", "generated"]
+  "include": ["src/**/*", "prisma.config.ts", "vitest.config.ts"],
+  "exclude": ["dist", "node_modules", "generated"],
+  "tsc-alias": { "resolveFullPaths": true, "resolveFullExtension": ".js" }
 }
