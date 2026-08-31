@@ -15,5 +15,6 @@ export default defineConfig({
     env: {
       DATABASE_URL: process.env.TEST_DATABASE_URL,
     },
+    exclude: ["dist/**", "node_modules/**"],
   },
 });

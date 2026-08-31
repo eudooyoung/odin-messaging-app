@@ -18,11 +18,11 @@ vi.mock("@/repositories/user.repository.js", () => ({
   createUser: vi.fn(),
 }));
 
-beforeEach(() => {
-  vi.resetAllMocks();
-});
+describe.only("registerService", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
 
-describe("registerService", () => {
   it("hashes the password and creates a user", async () => {
     const input = {
       username: "new-user",
@@ -57,13 +57,10 @@ describe("registerService", () => {
       password: "secure-password",
       displayName: "Existing User",
     };
-    const duplicateUsernameError = new PrismaClientKnownRequestError(
-      "Unique constraint failed",
-      {
-        code: "P2002",
-        clientVersion: "test",
-      },
-    );
+    const duplicateUsernameError = new PrismaClientKnownRequestError("Unique constraint failed", {
+      code: "P2002",
+      clientVersion: "test",
+    });
 
     vi.mocked(argon2.hash).mockResolvedValue("hashed-password");
     vi.mocked(createUser).mockRejectedValue(duplicateUsernameError);

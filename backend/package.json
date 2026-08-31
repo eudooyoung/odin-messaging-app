@@ -34,7 +34,7 @@
     "vitest": "^4.1.10"
   },
   "scripts": {
-    "build": "prisma generate && rm -rf dist/ && tsc && tsc-alias",
+    "build": "prisma generate && rm -rf dist/ && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "start": "node dist/src/server.js",
     "dev": "tsx --watch src/server.ts",
     "test": "vitest",
