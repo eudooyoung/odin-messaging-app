@@ -89,7 +89,7 @@ describe("POST /auth/register", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 400 when the username is longer than 50 characters", async () => {
+  it("returns 400 when the display name is longer than 50 characters", async () => {
     const registration = {
       username: "new-user",
       password: "secure-password",
