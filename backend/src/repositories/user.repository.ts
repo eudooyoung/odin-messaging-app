@@ -1,5 +1,5 @@
 import type { CreateUserData } from "@/types/api.types";
-import { prisma } from "../lib/prisma.js";
+import { prisma } from "@/lib/prisma.js";
 
 export const createUser = ({
   username,
@@ -16,5 +16,15 @@ export const createUser = ({
       id: true,
       username: true,
       displayName: true,
+    },
+  });
+
+export const findUserByUsername = (username: string) =>
+  prisma.user.findUnique({
+    where: { username },
+    select: {
+      id: true,
+      username: true,
+      passwordHash: true,
     },
   });

@@ -1,6 +1,6 @@
 import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
-import { createApp } from "../../app.js";
+import { createApp } from "@/app.js";
 import type { RegisterResponseBody } from "@/types/api.types.js";
 
 const getBody = <T>(res: Response) => res.body as T;

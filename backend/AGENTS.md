@@ -178,6 +178,12 @@ Supertest `response.body`는 직접 unsafe하게 사용하지 말고 기존 `get
 - user-written alias import는 현재 프로젝트의 extension 규칙을 따른다.
 - VS Code에서 `error typed`나 alias/import 오류가 코드 상태와 맞지 않게 나타나면 실제 타입 오류를 먼저 확인한 뒤 TS Server restart / window reload 가능성을 점검한다.
 
+### Import 경로
+
+- `src/` 내부 모듈을 import할 때는 가능한 경우 기존 `@/` path alias를 우선 사용한다.
+- 같은 디렉터리의 인접 파일처럼 상대경로가 더 명확한 경우에만 상대 import를 사용한다.
+- 외부 패키지 import에는 `@/` alias를 사용하지 않는다.
+
 ## 7. Register 구현에서 확정된 현재 패턴
 
 `POST /auth/register`:

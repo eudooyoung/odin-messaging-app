@@ -1,7 +1,7 @@
 import express from "express";
-import errorHandler from "./errors/errorHandler.js";
+import errorHandler from "@/errors/errorHandler.js";
 import cors from "cors";
-import authRouter from "./routes/auth.routes.js";
+import authRouter from "@/routes/auth.routes.js";
 
 export const createApp = () => {
   const app = express();

@@ -1,9 +1,9 @@
 import * as argon2 from "argon2";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ConflictError from "../../errors/conflictError.js";
-import { createUser } from "../../repositories/user.repository.js";
-import { registerService } from "../../services/auth.service.js";
+import ConflictError from "@/errors/conflictError.js";
+import { createUser } from "@/repositories/user.repository.js";
+import { registerService } from "@/services/auth.service.js";
 
 vi.mock("argon2", async (importOriginal) => {
   const actual = await importOriginal<typeof import("argon2")>();
@@ -14,7 +14,7 @@ vi.mock("argon2", async (importOriginal) => {
   };
 });
 
-vi.mock("../../repositories/user.repository.js", () => ({
+vi.mock("@/repositories/user.repository.js", () => ({
   createUser: vi.fn(),
 }));
 

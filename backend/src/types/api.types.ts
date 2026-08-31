@@ -15,3 +15,10 @@ export type CreateUserData = {
   passwordHash: string;
   displayName: string;
 };
+
+export type LoginInput = {
+  username: string;
+  password: string;
+};
+
+export type LoginResponseBody = Record<string, never>;

@@ -146,8 +146,9 @@
 
 - `POST /auth/login`
   - request: `{ username, password }`
-  - response: 인증 방식에 따라 사용자 정보 또는 인증 정보 포함
+  - response body: 없음
   - success: `200`
+  - 인증 성공 시 `accessToken`, `refreshToken`을 HttpOnly cookie로 설정
   - error: `401`
 
 - `POST /auth/logout`
@@ -257,3 +258,38 @@
 
 ### 미정
 - 프로필 이미지 저장 방식
+
+
+## 5. 배포 / 인증 쿠키 정책
+
+### 배포 구조
+- Frontend: Netlify
+- Backend: Render
+- frontend와 backend는 서로 다른 site로 배포
+- production에서는 cross-site credential 요청을 전제로 구성
+
+### JWT cookie
+
+#### Access Token
+- HttpOnly: `true`
+- Secure: production `true`
+- SameSite: production `None`
+- Path: `/`
+- 만료: 15분
+
+#### Refresh Token
+- HttpOnly: `true`
+- Secure: production `true`
+- SameSite: production `None`
+- Path: `/auth`
+- 만료: 7일
+
+### 환경별 정책
+- development: `Secure=false`, `SameSite=Lax`
+- production: `Secure=true`, `SameSite=None`
+- JWT `exp`와 cookie `Max-Age`는 같은 수명으로 맞춤
+
+### Cross-origin credential
+- Backend CORS: Netlify frontend origin을 명시하고 `credentials: true`
+- Frontend HTTP 요청: `credentials: "include"`
+- credential 요청에서는 `Access-Control-Allow-Origin: *`를 사용하지 않음

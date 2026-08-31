@@ -5,3 +5,8 @@ export const registerSchema = z.object({
   displayName: z.string().trim().min(1).max(50),
   password: z.string().min(12).max(128),
 });
+
+export const loginSchema = registerSchema.pick({
+  username: true,
+  password: true,
+});
