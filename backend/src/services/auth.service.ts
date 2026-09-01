@@ -1,7 +1,7 @@
 import * as argon2 from "argon2";
 import { createHash, randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
-import { createUser, findUserByUsername } from "@/repositories/user.repository.js";
+import { createUser, findUserById, findUserByUsername } from "@/repositories/user.repository.js";
 import type { LoginInput, RegisterInput } from "@/types/api.types";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import ConflictError from "@/errors/conflictError";
@@ -149,5 +149,23 @@ export const logoutService = async (refreshToken: string | undefined) => {
 
   const tokenHash = createRefreshTokenHash(refreshToken);
 
-  await deleteRefreshSessionByTokenHash(tokenHash);
+  try {
+    await deleteRefreshSessionByTokenHash(tokenHash);
+  } catch (error) {
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+      return;
+    }
+
+    throw error;
+  }
+};
+
+export const getMeService = async (userId: number) => {
+  const user = await findUserById(userId);
+
+  if (!user) {
+    throw new UnauthorizedError("Invalid credentials", "INVALID_CREDENTIALS");
+  }
+
+  return user;
 };

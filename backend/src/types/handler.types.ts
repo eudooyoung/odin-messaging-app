@@ -3,6 +3,7 @@ import type {
   LoginInput,
   LoginResponseBody,
   LogoutResponseBody,
+  MeResponseBody,
   RefreshResponseBody,
   RegisterInput,
   RegisterResponseBody,
@@ -30,4 +31,12 @@ export type LogoutHandler = RequestHandler<
   Record<string, never>,
   LogoutResponseBody,
   Record<string, never>
+>;
+
+export type MeHandler = RequestHandler<
+  Record<string, never>,
+  MeResponseBody,
+  Record<string, never>,
+  Record<string, never>,
+  { userId: number }
 >;

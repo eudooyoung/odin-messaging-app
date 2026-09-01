@@ -23,7 +23,7 @@ export const findRefreshSessionByTokenHash = (tokenHash: string) =>
   });
 
 export const deleteRefreshSessionByTokenHash = (tokenHash: string) =>
-  prisma.refreshSession.deleteMany({
+  prisma.refreshSession.delete({
     where: { tokenHash },
   });
 

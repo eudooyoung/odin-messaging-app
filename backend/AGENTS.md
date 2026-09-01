@@ -159,6 +159,8 @@ CreateUserData
 - test seed는 두지 않는다. 각 integration test가 필요한 데이터를 직접 준비하며 test DB에는 migration만 적용되어 있으면 된다.
 - `vitest.config.ts`에서 test 실행 시 `DATABASE_URL`은 `TEST_DATABASE_URL`을 사용한다.
 - 현재 DB integration test 안정성을 위해 `fileParallelism: false`를 유지한다.
+- 비즈니스 로직이 있는 service는 endpoint integration test와 별도로 unit test를 작성한다.
+- service unit test에서는 repository 등 외부 의존성을 mock하고 service의 비즈니스 동작을 검증한다.
 - 테스트 환경 구성 시 다음 연결 상태를 먼저 확인한다.
   - `vitest.config.ts`
   - TypeScript `types` / `include`

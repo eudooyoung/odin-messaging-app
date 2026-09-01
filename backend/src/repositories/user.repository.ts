@@ -1,4 +1,4 @@
-import type { CreateRefreshSessionData, CreateUserData } from "@/types/api.types";
+import type { CreateUserData } from "@/types/api.types";
 import { prisma } from "@/lib/prisma.js";
 
 export const createUser = ({ username, passwordHash, displayName }: CreateUserData) =>
@@ -22,5 +22,15 @@ export const findUserByUsername = (username: string) =>
       id: true,
       username: true,
       passwordHash: true,
+    },
+  });
+
+export const findUserById = (userId: number) =>
+  prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
     },
   });

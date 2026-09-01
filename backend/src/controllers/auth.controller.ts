@@ -3,12 +3,14 @@ import { env } from "@/config/env.config";
 import {
   loginService,
   logoutService,
+  getMeService,
   refreshService,
   registerService,
 } from "@/services/auth.service";
 import type {
   LoginHandler,
   LogoutHandler,
+  MeHandler,
   RefreshHandler,
   RegisterHandler,
 } from "@/types/handler.types";
@@ -70,4 +72,10 @@ export const logoutController: LogoutHandler = async (req, res) => {
   res.clearCookie("refreshToken", cookieOptions.refreshToken);
 
   res.status(204).end();
+};
+
+export const getMeController: MeHandler = async (_req, res) => {
+  const user = await getMeService(res.locals.userId);
+
+  res.status(200).json(user);
 };

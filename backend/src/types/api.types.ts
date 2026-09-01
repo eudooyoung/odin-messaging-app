@@ -39,3 +39,9 @@ export type LoginResponseBody = Record<string, never>;
 export type RefreshResponseBody = Record<string, never>;
 
 export type LogoutResponseBody = Record<string, never>;
+
+export type MeResponseBody = {
+  id: number;
+  username: string;
+  displayName: string;
+};
