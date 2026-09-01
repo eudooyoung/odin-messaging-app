@@ -37,3 +37,5 @@ export type LoginInput = {
 export type LoginResponseBody = Record<string, never>;
 
 export type RefreshResponseBody = Record<string, never>;
+
+export type LogoutResponseBody = Record<string, never>;

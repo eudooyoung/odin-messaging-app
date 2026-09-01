@@ -5,22 +5,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app.js";
 import { env } from "@/config/env.config.js";
 import { prisma } from "@/lib/prisma.js";
+import {
+  getCookiePair,
+  getCookieValue,
+  getSetCookie,
+} from "@/tests/helpers/cookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import "@/tests/integration.setup.js";
-
-const getCookie = (cookies: string[] | undefined, name: string) => {
-  const cookie = cookies?.find((candidate) => candidate.startsWith(`${name}=`));
-
-  if (!cookie) {
-    throw new Error(`${name} cookie was not set`);
-  }
-
-  const separatorIndex = cookie.indexOf(";");
-
-  return separatorIndex === -1 ? cookie : cookie.slice(0, separatorIndex);
-};
-
-const getCookieValue = (cookie: string) => cookie.slice(cookie.indexOf("=") + 1);
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -34,7 +25,7 @@ const loginTestUser = async () => {
 
   return {
     user,
-    refreshCookie: getCookie(response.get("Set-Cookie"), "refreshToken"),
+    refreshCookie: getCookiePair(getSetCookie(response.get("Set-Cookie"), "refreshToken")),
   };
 };
 
@@ -56,8 +47,8 @@ describe("POST /auth/refresh", () => {
     expect(transactionSpy).toHaveBeenCalledOnce();
 
     const cookies = response.get("Set-Cookie");
-    const newAccessCookie = getCookie(cookies, "accessToken");
-    const newRefreshCookie = getCookie(cookies, "refreshToken");
+    const newAccessCookie = getCookiePair(getSetCookie(cookies, "accessToken"));
+    const newRefreshCookie = getCookiePair(getSetCookie(cookies, "refreshToken"));
     const newRefreshToken = getCookieValue(newRefreshCookie);
 
     expect(newAccessCookie).toMatch(/^accessToken=[^;]+/);
@@ -69,9 +60,7 @@ describe("POST /auth/refresh", () => {
     await expect(
       prisma.refreshSession.findUnique({ where: { tokenHash: hashToken(newRefreshToken) } }),
     ).resolves.toMatchObject({ userId: user.id });
-    await expect(
-      prisma.refreshSession.count({ where: { userId: user.id } }),
-    ).resolves.toBe(1);
+    await expect(prisma.refreshSession.count({ where: { userId: user.id } })).resolves.toBe(1);
   });
 
   it("returns 401 when the refresh cookie is missing", async () => {
@@ -101,11 +90,9 @@ describe("POST /auth/refresh", () => {
 
   it("returns 401 when the refresh token JWT is expired", async () => {
     const user = await createTestUser();
-    const expiredToken = jwt.sign(
-      { sub: String(user.id), tokenType: "refresh" },
-      env.jwtSecret,
-      { expiresIn: -1 },
-    );
+    const expiredToken = jwt.sign({ sub: String(user.id), tokenType: "refresh" }, env.jwtSecret, {
+      expiresIn: -1,
+    });
 
     await prisma.refreshSession.create({
       data: {
@@ -124,11 +111,9 @@ describe("POST /auth/refresh", () => {
 
   it("returns 401 when no refresh session matches the token hash", async () => {
     const user = await createTestUser();
-    const refreshToken = jwt.sign(
-      { sub: String(user.id), tokenType: "refresh" },
-      env.jwtSecret,
-      { expiresIn: "7d" },
-    );
+    const refreshToken = jwt.sign({ sub: String(user.id), tokenType: "refresh" }, env.jwtSecret, {
+      expiresIn: "7d",
+    });
 
     const response = await request(createApp())
       .post("/auth/refresh")
@@ -139,11 +124,9 @@ describe("POST /auth/refresh", () => {
 
   it("returns 401 when the refresh session in the database is expired", async () => {
     const user = await createTestUser();
-    const refreshToken = jwt.sign(
-      { sub: String(user.id), tokenType: "refresh" },
-      env.jwtSecret,
-      { expiresIn: "7d" },
-    );
+    const refreshToken = jwt.sign({ sub: String(user.id), tokenType: "refresh" }, env.jwtSecret, {
+      expiresIn: "7d",
+    });
 
     await prisma.refreshSession.create({
       data: {
@@ -164,12 +147,8 @@ describe("POST /auth/refresh", () => {
     const app = createApp();
     const { refreshCookie } = await loginTestUser();
 
-    const rotationResponse = await request(app)
-      .post("/auth/refresh")
-      .set("Cookie", refreshCookie);
-    const reuseResponse = await request(app)
-      .post("/auth/refresh")
-      .set("Cookie", refreshCookie);
+    const rotationResponse = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
+    const reuseResponse = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
 
     expect(rotationResponse.status).toBe(204);
     expect(reuseResponse.status).toBe(401);

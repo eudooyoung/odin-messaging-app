@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import type {
   LoginInput,
   LoginResponseBody,
+  LogoutResponseBody,
   RefreshResponseBody,
   RegisterInput,
   RegisterResponseBody,
@@ -22,5 +23,11 @@ export type LoginHandler = RequestHandler<
 export type RefreshHandler = RequestHandler<
   Record<string, never>,
   RefreshResponseBody,
+  Record<string, never>
+>;
+
+export type LogoutHandler = RequestHandler<
+  Record<string, never>,
+  LogoutResponseBody,
   Record<string, never>
 >;

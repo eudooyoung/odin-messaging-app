@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAuthCookieOptions } from "@/config/authCookie.config.js";
+import { getAuthCookieOptions } from "@/config/authCookie.option.js";
 
 describe("getAuthCookieOptions", () => {
   const nonProductionEnvs = ["test", "development"] as const;

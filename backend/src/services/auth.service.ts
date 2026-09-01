@@ -9,6 +9,7 @@ import { env } from "@/config/env.config.js";
 import UnauthorizedError from "@/errors/unauthorizedError";
 import {
   createRefreshSession,
+  deleteRefreshSessionByTokenHash,
   findRefreshSessionByTokenHash,
   rotateRefreshSession,
 } from "@/repositories/refreshSession.repository";
@@ -139,4 +140,14 @@ export const refreshService = async (refreshToken: string | undefined) => {
   }
 
   return { accessToken, refreshToken: nextRefreshToken };
+};
+
+export const logoutService = async (refreshToken: string | undefined) => {
+  if (!refreshToken) {
+    return;
+  }
+
+  const tokenHash = createRefreshTokenHash(refreshToken);
+
+  await deleteRefreshSessionByTokenHash(tokenHash);
 };

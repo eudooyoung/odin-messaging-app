@@ -1,7 +1,17 @@
-import { getAuthCookieOptions } from "@/config/authCookie.config";
+import { getAuthCookieOptions } from "@/config/authCookie.option";
 import { env } from "@/config/env.config";
-import { loginService, refreshService, registerService } from "@/services/auth.service";
-import type { LoginHandler, RefreshHandler, RegisterHandler } from "@/types/handler.types";
+import {
+  loginService,
+  logoutService,
+  refreshService,
+  registerService,
+} from "@/services/auth.service";
+import type {
+  LoginHandler,
+  LogoutHandler,
+  RefreshHandler,
+  RegisterHandler,
+} from "@/types/handler.types";
 
 const getCookieValue = (cookieHeader: string | undefined, name: string) => {
   const cookie = cookieHeader
@@ -45,6 +55,19 @@ export const refreshController: RefreshHandler = async (req, res) => {
 
   res.cookie("accessToken", accessToken, cookieOptions.accessToken);
   res.cookie("refreshToken", refreshToken, cookieOptions.refreshToken);
+
+  res.status(204).end();
+};
+
+export const logoutController: LogoutHandler = async (req, res) => {
+  const refreshToken = getCookieValue(req.headers.cookie, "refreshToken");
+
+  await logoutService(refreshToken);
+
+  const cookieOptions = getAuthCookieOptions(env.nodeEnv);
+
+  res.clearCookie("accessToken", cookieOptions.accessToken);
+  res.clearCookie("refreshToken", cookieOptions.refreshToken);
 
   res.status(204).end();
 };

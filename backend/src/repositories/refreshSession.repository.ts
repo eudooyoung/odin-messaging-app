@@ -22,6 +22,11 @@ export const findRefreshSessionByTokenHash = (tokenHash: string) =>
     },
   });
 
+export const deleteRefreshSessionByTokenHash = (tokenHash: string) =>
+  prisma.refreshSession.deleteMany({
+    where: { tokenHash },
+  });
+
 export const rotateRefreshSession = ({
   previousTokenHash,
   tokenHash,
