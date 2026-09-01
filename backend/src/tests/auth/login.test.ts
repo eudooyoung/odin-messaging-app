@@ -1,6 +1,8 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
+import "@/tests/integration.setup.js";
+import { createTestUser } from "@/tests/helpers/createTestUser.js";
 
 describe("POST /auth/login", () => {
   it("sets access and refresh token cookies for valid credentials", async () => {
@@ -10,14 +12,7 @@ describe("POST /auth/login", () => {
       password: "secure-password",
     };
 
-    const registerResponse = await request(app)
-      .post("/auth/register")
-      .send({
-        ...credentials,
-        displayName: "Existing User",
-      });
-
-    expect(registerResponse.status).toBe(201);
+    await createTestUser(credentials);
 
     const loginResponse = await request(app).post("/auth/login").send(credentials);
 
@@ -45,13 +40,11 @@ describe("POST /auth/login", () => {
     const app = createApp();
     const username = "existing-user";
 
-    const registerResponse = await request(app).post("/auth/register").send({
+    await createTestUser({
       username,
       password: "secure-password",
       displayName: "Existing User",
     });
-
-    expect(registerResponse.status).toBe(201);
 
     const loginResponse = await request(app).post("/auth/login").send({
       username,

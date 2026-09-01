@@ -37,4 +37,32 @@ describe("envSchema", () => {
       }),
     ).toThrow();
   });
+
+  it("rejects an unsupported APP_DEBUG value", () => {
+    expect(() =>
+      envSchema.parse({
+        ...validEnv,
+        APP_DEBUG: "invalid",
+      }),
+    ).toThrow();
+  });
+
+  it("allows production environment without TEST_DATABASE_URL", () => {
+    const input: Record<string, string> = {
+      ...validEnv,
+      NODE_ENV: "production",
+    };
+    delete input.TEST_DATABASE_URL;
+
+    expect(envSchema.parse(input)).toMatchObject({
+      NODE_ENV: "production",
+    });
+  });
+
+  it("rejects test environment without TEST_DATABASE_URL", () => {
+    const input: Record<string, string> = { ...validEnv };
+    delete input.TEST_DATABASE_URL;
+
+    expect(() => envSchema.parse(input)).toThrow();
+  });
 });

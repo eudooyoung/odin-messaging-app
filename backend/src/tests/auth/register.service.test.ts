@@ -18,7 +18,7 @@ vi.mock("@/repositories/user.repository.js", () => ({
   createUser: vi.fn(),
 }));
 
-describe.only("registerService", () => {
+describe("registerService", () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });

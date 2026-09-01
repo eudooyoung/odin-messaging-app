@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getAuthCookieOptions } from "@/config/authCookie.config.js";
-import type { NodeEnv } from "@/types/env.types";
 
 describe("getAuthCookieOptions", () => {
-  const nonProductionEnvs: NodeEnv[] = ["test", "development"];
+  const nonProductionEnvs = ["test", "development"] as const;
 
   it.each(nonProductionEnvs)("returns non-secure lax cookie options in %s", (nodeEnv) => {
     const options = getAuthCookieOptions(nodeEnv);

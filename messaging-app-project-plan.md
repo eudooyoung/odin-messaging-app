@@ -147,7 +147,7 @@
 - `POST /auth/login`
   - request: `{ username, password }`
   - response body: 없음
-  - success: `200`
+  - success: `204`
   - 인증 성공 시 `accessToken`, `refreshToken`을 HttpOnly cookie로 설정
   - error: `401`
 
@@ -260,7 +260,39 @@
 - 프로필 이미지 저장 방식
 
 
-## 5. 배포 / 인증 쿠키 정책
+## 5. 구현 현황
+
+### Backend — Auth
+- [x] 테스트 인프라 / test DB 연결 검증
+- [x] `POST /auth/register`
+  - Zod validation
+  - Argon2id password hashing
+  - username 중복 `409` 처리
+- [x] `POST /auth/login`
+  - username/password 검증
+  - Access Token + Refresh Token 발급
+  - HttpOnly cookie 설정
+  - 성공 응답 `204 No Content`
+- [x] 인증 cookie 환경별 정책 구현
+  - development/test: `Secure=false`, `SameSite=Lax`
+  - production: `Secure=true`, `SameSite=None`
+- [x] env Zod validation 정리
+  - `APP_DEBUG`: `"true" | "false"`만 허용 후 boolean 변환
+  - `NODE_ENV`: `development | test | production`
+  - `TEST_DATABASE_URL`: test 환경에서만 필수
+- [x] integration test 데이터 준비 구조 정리
+  - DB cleanup은 integration test에만 적용
+  - test seed 미사용
+  - 공통 `createTestUser` helper 사용
+- [ ] Refresh Token 갱신 / 회전 / 폐기 정책 결정
+- [ ] `POST /auth/logout`
+- [ ] `GET /auth/me`
+
+### 다음 작업
+- Refresh Token 흐름을 먼저 결정한 뒤 남은 Auth API를 진행한다.
+
+
+## 6. 배포 / 인증 쿠키 정책
 
 ### 배포 구조
 - Frontend: Netlify

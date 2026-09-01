@@ -34,7 +34,7 @@ route
 ### validation middleware
 
 - Zod schema로 request data를 검증한다.
-- validation 실패 시 적절한 `CustomError` 하위 에러를 throw한다.
+- validation 실패 시 적절한 `CustomError` 하위 에러를 `next(error)`로 전달한다.
 - 성공하면 검증/변환된 데이터만 다음 계층으로 전달한다.
 - controller에서 같은 validation을 반복하지 않는다.
 
@@ -42,7 +42,7 @@ route
 
 ```text
 safeParse(req.body)
-→ 실패: BadRequestError throw
+→ 실패: next(new BadRequestError(...))
 → 성공: req.body = result.data
 → next()
 ```
@@ -81,9 +81,10 @@ Prisma P2002
 기본 흐름:
 
 ```text
-middleware / service
-→ error throw
-→ Express 5 error flow
+validation middleware → next(error)
+service               → throw error
+                       ↓
+Express 5 error flow
 → global error handler
 → HTTP error response
 ```
@@ -96,7 +97,9 @@ middleware / service
 - middleware/service에서 직접 error response를 만들지 않는다.
 - global error handler가 `CustomError`의 `statusCode`, `message`, `code`를 사용해 응답한다.
 - 예상하지 못한 에러를 임의로 특정 HTTP status로 변환하지 않는다.
-- 에러 전달에는 `throw`를 사용하고, 정상 middleware 진행에는 `next()`를 사용한다.
+- validation middleware는 예상 가능한 validation error를 `next(error)`로 전달하고 정상 진행에는 `next()`를 사용한다.
+- service는 애플리케이션 에러를 `throw`한다.
+- controller는 service error를 불필요하게 catch해서 다시 `next(error)`로 전달하지 않는다. Express 5의 async error flow를 따른다.
 
 ## 3. 타입 규칙
 
@@ -147,16 +150,22 @@ CreateUserData
 
 - API 동작은 endpoint 관점의 integration test를 우선한다.
 - DB integration test는 test DB만 사용한다.
+- unit test는 실제 DB 연결이나 cleanup에 의존하지 않도록 유지한다.
+- DB cleanup hook은 전역 `setupFiles`로 모든 테스트에 적용하지 않는다. DB가 필요한 integration test만 `integration.setup.ts`를 명시적으로 import한다.
 - 테스트 간 DB 상태가 영향을 주지 않도록 cleanup을 유지한다.
 - 현재 cleanup 순서:
   - `Message → Conversation → User`
+- integration test에서 사전 User가 필요하면 `/auth/register` 같은 다른 endpoint를 준비 단계로 호출하지 않고 기존 `createTestUser` helper를 우선 사용한다. 테스트 대상 endpoint 자체를 검증하는 경우에는 해당 endpoint를 직접 사용한다.
+- test seed는 두지 않는다. 각 integration test가 필요한 데이터를 직접 준비하며 test DB에는 migration만 적용되어 있으면 된다.
+- `vitest.config.ts`에서 test 실행 시 `DATABASE_URL`은 `TEST_DATABASE_URL`을 사용한다.
+- 현재 DB integration test 안정성을 위해 `fileParallelism: false`를 유지한다.
 - 테스트 환경 구성 시 다음 연결 상태를 먼저 확인한다.
   - `vitest.config.ts`
   - TypeScript `types` / `include`
   - path alias
-  - `setupFiles`
-  - test DB
-  - cleanup helper
+  - integration setup
+  - test DB / migration
+  - cleanup / fixture helper
 
 Supertest `response.body`는 직접 unsafe하게 사용하지 말고 기존 `getBody<T>()` 패턴을 따른다.
 
@@ -177,12 +186,6 @@ Supertest `response.body`는 직접 unsafe하게 사용하지 말고 기존 `get
 - `dist/`와 `src/generated/`는 직접 수정 대상이 아니다.
 - user-written alias import는 현재 프로젝트의 extension 규칙을 따른다.
 - VS Code에서 `error typed`나 alias/import 오류가 코드 상태와 맞지 않게 나타나면 실제 타입 오류를 먼저 확인한 뒤 TS Server restart / window reload 가능성을 점검한다.
-
-### Import 경로
-
-- `src/` 내부 모듈을 import할 때는 가능한 경우 기존 `@/` path alias를 우선 사용한다.
-- 같은 디렉터리의 인접 파일처럼 상대경로가 더 명확한 경우에만 상대 import를 사용한다.
-- 외부 패키지 import에는 `@/` alias를 사용하지 않는다.
 
 ## 7. Register 구현에서 확정된 현재 패턴
 

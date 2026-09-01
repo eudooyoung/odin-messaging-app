@@ -1,8 +1,5 @@
 import { Router } from "express";
-import {
-  loginController,
-  registerController,
-} from "@/controller/auth.controller.js";
+import { loginController, registerController } from "@/controllers/auth.controller.js";
 import { validateLogin } from "@/middleware/login.validation.middleware.js";
 import { validateRegister } from "@/middleware/register.validation.middleware.js";
 

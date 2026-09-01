@@ -1,6 +1,8 @@
 import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
+import "@/tests/integration.setup.js";
+import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import type { RegisterResponseBody } from "@/types/api.types.js";
 
 const getBody = <T>(res: Response) => res.body as T;
@@ -102,23 +104,16 @@ describe("POST /auth/register", () => {
   });
 
   it("returns 409 when the username already exists", async () => {
-    const app = createApp();
     const registration = {
       username: "existing-user",
       password: "secure-password",
       displayName: "Existing User",
     };
 
-    const firstResponse = await request(app).post("/auth/register").send(registration);
+    await createTestUser({ username: registration.username });
 
-    expect(firstResponse.status).toBe(201);
+    const response = await request(createApp()).post("/auth/register").send(registration);
 
-    const secondResponse = await request(app).post("/auth/register").send({
-      username: registration.username,
-      password: "another-secure-password",
-      displayName: "Another User",
-    });
-
-    expect(secondResponse.status).toBe(409);
+    expect(response.status).toBe(409);
   });
 });
