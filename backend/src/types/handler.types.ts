@@ -2,6 +2,8 @@ import type { RequestHandler } from "express";
 import type {
   ConversationResponseBody,
   CreateConversationInput,
+  GetConversationsQuery,
+  GetConversationsResponseBody,
   LoginInput,
   LoginResponseBody,
   LogoutResponseBody,
@@ -77,4 +79,12 @@ export type CreateConversationHandler = RequestHandler<
   CreateConversationInput,
   Record<string, never>,
   { userId: number }
+>;
+
+export type GetConversationsHandler = RequestHandler<
+  Record<string, never>,
+  GetConversationsResponseBody,
+  Record<string, never>,
+  GetConversationsQuery,
+  { userId: number; cursor?: number; limit?: number }
 >;
