@@ -2,6 +2,7 @@ import express from "express";
 import errorHandler from "@/errors/errorHandler.js";
 import cors from "cors";
 import authRouter from "@/routes/auth.routes.js";
+import conversationRouter from "@/routes/conversation.routes.js";
 import userRouter from "@/routes/user.routes.js";
 
 export const createApp = () => {
@@ -12,6 +13,7 @@ export const createApp = () => {
     .use(express.urlencoded({ extended: true }))
     .use(cors())
     .use("/auth", authRouter)
+    .use("/conversations", conversationRouter)
     .use("/users", userRouter)
 
     .use(errorHandler);
