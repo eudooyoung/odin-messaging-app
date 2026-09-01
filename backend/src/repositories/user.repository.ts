@@ -1,11 +1,7 @@
-import type { CreateUserData } from "@/types/api.types";
+import type { CreateRefreshSessionData, CreateUserData } from "@/types/api.types";
 import { prisma } from "@/lib/prisma.js";
 
-export const createUser = ({
-  username,
-  passwordHash,
-  displayName,
-}: CreateUserData) =>
+export const createUser = ({ username, passwordHash, displayName }: CreateUserData) =>
   prisma.user.create({
     data: {
       username,

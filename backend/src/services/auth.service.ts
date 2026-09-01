@@ -1,14 +1,25 @@
 import * as argon2 from "argon2";
+import { createHash, randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
-import {
-  createUser,
-  findUserByUsername,
-} from "@/repositories/user.repository.js";
+import { createUser, findUserByUsername } from "@/repositories/user.repository.js";
 import type { LoginInput, RegisterInput } from "@/types/api.types";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import ConflictError from "@/errors/conflictError";
 import { env } from "@/config/env.config.js";
 import UnauthorizedError from "@/errors/unauthorizedError";
+import {
+  createRefreshSession,
+  findRefreshSessionByTokenHash,
+  rotateRefreshSession,
+} from "@/repositories/refreshSession.repository";
+
+const refreshTokenLifetime = 7 * 24 * 60 * 60 * 1000;
+
+const createRefreshTokenHash = (refreshToken: string) =>
+  createHash("sha256").update(refreshToken).digest("hex");
+
+const createRefreshUnauthorizedError = () =>
+  new UnauthorizedError("Invalid refresh token", "INVALID_REFRESH_TOKEN");
 
 export const registerService = async ({ username, password, displayName }: RegisterInput) => {
   const passwordHash = await argon2.hash(password, {
@@ -43,14 +54,89 @@ export const loginService = async ({ username, password }: LoginInput) => {
     throw new UnauthorizedError("Invalid credentials", "INVALID_CREDENTIALS");
   }
 
-  const accessToken = jwt.sign(
-    { sub: String(user.id), tokenType: "access" },
-    env.jwtSecret,
-  );
-  const refreshToken = jwt.sign(
-    { sub: String(user.id), tokenType: "refresh" },
-    env.jwtSecret,
-  );
+  const accessToken = jwt.sign({ sub: String(user.id), tokenType: "access" }, env.jwtSecret, {
+    expiresIn: "15m",
+    jwtid: randomUUID(),
+  });
+  const refreshToken = jwt.sign({ sub: String(user.id), tokenType: "refresh" }, env.jwtSecret, {
+    expiresIn: "7d",
+    jwtid: randomUUID(),
+  });
+  const tokenHash = createRefreshTokenHash(refreshToken);
+  const expiresAt = new Date(Date.now() + refreshTokenLifetime);
+
+  await createRefreshSession({
+    tokenHash,
+    userId: user.id,
+    expiresAt,
+  });
 
   return { accessToken, refreshToken };
+};
+
+export const refreshService = async (refreshToken: string | undefined) => {
+  if (!refreshToken) {
+    throw createRefreshUnauthorizedError();
+  }
+
+  let userId: number;
+
+  try {
+    const payload = jwt.verify(refreshToken, env.jwtSecret);
+
+    if (
+      typeof payload === "string" ||
+      payload.tokenType !== "refresh" ||
+      typeof payload.sub !== "string"
+    ) {
+      throw createRefreshUnauthorizedError();
+    }
+
+    userId = Number(payload.sub);
+
+    if (!Number.isInteger(userId)) {
+      throw createRefreshUnauthorizedError();
+    }
+  } catch {
+    throw createRefreshUnauthorizedError();
+  }
+
+  const previousTokenHash = createRefreshTokenHash(refreshToken);
+  const refreshSession = await findRefreshSessionByTokenHash(previousTokenHash);
+
+  if (
+    !refreshSession ||
+    refreshSession.userId !== userId ||
+    refreshSession.expiresAt <= new Date()
+  ) {
+    throw createRefreshUnauthorizedError();
+  }
+
+  const accessToken = jwt.sign({ sub: String(userId), tokenType: "access" }, env.jwtSecret, {
+    expiresIn: "15m",
+    jwtid: randomUUID(),
+  });
+  const nextRefreshToken = jwt.sign({ sub: String(userId), tokenType: "refresh" }, env.jwtSecret, {
+    expiresIn: "7d",
+    jwtid: randomUUID(),
+  });
+  const tokenHash = createRefreshTokenHash(nextRefreshToken);
+  const expiresAt = new Date(Date.now() + refreshTokenLifetime);
+
+  try {
+    await rotateRefreshSession({
+      previousTokenHash,
+      tokenHash,
+      userId,
+      expiresAt,
+    });
+  } catch (error) {
+    if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+      throw createRefreshUnauthorizedError();
+    }
+
+    throw error;
+  }
+
+  return { accessToken, refreshToken: nextRefreshToken };
 };

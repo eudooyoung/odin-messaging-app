@@ -16,9 +16,24 @@ export type CreateUserData = {
   displayName: string;
 };
 
+export type CreateRefreshSessionData = {
+  tokenHash: string;
+  userId: number;
+  expiresAt: Date;
+};
+
+export type RotateRefreshSessionData = {
+  previousTokenHash: string;
+  tokenHash: string;
+  userId: number;
+  expiresAt: Date;
+};
+
 export type LoginInput = {
   username: string;
   password: string;
 };
 
 export type LoginResponseBody = Record<string, never>;
+
+export type RefreshResponseBody = Record<string, never>;
