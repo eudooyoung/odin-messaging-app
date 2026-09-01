@@ -146,8 +146,9 @@
 
 - `POST /auth/login`
   - request: `{ username, password }`
-  - response: 인증 방식에 따라 사용자 정보 또는 인증 정보 포함
-  - success: `200`
+  - response body: 없음
+  - success: `204`
+  - 인증 성공 시 `accessToken`, `refreshToken`을 HttpOnly cookie로 설정
   - error: `401`
 
 - `POST /auth/logout`
@@ -257,3 +258,70 @@
 
 ### 미정
 - 프로필 이미지 저장 방식
+
+
+## 5. 구현 현황
+
+### Backend — Auth
+- [x] 테스트 인프라 / test DB 연결 검증
+- [x] `POST /auth/register`
+  - Zod validation
+  - Argon2id password hashing
+  - username 중복 `409` 처리
+- [x] `POST /auth/login`
+  - username/password 검증
+  - Access Token + Refresh Token 발급
+  - HttpOnly cookie 설정
+  - 성공 응답 `204 No Content`
+- [x] 인증 cookie 환경별 정책 구현
+  - development/test: `Secure=false`, `SameSite=Lax`
+  - production: `Secure=true`, `SameSite=None`
+- [x] env Zod validation 정리
+  - `APP_DEBUG`: `"true" | "false"`만 허용 후 boolean 변환
+  - `NODE_ENV`: `development | test | production`
+  - `TEST_DATABASE_URL`: test 환경에서만 필수
+- [x] integration test 데이터 준비 구조 정리
+  - DB cleanup은 integration test에만 적용
+  - test seed 미사용
+  - 공통 `createTestUser` helper 사용
+- [ ] Refresh Token 갱신 / 회전 / 폐기 정책 결정
+- [ ] `POST /auth/logout`
+- [ ] `GET /auth/me`
+
+### 다음 작업
+- Refresh Token 흐름을 먼저 결정한 뒤 남은 Auth API를 진행한다.
+
+
+## 6. 배포 / 인증 쿠키 정책
+
+### 배포 구조
+- Frontend: Netlify
+- Backend: Render
+- frontend와 backend는 서로 다른 site로 배포
+- production에서는 cross-site credential 요청을 전제로 구성
+
+### JWT cookie
+
+#### Access Token
+- HttpOnly: `true`
+- Secure: production `true`
+- SameSite: production `None`
+- Path: `/`
+- 만료: 15분
+
+#### Refresh Token
+- HttpOnly: `true`
+- Secure: production `true`
+- SameSite: production `None`
+- Path: `/auth`
+- 만료: 7일
+
+### 환경별 정책
+- development: `Secure=false`, `SameSite=Lax`
+- production: `Secure=true`, `SameSite=None`
+- JWT `exp`와 cookie `Max-Age`는 같은 수명으로 맞춤
+
+### Cross-origin credential
+- Backend CORS: Netlify frontend origin을 명시하고 `credentials: true`
+- Frontend HTTP 요청: `credentials: "include"`
+- credential 요청에서는 `Access-Control-Allow-Origin: *`를 사용하지 않음

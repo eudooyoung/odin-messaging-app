@@ -1,6 +1,6 @@
 class CustomError extends Error {
   statusCode: number;
-  code?: string | undefined;
+  code: string | undefined;
 
   constructor({
     message,
@@ -9,7 +9,7 @@ class CustomError extends Error {
   }: {
     message: string;
     statusCode: number;
-    code?: string;
+    code?: string | undefined;
   }) {
     super(message);
     this.statusCode = statusCode;

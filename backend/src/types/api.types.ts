@@ -1,0 +1,47 @@
+export type RegisterInput = {
+  username: string;
+  password: string;
+  displayName: string;
+};
+
+export type RegisterResponseBody = {
+  id: number;
+  username: string;
+  displayName: string;
+};
+
+export type CreateUserData = {
+  username: string;
+  passwordHash: string;
+  displayName: string;
+};
+
+export type CreateRefreshSessionData = {
+  tokenHash: string;
+  userId: number;
+  expiresAt: Date;
+};
+
+export type RotateRefreshSessionData = {
+  previousTokenHash: string;
+  tokenHash: string;
+  userId: number;
+  expiresAt: Date;
+};
+
+export type LoginInput = {
+  username: string;
+  password: string;
+};
+
+export type LoginResponseBody = Record<string, never>;
+
+export type RefreshResponseBody = Record<string, never>;
+
+export type LogoutResponseBody = Record<string, never>;
+
+export type MeResponseBody = {
+  id: number;
+  username: string;
+  displayName: string;
+};
