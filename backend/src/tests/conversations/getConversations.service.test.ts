@@ -3,8 +3,7 @@ import type { findConversationsByParticipantId } from "@/repositories/conversati
 import { getConversationsService } from "@/services/conversation.service.js";
 
 const { findConversationsByParticipantIdMock } = vi.hoisted(() => ({
-  findConversationsByParticipantIdMock:
-    vi.fn<typeof findConversationsByParticipantId>(),
+  findConversationsByParticipantIdMock: vi.fn<typeof findConversationsByParticipantId>(),
 }));
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
@@ -87,11 +86,7 @@ describe("getConversationsService", () => {
 
     const result = await getConversationsService(currentUserId, cursor, limit);
 
-    expect(findConversationsByParticipantIdMock).toHaveBeenCalledWith(
-      currentUserId,
-      cursor,
-      limit,
-    );
+    expect(findConversationsByParticipantIdMock).toHaveBeenCalledWith(currentUserId, cursor, limit);
     expect(result).toEqual({
       conversations: repositoryConversations.slice(0, limit).map((conversation) => ({
         id: conversation.id,
@@ -99,7 +94,7 @@ describe("getConversationsService", () => {
         lastMessage: conversation.messages[0],
         lastActivityAt: conversation.lastActivityAt,
       })),
-      nextCursor: repositoryConversations[limit - 1].id,
+      nextCursor: repositoryConversations[limit - 1]!.id,
     });
   });
 });

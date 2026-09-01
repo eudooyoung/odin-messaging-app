@@ -88,3 +88,11 @@ export type GetConversationsHandler = RequestHandler<
   GetConversationsQuery,
   { userId: number; cursor?: number; limit?: number }
 >;
+
+export type GetConversationHandler = RequestHandler<
+  { id: string },
+  ConversationResponseBody,
+  Record<string, never>,
+  Record<string, never>,
+  { userId: number; conversationId: number }
+>;

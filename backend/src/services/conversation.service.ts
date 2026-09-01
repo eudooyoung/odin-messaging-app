@@ -1,11 +1,30 @@
 import BadRequestError from "@/errors/badRequestError.js";
+import ForbiddenError from "@/errors/forbiddenError.js";
 import NotFoundError from "@/errors/notFoundError.js";
 import {
   createConversation,
+  findConversationById,
   findConversationByParticipantIds,
   findConversationsByParticipantId,
 } from "@/repositories/conversation.repository.js";
 import { findUserByUsername } from "@/repositories/user.repository.js";
+
+export const getConversationService = async (
+  currentUserId: number,
+  conversationId: number,
+) => {
+  const conversation = await findConversationById(conversationId);
+
+  if (!conversation) {
+    throw new NotFoundError("Conversation not found", "CONVERSATION_NOT_FOUND");
+  }
+
+  if (!conversation.participants.some(({ id }) => id === currentUserId)) {
+    throw new ForbiddenError("Conversation access forbidden", "CONVERSATION_FORBIDDEN");
+  }
+
+  return conversation;
+};
 
 export const getConversationsService = async (
   currentUserId: number,

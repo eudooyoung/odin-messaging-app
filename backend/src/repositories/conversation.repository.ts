@@ -1,5 +1,23 @@
 import { prisma } from "@/lib/prisma.js";
 
+export const findConversationById = (conversationId: number) =>
+  prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: {
+      id: true,
+      participants: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          profileImage: true,
+        },
+      },
+      createdAt: true,
+      lastActivityAt: true,
+    },
+  });
+
 export const findConversationsByParticipantId = (
   participantId: number,
   cursor?: number,
