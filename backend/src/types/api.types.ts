@@ -70,3 +70,34 @@ export type SearchUsersResponseBody = UserSearchResult[];
 export type SearchUsersQuery = {
   query: string;
 };
+
+export type CreateConversationInput = {
+  targetUsername: string;
+};
+
+export type ConversationResponseBody = {
+  id: number;
+  participants: UserSearchResult[];
+  createdAt: string;
+  lastActivityAt: string;
+};
+
+export type GetConversationsResponseBody = {
+  conversations: {
+    id: number;
+    otherUser: UserSearchResult;
+    lastMessage: {
+      id: number;
+      content: string;
+      senderId: number;
+      createdAt: string;
+    } | null;
+    lastActivityAt: string;
+  }[];
+  nextCursor: number | null;
+};
+
+export type GetConversationsQuery = {
+  cursor?: string;
+  limit?: string;
+};
