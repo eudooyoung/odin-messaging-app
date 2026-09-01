@@ -3,6 +3,7 @@ import NotFoundError from "@/errors/notFoundError.js";
 import UnauthorizedError from "@/errors/unauthorizedError.js";
 import {
   findUserProfileByUsername,
+  searchUsers,
   updateUserProfile,
 } from "@/repositories/user.repository.js";
 import type { UpdateUserProfileInput } from "@/types/api.types.js";
@@ -30,4 +31,10 @@ export const updateUserProfileService = async (
 
     throw error;
   }
+};
+
+export const searchUsersService = async (query: string) => {
+  const users = await searchUsers(query);
+
+  return users;
 };

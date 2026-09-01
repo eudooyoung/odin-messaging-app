@@ -57,3 +57,18 @@ export const updateUserProfile = (userId: number, updateData: UpdateUserProfileI
       profileImage: true,
     },
   });
+
+export const searchUsers = (query: string) =>
+  prisma.user.findMany({
+    where: {
+      OR: [
+        { username: { contains: query, mode: "insensitive" } },
+        { displayName: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      username: true,
+      displayName: true,
+      profileImage: true,
+    },
+  });

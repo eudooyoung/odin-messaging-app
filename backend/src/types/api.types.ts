@@ -58,3 +58,15 @@ export type UpdateUserProfileInput = {
   bio?: string | null;
   profileImage?: string | null;
 };
+
+export type UserSearchResult = {
+  username: string;
+  displayName: string;
+  profileImage: string | null;
+};
+
+export type SearchUsersResponseBody = UserSearchResult[];
+
+export type SearchUsersQuery = {
+  query: string;
+};

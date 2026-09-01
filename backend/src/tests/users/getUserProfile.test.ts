@@ -1,8 +1,8 @@
 import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
-import { getCookiePair, getSetCookie } from "@/tests/helpers/cookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { loginAndGetAccessCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";
 import type { UserProfileResponseBody } from "@/types/api.types";
 
@@ -23,10 +23,7 @@ describe("GET /users/:username", () => {
       profileImage: "https://example.com/profile.jpg",
     });
     await createTestUser(credentials);
-    const loginResponse = await request(app).post("/auth/login").send(credentials);
-    const accessCookie = getCookiePair(
-      getSetCookie(loginResponse.get("Set-Cookie"), "accessToken"),
-    );
+    const accessCookie = await loginAndGetAccessCookie(app, credentials);
 
     const response = await request(app)
       .get(`/users/${targetUser.username}`)
@@ -57,10 +54,7 @@ describe("GET /users/:username", () => {
       displayName: "Requesting User",
     };
     await createTestUser(credentials);
-    const loginResponse = await request(app).post("/auth/login").send(credentials);
-    const accessCookie = getCookiePair(
-      getSetCookie(loginResponse.get("Set-Cookie"), "accessToken"),
-    );
+    const accessCookie = await loginAndGetAccessCookie(app, credentials);
 
     const response = await request(app)
       .get("/users/missing-user")

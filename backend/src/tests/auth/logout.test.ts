@@ -3,12 +3,9 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
-import {
-  getCookiePair,
-  getCookieValue,
-  getSetCookie,
-} from "@/tests/helpers/cookie.js";
+import { getCookieValue, getSetCookie } from "@/tests/helpers/cookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { loginAndGetRefreshCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";
 
 const expectAuthCookiesCleared = (cookies: string[] | undefined) => {
@@ -33,17 +30,15 @@ describe("POST /auth/logout", () => {
 
     await createTestUser(credentials);
 
-    const loginResponse = await request(app).post("/auth/login").send(credentials);
-    const refreshCookie = getSetCookie(loginResponse.get("Set-Cookie"), "refreshToken");
-    const refreshCookiePair = getCookiePair(refreshCookie);
-    const refreshToken = getCookieValue(refreshCookiePair);
+    const refreshCookie = await loginAndGetRefreshCookie(app, credentials);
+    const refreshToken = getCookieValue(refreshCookie);
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
     await expect(
       prisma.refreshSession.findUnique({ where: { tokenHash } }),
     ).resolves.not.toBeNull();
 
-    const response = await request(app).post("/auth/logout").set("Cookie", refreshCookiePair);
+    const response = await request(app).post("/auth/logout").set("Cookie", refreshCookie);
 
     expect(response.status).toBe(204);
     await expect(prisma.refreshSession.findUnique({ where: { tokenHash } })).resolves.toBeNull();
