@@ -12,10 +12,11 @@ import { validateRegister } from "@/middleware/register.validation.middleware.js
 
 const authRouter = Router();
 
-authRouter.post("/register", validateRegister, registerController);
-authRouter.post("/login", validateLogin, loginController);
-authRouter.post("/refresh", refreshController);
-authRouter.post("/logout", logoutController);
-authRouter.get("/me", authenticateAccessToken, getMeController);
+authRouter
+  .post("/register", validateRegister, registerController)
+  .post("/login", validateLogin, loginController)
+  .post("/refresh", refreshController)
+  .post("/logout", logoutController)
+  .get("/me", authenticateAccessToken, getMeController);
 
 export default authRouter;

@@ -45,3 +45,28 @@ export type MeResponseBody = {
   username: string;
   displayName: string;
 };
+
+export type UserProfileResponseBody = {
+  username: string;
+  displayName: string;
+  bio: string | null;
+  profileImage: string | null;
+};
+
+export type UpdateUserProfileInput = {
+  displayName?: string;
+  bio?: string | null;
+  profileImage?: string | null;
+};
+
+export type UserSearchResult = {
+  username: string;
+  displayName: string;
+  profileImage: string | null;
+};
+
+export type SearchUsersResponseBody = UserSearchResult[];
+
+export type SearchUsersQuery = {
+  query: string;
+};

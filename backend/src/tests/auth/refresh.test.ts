@@ -11,21 +11,22 @@ import {
   getSetCookie,
 } from "@/tests/helpers/cookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { loginAndGetRefreshCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
-const loginTestUser = async () => {
+const loginTestUser = async (app: ReturnType<typeof createApp>) => {
   const credentials = {
     username: "existing-user",
     password: "secure-password",
   };
   const user = await createTestUser(credentials);
-  const response = await request(createApp()).post("/auth/login").send(credentials);
+  const refreshCookie = await loginAndGetRefreshCookie(app, credentials);
 
   return {
     user,
-    refreshCookie: getCookiePair(getSetCookie(response.get("Set-Cookie"), "refreshToken")),
+    refreshCookie,
   };
 };
 
@@ -36,7 +37,7 @@ afterEach(() => {
 describe("POST /auth/refresh", () => {
   it("rotates the refresh session in a transaction and resets both token cookies", async () => {
     const app = createApp();
-    const { user, refreshCookie } = await loginTestUser();
+    const { user, refreshCookie } = await loginTestUser(app);
     const oldRefreshToken = getCookieValue(refreshCookie);
     const oldTokenHash = hashToken(oldRefreshToken);
     const transactionSpy = vi.spyOn(prisma, "$transaction");
@@ -145,7 +146,7 @@ describe("POST /auth/refresh", () => {
 
   it("returns 401 when a previously rotated refresh token is reused", async () => {
     const app = createApp();
-    const { refreshCookie } = await loginTestUser();
+    const { refreshCookie } = await loginTestUser(app);
 
     const rotationResponse = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
     const reuseResponse = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
