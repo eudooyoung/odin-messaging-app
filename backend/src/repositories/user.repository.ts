@@ -1,4 +1,4 @@
-import type { CreateUserData } from "@/types/api.types";
+import type { CreateUserData, UpdateUserProfileInput } from "@/types/api.types";
 import { prisma } from "@/lib/prisma.js";
 
 export const createUser = ({ username, passwordHash, displayName }: CreateUserData) =>
@@ -32,5 +32,28 @@ export const findUserById = (userId: number) =>
       id: true,
       username: true,
       displayName: true,
+    },
+  });
+
+export const findUserProfileByUsername = (username: string) =>
+  prisma.user.findUnique({
+    where: { username },
+    select: {
+      username: true,
+      displayName: true,
+      bio: true,
+      profileImage: true,
+    },
+  });
+
+export const updateUserProfile = (userId: number, updateData: UpdateUserProfileInput) =>
+  prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+    select: {
+      username: true,
+      displayName: true,
+      bio: true,
+      profileImage: true,
     },
   });

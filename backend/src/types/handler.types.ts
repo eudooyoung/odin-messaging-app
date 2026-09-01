@@ -7,6 +7,8 @@ import type {
   RefreshResponseBody,
   RegisterInput,
   RegisterResponseBody,
+  UpdateUserProfileInput,
+  UserProfileResponseBody,
 } from "./api.types";
 
 export type RegisterHandler = RequestHandler<
@@ -37,6 +39,22 @@ export type MeHandler = RequestHandler<
   Record<string, never>,
   MeResponseBody,
   Record<string, never>,
+  Record<string, never>,
+  { userId: number }
+>;
+
+export type GetUserProfileHandler = RequestHandler<
+  { username: string },
+  UserProfileResponseBody,
+  Record<string, never>,
+  Record<string, never>,
+  { userId: number }
+>;
+
+export type UpdateUserProfileHandler = RequestHandler<
+  Record<string, never>,
+  UserProfileResponseBody,
+  UpdateUserProfileInput,
   Record<string, never>,
   { userId: number }
 >;

@@ -45,3 +45,16 @@ export type MeResponseBody = {
   username: string;
   displayName: string;
 };
+
+export type UserProfileResponseBody = {
+  username: string;
+  displayName: string;
+  bio: string | null;
+  profileImage: string | null;
+};
+
+export type UpdateUserProfileInput = {
+  displayName?: string;
+  bio?: string | null;
+  profileImage?: string | null;
+};
