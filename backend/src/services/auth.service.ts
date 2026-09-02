@@ -7,6 +7,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import ConflictError from "@/errors/conflictError";
 import { env } from "@/config/env.config.js";
 import UnauthorizedError from "@/errors/unauthorizedError";
+import { createAccessToken } from "@/lib/accessToken.js";
 import {
   createRefreshSession,
   deleteRefreshSessionByTokenHash,
@@ -55,10 +56,7 @@ export const loginService = async ({ username, password }: LoginInput) => {
     throw new UnauthorizedError("Invalid credentials", "INVALID_CREDENTIALS");
   }
 
-  const accessToken = jwt.sign({ sub: String(user.id), tokenType: "access" }, env.jwtSecret, {
-    expiresIn: "15m",
-    jwtid: randomUUID(),
-  });
+  const accessToken = createAccessToken(user.id);
   const refreshToken = jwt.sign({ sub: String(user.id), tokenType: "refresh" }, env.jwtSecret, {
     expiresIn: "7d",
     jwtid: randomUUID(),
@@ -113,10 +111,7 @@ export const refreshService = async (refreshToken: string | undefined) => {
     throw createRefreshUnauthorizedError();
   }
 
-  const accessToken = jwt.sign({ sub: String(userId), tokenType: "access" }, env.jwtSecret, {
-    expiresIn: "15m",
-    jwtid: randomUUID(),
-  });
+  const accessToken = createAccessToken(userId);
   const nextRefreshToken = jwt.sign({ sub: String(userId), tokenType: "refresh" }, env.jwtSecret, {
     expiresIn: "7d",
     jwtid: randomUUID(),

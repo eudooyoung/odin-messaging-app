@@ -101,3 +101,30 @@ export type GetConversationsQuery = {
   cursor?: string;
   limit?: string;
 };
+
+export type CreateMessageInput = {
+  content: string;
+};
+
+export type MessageResponseBody = {
+  id: number;
+  content: string;
+  sender: UserSearchResult;
+  createdAt: string;
+};
+
+export type GetMessagesResponseBody = {
+  messages: MessageResponseBody[];
+  nextCursor: number | null;
+};
+
+export type CreateMessageResponseBody = {
+  id: number;
+  content: string;
+  sender: {
+    username: string;
+    displayName: string;
+    profileImage: string | null;
+  };
+  createdAt: string;
+};

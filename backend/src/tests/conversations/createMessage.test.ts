@@ -5,12 +5,12 @@ import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import "@/tests/integration.setup.js";
-import type { ConversationResponseBody } from "@/types/api.types.js";
+import type { CreateMessageResponseBody } from "@/types/api.types.js";
 
 const getBody = <T>(response: Response) => response.body as T;
 
-describe("GET /conversations/:id", () => {
-  it("returns the conversation when the authenticated user is a participant", async () => {
+describe("POST /conversations/:id/messages", () => {
+  it("creates a message and updates the conversation activity", async () => {
     const app = createApp();
     const credentials = {
       username: "current-user",
@@ -30,40 +30,50 @@ describe("GET /conversations/:id", () => {
         participants: {
           connect: [{ id: currentUser.id }, { id: otherUser.id }],
         },
-        createdAt: new Date("2026-09-01T00:00:00.000Z"),
-        lastActivityAt: new Date("2026-09-01T01:00:00.000Z"),
+        lastActivityAt: new Date("2026-09-01T00:00:00.000Z"),
       },
     });
     const accessCookie = createAccessTokenCookie(currentUser.id);
+    const content = "Hello!";
 
     const response = await request(app)
-      .get(`/conversations/${conversation.id}`)
-      .set("Cookie", accessCookie);
+      .post(`/conversations/${conversation.id}/messages`)
+      .set("Cookie", accessCookie)
+      .send({ content: `  ${content}  ` });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
 
-    const body = getBody<ConversationResponseBody>(response);
-    expect(body.id).toBe(conversation.id);
-    expect(body.createdAt).toBe(conversation.createdAt.toISOString());
-    expect(body.lastActivityAt).toBe(conversation.lastActivityAt.toISOString());
-
-    expect(body.participants).toHaveLength(2);
-
-    expect(body.participants).toContainEqual({
+    const body = getBody<CreateMessageResponseBody>(response);
+    expect(typeof body.id).toBe("number");
+    expect(body.content).toBe(content);
+    expect(body.sender).toEqual({
       username: currentUser.username,
       displayName: currentUser.displayName,
       profileImage: currentUser.profileImage,
     });
+    expect(typeof body.createdAt).toBe("string");
 
-    expect(body.participants).toContainEqual({
-      username: otherUser.username,
-      displayName: otherUser.displayName,
-      profileImage: otherUser.profileImage,
+    const persistedMessage = await prisma.message.findUnique({
+      where: { id: body.id },
     });
+    expect(persistedMessage).toMatchObject({
+      id: body.id,
+      content,
+      senderId: currentUser.id,
+      conversationId: conversation.id,
+    });
+    expect(body.createdAt).toBe(persistedMessage?.createdAt.toISOString());
+
+    const updatedConversation = await prisma.conversation.findUnique({
+      where: { id: conversation.id },
+    });
+    expect(updatedConversation?.lastActivityAt).toEqual(persistedMessage?.createdAt);
   });
 
   it("returns 401 when the access token cookie is missing", async () => {
-    const response = await request(createApp()).get("/conversations/1");
+    const response = await request(createApp())
+      .post("/conversations/1/messages")
+      .send({ content: "Hello!" });
 
     expect(response.status).toBe(401);
   });
@@ -79,8 +89,9 @@ describe("GET /conversations/:id", () => {
     const accessCookie = createAccessTokenCookie(currentUser.id);
 
     const response = await request(app)
-      .get("/conversations/999999")
-      .set("Cookie", accessCookie);
+      .post("/conversations/999999/messages")
+      .set("Cookie", accessCookie)
+      .send({ content: "Hello!" });
 
     expect(response.status).toBe(404);
   });
@@ -111,8 +122,9 @@ describe("GET /conversations/:id", () => {
     const accessCookie = createAccessTokenCookie(currentUser.id);
 
     const response = await request(app)
-      .get(`/conversations/${conversation.id}`)
-      .set("Cookie", accessCookie);
+      .post(`/conversations/${conversation.id}/messages`)
+      .set("Cookie", accessCookie)
+      .send({ content: "Hello!" });
 
     expect(response.status).toBe(403);
   });
@@ -133,8 +145,46 @@ describe("GET /conversations/:id", () => {
     const accessCookie = createAccessTokenCookie(currentUser.id);
 
     const response = await request(app)
-      .get(`/conversations/${conversationId}`)
-      .set("Cookie", accessCookie);
+      .post(`/conversations/${conversationId}/messages`)
+      .set("Cookie", accessCookie)
+      .send({ content: "Hello!" });
+
+    expect(response.status).toBe(400);
+  });
+
+  it.each([
+    { caseName: "content is missing", requestBody: {} },
+    { caseName: "content is empty", requestBody: { content: "" } },
+    { caseName: "content contains only whitespace", requestBody: { content: "   " } },
+    {
+      caseName: "content is longer than 2000 characters",
+      requestBody: { content: "a".repeat(2001) },
+    },
+  ])("returns 400 when $caseName", async ({ requestBody }) => {
+    const app = createApp();
+    const credentials = {
+      username: "current-user",
+      password: "secure-password",
+      displayName: "Current User",
+    };
+    const currentUser = await createTestUser(credentials);
+    const otherUser = await createTestUser({
+      username: "other-user",
+      displayName: "Other User",
+    });
+    const conversation = await prisma.conversation.create({
+      data: {
+        participants: {
+          connect: [{ id: currentUser.id }, { id: otherUser.id }],
+        },
+      },
+    });
+    const accessCookie = createAccessTokenCookie(currentUser.id);
+
+    const response = await request(app)
+      .post(`/conversations/${conversation.id}/messages`)
+      .set("Cookie", accessCookie)
+      .send(requestBody);
 
     expect(response.status).toBe(400);
   });
