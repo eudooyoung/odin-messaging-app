@@ -1,24 +1,7 @@
-import jwt from "jsonwebtoken";
 import type { RequestHandler } from "express";
-import { env } from "@/config/env.config.js";
 import UnauthorizedError from "@/errors/unauthorizedError.js";
-
-const getCookieValue = (cookieHeader: string | undefined, name: string) => {
-  const cookie = cookieHeader
-    ?.split(";")
-    .map((value) => value.trim())
-    .find((value) => value.startsWith(`${name}=`));
-
-  if (!cookie) {
-    return undefined;
-  }
-
-  try {
-    return decodeURIComponent(cookie.slice(name.length + 1));
-  } catch {
-    return undefined;
-  }
-};
+import { verifyAccessToken } from "@/lib/accessToken.js";
+import { getCookieValue } from "@/lib/cookie.js";
 
 const createAuthenticationError = () =>
   new UnauthorizedError("Invalid credentials", "INVALID_CREDENTIALS");
@@ -30,26 +13,12 @@ export const authenticateAccessToken: RequestHandler = (req, res, next) => {
     return next(createAuthenticationError());
   }
 
-  try {
-    const payload = jwt.verify(accessToken, env.jwtSecret);
+  const userId = verifyAccessToken(accessToken);
 
-    if (
-      typeof payload === "string" ||
-      payload.tokenType !== "access" ||
-      typeof payload.sub !== "string"
-    ) {
-      return next(createAuthenticationError());
-    }
-
-    const userId = Number(payload.sub);
-
-    if (!Number.isInteger(userId) || userId < 1) {
-      return next(createAuthenticationError());
-    }
-
-    res.locals.userId = userId;
-    next();
-  } catch {
-    next(createAuthenticationError());
+  if (!userId) {
+    return next(createAuthenticationError());
   }
+
+  res.locals.userId = userId;
+  next();
 };

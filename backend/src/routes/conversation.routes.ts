@@ -14,40 +14,43 @@ import { validateCreateMessage } from "@/middleware/createMessage.validation.mid
 import { validateGetConversation } from "@/middleware/getConversation.validation.middleware.js";
 import { validateGetConversations } from "@/middleware/getConversations.validation.middleware.js";
 import { validateGetMessages } from "@/middleware/getMessages.validation.middleware.js";
+import type { MessageCreatedPublisher } from "@/types/websocket.types.js";
 
-const conversationRouter = Router();
+export const createConversationRouter = (publishMessageCreated: MessageCreatedPublisher) => {
+  const conversationRouter = Router();
 
-conversationRouter.get(
-  "/",
-  authenticateAccessToken,
-  validateGetConversations,
-  getConversationsController,
-);
-conversationRouter.get(
-  "/:id/messages",
-  authenticateAccessToken,
-  validateGetMessages,
-  getMessagesController,
-);
-conversationRouter.get(
-  "/:id",
-  authenticateAccessToken,
-  validateGetConversation,
-  getConversationController,
-);
+  conversationRouter.get(
+    "/",
+    authenticateAccessToken,
+    validateGetConversations,
+    getConversationsController,
+  );
+  conversationRouter.get(
+    "/:id/messages",
+    authenticateAccessToken,
+    validateGetMessages,
+    getMessagesController,
+  );
+  conversationRouter.get(
+    "/:id",
+    authenticateAccessToken,
+    validateGetConversation,
+    getConversationController,
+  );
 
-conversationRouter.post(
-  "/:id/messages",
-  authenticateAccessToken,
-  validateCreateMessage,
-  createMessageController,
-);
+  conversationRouter.post(
+    "/:id/messages",
+    authenticateAccessToken,
+    validateCreateMessage,
+    createMessageController(publishMessageCreated),
+  );
 
-conversationRouter.post(
-  "/",
-  authenticateAccessToken,
-  validateCreateConversation,
-  createConversationController,
-);
+  conversationRouter.post(
+    "/",
+    authenticateAccessToken,
+    validateCreateConversation,
+    createConversationController,
+  );
 
-export default conversationRouter;
+  return conversationRouter;
+};

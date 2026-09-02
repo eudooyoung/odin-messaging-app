@@ -64,5 +64,9 @@ export const createMessageService = async (
 
   await updateConversationLastActivityAt(conversationId, message.createdAt);
 
-  return message;
+  const recipientUserIds = conversation.participants
+    .filter(({ id }) => id !== currentUserId)
+    .map(({ id }) => id);
+
+  return { message, recipientUserIds };
 };

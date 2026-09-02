@@ -9,9 +9,9 @@
 - [ ] 5. 구현
   - [x] Auth
   - [x] User / Profile
-  - [x] Conversation (진행 중)
-  - [ ] Message
-  - [ ] WebSocket
+  - [x] Conversation
+  - [x] Message
+  - [x] WebSocket
   - [ ] Frontend
 - [ ] 6. 배포
 
@@ -351,15 +351,37 @@
   - [x] integration 실패 경로 구현 (`401` / `403` / `404`)
   - [x] conversation id positive integer validation 구현
 
-### Backend — 남은 작업
+### Backend — Message
 
-- [ ] `POST /conversations/{id}/messages`
-- [ ] `GET /conversations/{id}/messages`
-- [ ] Message cursor pagination
-- [ ] Message 생성 시 `Conversation.lastActivityAt` 갱신
-- [ ] WebSocket 연결 인증
-- [ ] WebSocket 실시간 새 메시지 전달
-- [ ] WebSocket integration test
+- [x] `POST /conversations/{id}/messages`
+  - [x] participant 권한 검증
+  - [x] 메시지 validation
+  - [x] Message 생성
+  - [x] `Conversation.lastActivityAt` 갱신
+- [x] `GET /conversations/{id}/messages`
+  - [x] 최신 메시지 조회
+  - [x] `createdAt DESC, id DESC` 정렬
+  - [x] cursor pagination
+  - [x] `401` / `403` / `404` 실패 경로
+  - [x] conversation id / cursor / limit validation
+
+### Backend — WebSocket
+
+- [x] Access Token cookie 기반 연결 인증
+- [x] userId별 connection registry 관리
+- [x] connection 종료 시 registry 정리
+- [x] 복수 connection 관리
+- [x] `message.created` 실시간 전달
+- [x] recipient의 모든 connection에 event 전달
+- [x] sender 제외 검증
+- [x] WebSocket integration test
+- [x] `req.socket.server` / `WeakMap` 의존 제거 및 publisher 주입 구조로 리팩토링
+
+### Backend — 최종 검증
+
+- [x] 전체 backend test
+- [x] lint
+- [x] build
 
 ### Frontend
 
