@@ -34,7 +34,7 @@
     "vitest": "^4.1.10"
   },
   "scripts": {
-    "build": "prisma generate && rm -rf dist/ && tsc && tsc-alias",
+    "build": "prisma generate && rm -rf dist/ && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "start": "node dist/src/server.js",
     "dev": "tsx --watch src/server.ts",
     "test": "vitest",
@@ -45,10 +45,10 @@
   "license": "ISC",
   "type": "module",
   "allowScripts": {
-    "esbuild@0.28.1": true,
     "argon2@0.45.1": true,
     "prisma@7.10.0": true,
-    "@prisma/engines@7.10.0": true
+    "@prisma/engines@7.10.0": true,
+    "esbuild@0.28.2": true
   },
   "overrides": {
     "@hono/node-server": "^1.19.13"

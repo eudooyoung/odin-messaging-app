@@ -2,7 +2,7 @@ import { env } from "@/config/env.config.js";
 import type { ErrorRequestHandler } from "express";
 import CustomError from "./customError.js";
 
-const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
+const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
   if (res.headersSent) {
     return next(error);
   }

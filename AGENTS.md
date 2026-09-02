@@ -20,6 +20,7 @@
 ## 프로젝트 스택
 
 ### Backend
+
 - Node.js
 - Express
 - PostgreSQL
@@ -32,6 +33,7 @@
 - Vitest + Supertest
 
 ### Frontend
+
 - React
 - Vite
 - React Router
@@ -172,6 +174,9 @@ Codex에 맡기기 적합한 작업:
 - 네이밍 정리
 - 중복 제거
 - 작은 기계적 리팩토링
+
+Codex 지시문은 이 `AGENTS.md`와 적용되는 하위 `AGENTS.md`의 규칙을 이미 전제로 한다.
+따라서 TDD 단계, 테스트 실행 여부, 수정 범위 제한처럼 문서에 이미 명시된 공통 제약을 지시문마다 반복하지 않고, 현재 작업의 구체적인 목표와 예외적인 추가 제약만 적는다.
 
 명시적인 논의 없이 큰 아키텍처 리팩토링을 하지 않는다.
 

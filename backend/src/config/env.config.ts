@@ -1,8 +1,13 @@
 import "dotenv/config";
+import { envSchema } from "@/config/env.schema";
+
+const parsedEnv = envSchema.parse(process.env);
 
 export const env = {
-  port: Number(process.env.PORT),
-  dbURL: process.env.DATABASE_URL,
-  debug: process.env.APP_DEBUG === "true",
-  jwtSecret: process.env.JWT_SECRET,
+  port: parsedEnv.PORT,
+  dbURL: parsedEnv.DATABASE_URL,
+  testDbURL: parsedEnv.TEST_DATABASE_URL,
+  debug: parsedEnv.APP_DEBUG,
+  jwtSecret: parsedEnv.JWT_SECRET,
+  nodeEnv: parsedEnv.NODE_ENV,
 };
