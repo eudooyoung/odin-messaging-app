@@ -2,12 +2,14 @@ import type { RequestHandler } from "express";
 import type {
   ConversationResponseBody,
   CreateConversationInput,
+  CreateMessageInput,
   GetConversationsQuery,
   GetConversationsResponseBody,
   LoginInput,
   LoginResponseBody,
   LogoutResponseBody,
   MeResponseBody,
+  MessageResponseBody,
   RefreshResponseBody,
   RegisterInput,
   RegisterResponseBody,
@@ -93,6 +95,14 @@ export type GetConversationHandler = RequestHandler<
   { id: string },
   ConversationResponseBody,
   Record<string, never>,
+  Record<string, never>,
+  { userId: number; conversationId: number }
+>;
+
+export type CreateMessageHandler = RequestHandler<
+  { id: string },
+  MessageResponseBody,
+  CreateMessageInput,
   Record<string, never>,
   { userId: number; conversationId: number }
 >;

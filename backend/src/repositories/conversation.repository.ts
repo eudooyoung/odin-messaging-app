@@ -18,6 +18,15 @@ export const findConversationById = (conversationId: number) =>
     },
   });
 
+export const updateConversationLastActivityAt = (
+  conversationId: number,
+  lastActivityAt: Date,
+) =>
+  prisma.conversation.update({
+    where: { id: conversationId },
+    data: { lastActivityAt },
+  });
+
 export const findConversationsByParticipantId = (
   participantId: number,
   cursor?: number,

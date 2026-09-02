@@ -106,8 +106,10 @@ Express 5 error flow
 ### API 타입
 
 - HTTP request/response shape는 `api.types.ts`에 둔다.
+- integration test의 HTTP response body에는 `api.types.ts`의 response 타입을 사용한다.
+- integration test의 HTTP response body 타입을 service의 `ReturnType`에서 파생하지 않는다.
+- service 반환값과 HTTP response는 서로 다른 경계로 취급한다. 예를 들어 service의 `Date`가 HTTP response에서는 `string`으로 직렬화될 수 있다.
 - 테스트 파일에서 API request/response shape를 복제한 로컬 타입을 새로 정의하지 않는다.
-- production 코드와 테스트는 `api.types.ts`의 타입을 재사용한다.
 - 동일한 의미와 shape의 타입이 이미 있으면 새 타입을 만들지 않는다.
 
 예:
@@ -134,7 +136,7 @@ RegisterHandler
 - 기존 타입과 의미와 shape가 같으면 재사용한다.
 - 의미나 shape가 실제로 달라질 때만 별도 타입을 만든다.
 - 테스트 mock의 타입을 위해 production shape를 로컬 타입으로 복제하지 않는다.
-- 가능하면 실제 함수 타입(`typeof`), `ReturnType`, `Awaited` 등 기존 타입 정보에서 mock 타입을 파생한다.
+- repository/service mock 타입은 가능하면 실제 함수 타입(`typeof`, `ReturnType`, `Awaited` 등)에서 파생한다.
 
 예:
 
@@ -151,6 +153,8 @@ CreateUserData
 - `any`를 추가해 lint/type error를 숨기지 않는다.
 - 외부 라이브러리 경계에서 들어오는 `any`는 helper나 명시적 narrowing으로 처리한다.
 - type-aware ESLint 규칙을 우회하지 않는다.
+- `expect.any(...)`, `expect.arrayContaining(...)` 같은 asymmetric matcher가 `@typescript-eslint/no-unsafe-assignment`를 유발하면 사용하지 않는다.
+- 이 경우 `typeof`, `toBe`, `toContainEqual`, 개별 field assertion 등 strict typing을 유지할 수 있는 assertion을 우선한다.
 
 ## 4. 테스트 / DB 전용 규칙
 

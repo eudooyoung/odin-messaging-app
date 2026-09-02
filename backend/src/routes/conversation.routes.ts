@@ -4,8 +4,10 @@ import {
   getConversationController,
   getConversationsController,
 } from "@/controllers/conversation.controller.js";
+import { createMessageController } from "@/controllers/message.controller.js";
 import { authenticateAccessToken } from "@/middleware/accessToken.authentication.middleware.js";
 import { validateCreateConversation } from "@/middleware/createConversation.validation.middleware.js";
+import { validateCreateMessage } from "@/middleware/createMessage.validation.middleware.js";
 import { validateGetConversation } from "@/middleware/getConversation.validation.middleware.js";
 import { validateGetConversations } from "@/middleware/getConversations.validation.middleware.js";
 
@@ -22,6 +24,13 @@ conversationRouter.get(
   authenticateAccessToken,
   validateGetConversation,
   getConversationController,
+);
+
+conversationRouter.post(
+  "/:id/messages",
+  authenticateAccessToken,
+  validateCreateMessage,
+  createMessageController,
 );
 
 conversationRouter.post(

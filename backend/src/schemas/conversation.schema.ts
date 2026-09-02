@@ -12,3 +12,7 @@ export const getConversationsQuerySchema = z.object({
 export const getConversationParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
+
+export const createMessageSchema = z.object({
+  content: z.string().trim().min(1).max(2000),
+});
