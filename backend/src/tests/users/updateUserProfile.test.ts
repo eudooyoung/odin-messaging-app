@@ -2,8 +2,8 @@ import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
+import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
-import { loginAndGetAccessCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";
 import type {
   UpdateUserProfileInput,
@@ -23,10 +23,7 @@ describe("PATCH /users/me", () => {
       bio: "Existing bio",
       profileImage: "https://example.com/existing-profile.jpg",
     });
-    const accessCookie = await loginAndGetAccessCookie(app, {
-      username: user.username,
-      password,
-    });
+    const accessCookie = createAccessTokenCookie(user.id);
     const updateData = {
       displayName: "Updated User",
       bio: "Updated bio",
@@ -88,10 +85,7 @@ describe("PATCH /users/me", () => {
       username: "existing-user",
       password,
     });
-    const accessCookie = await loginAndGetAccessCookie(app, {
-      username: user.username,
-      password,
-    });
+    const accessCookie = createAccessTokenCookie(user.id);
 
     const response = await request(app)
       .patch("/users/me")

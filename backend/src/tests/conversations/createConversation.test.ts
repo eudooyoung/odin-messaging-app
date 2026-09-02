@@ -2,8 +2,8 @@ import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
+import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
-import { loginAndGetAccessCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";
 import type { ConversationResponseBody } from "@/types/api.types.js";
 
@@ -23,7 +23,7 @@ describe("POST /conversations", () => {
       displayName: "Target User",
       profileImage: "https://example.com/target.jpg",
     });
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const accessCookie = createAccessTokenCookie(currentUser.id);
 
     const response = await request(app)
       .post("/conversations")
@@ -71,7 +71,7 @@ describe("POST /conversations", () => {
         },
       },
     });
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const accessCookie = createAccessTokenCookie(currentUser.id);
 
     const response = await request(app)
       .post("/conversations")
@@ -111,8 +111,8 @@ describe("POST /conversations", () => {
       password: "secure-password",
       displayName: "Current User",
     };
-    await createTestUser(credentials);
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const currentUser = await createTestUser(credentials);
+    const accessCookie = createAccessTokenCookie(currentUser.id);
 
     const response = await request(app)
       .post("/conversations")
@@ -146,8 +146,8 @@ describe("POST /conversations", () => {
       password: "secure-password",
       displayName: "Current User",
     };
-    await createTestUser(credentials);
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const currentUser = await createTestUser(credentials);
+    const accessCookie = createAccessTokenCookie(currentUser.id);
 
     const response = await request(app)
       .post("/conversations")
