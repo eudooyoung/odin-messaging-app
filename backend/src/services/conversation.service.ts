@@ -37,6 +37,8 @@ export const getConversationsService = async (
       : await findConversationsByParticipantId(currentUserId, cursor, limit);
   const hasNextPage = limit !== undefined && conversations.length > limit;
   const page = hasNextPage ? conversations.slice(0, limit) : conversations;
+  const lastConversation = page.at(-1);
+  const nextCursor = hasNextPage && lastConversation ? lastConversation.id : null;
 
   return {
     conversations: page.map(({ id, participants, messages, lastActivityAt }) => ({
@@ -45,7 +47,7 @@ export const getConversationsService = async (
       lastMessage: messages[0],
       lastActivityAt,
     })),
-    nextCursor: hasNextPage ? (page.at(-1)?.id ?? null) : null,
+    nextCursor,
   };
 };
 

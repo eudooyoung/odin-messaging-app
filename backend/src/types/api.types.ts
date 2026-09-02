@@ -113,6 +113,11 @@ export type MessageResponseBody = {
   createdAt: string;
 };
 
+export type GetMessagesResponseBody = {
+  messages: MessageResponseBody[];
+  nextCursor: number | null;
+};
+
 export type CreateMessageResponseBody = {
   id: number;
   content: string;

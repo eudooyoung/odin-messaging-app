@@ -1,8 +1,6 @@
 import BadRequestError from "@/errors/badRequestError.js";
-import {
-  createMessageSchema,
-  getConversationParamsSchema,
-} from "@/schemas/conversation.schema.js";
+import { getConversationParamsSchema } from "@/schemas/conversation.schema.js";
+import { createMessageSchema } from "@/schemas/message.schema";
 import type { CreateMessageHandler } from "@/types/handler.types.js";
 
 export const validateCreateMessage: CreateMessageHandler = (req, res, next) => {
