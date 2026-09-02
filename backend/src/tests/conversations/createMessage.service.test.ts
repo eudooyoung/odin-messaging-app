@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 
 describe("createMessageService", () => {
-  it("creates and returns a message and updates the conversation activity", async () => {
+  it("returns the created message and recipient user ids and updates the conversation activity", async () => {
     const currentUserId = 1;
     const conversationId = 10;
     const content = "Hello!";
@@ -74,7 +74,10 @@ describe("createMessageService", () => {
       conversationId,
       createdMessage.createdAt,
     );
-    expect(result).toEqual(createdMessage);
+    expect(result).toEqual({
+      message: createdMessage,
+      recipientUserIds: [2],
+    });
   });
 
   it("throws a not found error without creating a message when the conversation does not exist", async () => {

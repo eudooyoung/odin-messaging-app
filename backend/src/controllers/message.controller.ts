@@ -1,11 +1,6 @@
-import {
-  createMessageService,
-  getMessagesService,
-} from "@/services/message.service.js";
-import type {
-  CreateMessageHandler,
-  GetMessagesHandler,
-} from "@/types/handler.types.js";
+import { createMessageService, getMessagesService } from "@/services/message.service.js";
+import type { CreateMessageHandler, GetMessagesHandler } from "@/types/handler.types.js";
+import type { MessageCreatedPublisher } from "@/types/websocket.types.js";
 
 export const getMessagesController: GetMessagesHandler = async (_req, res) => {
   const { messages, nextCursor } = await getMessagesService(
@@ -24,15 +19,20 @@ export const getMessagesController: GetMessagesHandler = async (_req, res) => {
   });
 };
 
-export const createMessageController: CreateMessageHandler = async (req, res) => {
-  const message = await createMessageService(
-    res.locals.userId,
-    res.locals.conversationId,
-    req.body.content,
-  );
+export const createMessageController =
+  (publishMessageCreated: MessageCreatedPublisher): CreateMessageHandler =>
+  async (req, res) => {
+    const { message, recipientUserIds } = await createMessageService(
+      res.locals.userId,
+      res.locals.conversationId,
+      req.body.content,
+    );
+    const responseBody = {
+      ...message,
+      createdAt: message.createdAt.toISOString(),
+    };
 
-  res.status(201).json({
-    ...message,
-    createdAt: message.createdAt.toISOString(),
-  });
-};
+    publishMessageCreated(recipientUserIds, res.locals.conversationId, responseBody);
+
+    res.status(201).json(responseBody);
+  };
