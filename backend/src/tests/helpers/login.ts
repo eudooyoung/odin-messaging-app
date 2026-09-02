@@ -3,18 +3,13 @@ import request from "supertest";
 import { getCookiePair, getSetCookie } from "@/tests/helpers/cookie.js";
 import type { LoginInput } from "@/types/api.types.js";
 
-const loginAndGetCookie = async (
+export const loginAndGetRefreshCookie = async (
   app: Express,
   credentials: LoginInput,
-  cookieName: "accessToken" | "refreshToken",
 ) => {
   const response = await request(app).post("/auth/login").send(credentials);
 
-  return getCookiePair(getSetCookie(response.get("Set-Cookie"), cookieName));
+  return getCookiePair(
+    getSetCookie(response.get("Set-Cookie"), "refreshToken"),
+  );
 };
-
-export const loginAndGetAccessCookie = (app: Express, credentials: LoginInput) =>
-  loginAndGetCookie(app, credentials, "accessToken");
-
-export const loginAndGetRefreshCookie = (app: Express, credentials: LoginInput) =>
-  loginAndGetCookie(app, credentials, "refreshToken");

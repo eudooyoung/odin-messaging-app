@@ -1,8 +1,8 @@
 import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
+import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
-import { loginAndGetAccessCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";
 
 type MeResponseBody = {
@@ -22,7 +22,7 @@ describe("GET /auth/me", () => {
       displayName: "Existing User",
     };
     const user = await createTestUser(credentials);
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const accessCookie = createAccessTokenCookie(user.id);
 
     const response = await request(app).get("/auth/me").set("Cookie", accessCookie);
 

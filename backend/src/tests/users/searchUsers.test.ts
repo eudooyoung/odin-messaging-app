@@ -1,8 +1,8 @@
 import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
+import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
-import { loginAndGetAccessCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";
 import type { SearchUsersResponseBody } from "@/types/api.types.js";
 
@@ -30,8 +30,8 @@ describe("GET /users?query=", () => {
       username: "unrelated-user",
       displayName: "Unrelated User",
     });
-    await createTestUser(credentials);
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const requestingUser = await createTestUser(credentials);
+    const accessCookie = createAccessTokenCookie(requestingUser.id);
 
     const response = await request(app)
       .get("/users")
@@ -65,12 +65,12 @@ describe("GET /users?query=", () => {
       password: "secure-password",
       displayName: "Requesting User",
     };
-    await createTestUser(credentials);
+    const requestingUser = await createTestUser(credentials);
     await createTestUser({
       username: "unrelated-user",
       displayName: "Unrelated User",
     });
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const accessCookie = createAccessTokenCookie(requestingUser.id);
 
     const response = await request(app)
       .get("/users")
@@ -113,8 +113,8 @@ describe("GET /users?query=", () => {
       password: "secure-password",
       displayName: "Requesting User",
     };
-    await createTestUser(credentials);
-    const accessCookie = await loginAndGetAccessCookie(app, credentials);
+    const requestingUser = await createTestUser(credentials);
+    const accessCookie = createAccessTokenCookie(requestingUser.id);
     let searchRequest = request(app).get("/users").set("Cookie", accessCookie);
 
     if (query !== undefined) {
