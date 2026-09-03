@@ -24,6 +24,11 @@ src/
 - `api/`에는 공통 HTTP client와 같은 전역 API 인프라만 둔다. feature별 요청은 해당 feature에 둔다.
 - `routes/`는 route 정의와 인증 접근 제어를 포함한 라우팅 구성을 담당한다.
 
+## 라이브러리 API 사용
+
+- 현재 설치된 패키지 버전을 기준으로 API를 사용한다.
+- deprecated API는 사용하지 않는다.
+
 ## 앱 전역 구조와 인증 상태
 
 - 앱 진입점에서 `QueryClientProvider`가 `RouterProvider`를 감싼다.
@@ -50,6 +55,8 @@ src/
 
 ## TanStack Query cache
 
+- TanStack Query의 query 요청처럼 취소가 유의미한 fetch에서는 queryFn이 제공하는 `signal`을 HTTP 요청에 전달한다.
+- 별도의 `AbortController`를 직접 생성하기보다 라이브러리가 제공하는 signal을 우선 사용한다.
 - 로그인 성공 후 `["auth", "me"]`를 다시 조회하여 실제 로그인 사용자 상태를 얻는다.
 - `POST /auth/login`은 `204`이므로 로그인 응답에 사용자 정보가 있다고 가정하지 않는다.
 - 로그아웃 후에는 이전 사용자의 conversation 및 message 데이터가 남지 않도록 query cache를 비운다.
