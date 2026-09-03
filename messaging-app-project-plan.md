@@ -385,7 +385,16 @@
 
 ### Frontend
 
-- [ ] 구현 시작
+1. [ ] `QueryClientProvider` 구성
+2. [ ] 공통 `apiFetch`
+3. [ ] auth/me query
+4. [ ] `ProtectedRoute` / `GuestOnlyRoute`
+5. [ ] Login TDD
+6. [ ] Register TDD
+7. [ ] Conversation
+8. [ ] Message REST
+9. [ ] WebSocket 실시간 반영
+10. [ ] Profile
 
 ## 6. 배포 / 인증 쿠키 정책
 
