@@ -1,5 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { UserFacingError } from "@/api/UserFacingError.ts";
+
+export const AUTH_QUERY_ERROR_MESSAGE = "Failed to check authentication";
 
 type AuthUser = {
   id: number;
@@ -17,7 +20,7 @@ export const authMeQueryOptions = queryOptions({
     }
 
     if (!response.ok) {
-      throw new Error("Failed to fetch current user");
+      throw new UserFacingError(AUTH_QUERY_ERROR_MESSAGE);
     }
 
     return response.json() as Promise<AuthUser>;
