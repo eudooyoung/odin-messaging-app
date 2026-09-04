@@ -253,9 +253,7 @@ describe("ConversationList", () => {
 
     await user.click(screen.getByRole("button", { name: "Load more" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Failed to load more conversations",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load more conversations");
     expect(screen.getByRole("list")).toBeInTheDocument();
     expect(screen.getByText("First User")).toBeInTheDocument();
     expect(screen.queryByText("Failed to load conversations")).not.toBeInTheDocument();

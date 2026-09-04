@@ -27,9 +27,7 @@ export function ConversationList() {
   if (isError && !isFetchNextPageError) {
     return (
       <p role="alert">
-        {error instanceof UserFacingError
-          ? error.message
-          : CONVERSATIONS_QUERY_ERROR_MESSAGE}
+        {error instanceof UserFacingError ? error.message : CONVERSATIONS_QUERY_ERROR_MESSAGE}
       </p>
     );
   }
@@ -56,15 +54,9 @@ export function ConversationList() {
           </li>
         ))}
       </ul>
-      {isFetchNextPageError && (
-        <p role="alert">{LOAD_MORE_CONVERSATIONS_ERROR_MESSAGE}</p>
-      )}
+      {isFetchNextPageError && <p role="alert">{LOAD_MORE_CONVERSATIONS_ERROR_MESSAGE}</p>}
       {hasNextPage && (
-        <button
-          type="button"
-          disabled={isFetchingNextPage}
-          onClick={() => void fetchNextPage()}
-        >
+        <button type="button" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>
           Load more
         </button>
       )}

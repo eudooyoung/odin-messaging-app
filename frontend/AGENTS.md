@@ -53,6 +53,8 @@ src/
 - `apiFetch`는 credentials, refresh/retry 같은 공통 HTTP 전송만 담당하고 endpoint별 status 의미를 해석하지 않는다.
 - queryFn과 mutationFn은 동일한 error 처리 원칙을 따른다.
 - feature의 query/mutation 함수는 HTTP response를 받은 경우 자신의 API 의미에 따라 status를 해석한다.
+- Page/component 안에서 API 요청과 HTTP status 해석을 inline queryFn/mutationFn으로 크게 두지 않고, 로직이 독립적인 책임을 가지면 해당 feature의 별도 함수로 분리한다. 컴포넌트는 form/UI 상태, navigation, query/mutation 상태 연결에 집중한다.
+- 단순한 한두 줄 요청까지 기계적으로 분리하거나 custom hook을 만들지는 않는다.
 - 사용자에게 보여줄 의미가 정해진 HTTP 실패는 공통 `UserFacingError`로 throw한다.
 - `apiFetch` 자체가 reject한 network/abort 등 transport error는 새 error로 wrapping하지 않고 원본을 그대로 전달한다.
 - 컴포넌트는 가능한 한 raw `Response.status`를 직접 확인하지 않고 query/mutation의 상태와 feature에서 해석된 error를 사용한다.
