@@ -6,9 +6,7 @@ export const validateCreateConversation: CreateConversationHandler = (req, _res,
   const result = createConversationSchema.safeParse(req.body);
 
   if (!result.success) {
-    return next(
-      new BadRequestError("Invalid conversation input", "INVALID_CONVERSATION_INPUT"),
-    );
+    return next(new BadRequestError("Invalid conversation input", "INVALID_CONVERSATION_INPUT"));
   }
 
   req.body = result.data;

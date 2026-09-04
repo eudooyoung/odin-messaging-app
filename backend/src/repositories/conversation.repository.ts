@@ -18,10 +18,7 @@ export const findConversationById = (conversationId: number) =>
     },
   });
 
-export const updateConversationLastActivityAt = (
-  conversationId: number,
-  lastActivityAt: Date,
-) =>
+export const updateConversationLastActivityAt = (conversationId: number, lastActivityAt: Date) =>
   prisma.conversation.update({
     where: { id: conversationId },
     data: { lastActivityAt },

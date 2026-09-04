@@ -25,11 +25,7 @@ export const getMessagesService = async (
   const messages =
     cursor === undefined && limit === undefined
       ? await messageRepository.findMessagesByConversationId(conversationId)
-      : await messageRepository.findMessagesByConversationId(
-          conversationId,
-          cursor,
-          limit,
-        );
+      : await messageRepository.findMessagesByConversationId(conversationId, cursor, limit);
   const hasNextPage = limit !== undefined && messages.length > limit;
   const page = hasNextPage ? messages.slice(0, limit) : messages;
   const lastMessage = page.at(-1);
@@ -56,11 +52,7 @@ export const createMessageService = async (
     throw new ForbiddenError("Conversation access forbidden", "CONVERSATION_FORBIDDEN");
   }
 
-  const message = await messageRepository.createMessage(
-    conversationId,
-    currentUserId,
-    content,
-  );
+  const message = await messageRepository.createMessage(conversationId, currentUserId, content);
 
   await updateConversationLastActivityAt(conversationId, message.createdAt);
 

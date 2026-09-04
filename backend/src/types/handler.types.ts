@@ -26,11 +26,7 @@ export type RegisterHandler = RequestHandler<
   RegisterInput
 >;
 
-export type LoginHandler = RequestHandler<
-  Record<string, never>,
-  LoginResponseBody,
-  LoginInput
->;
+export type LoginHandler = RequestHandler<Record<string, never>, LoginResponseBody, LoginInput>;
 
 export type RefreshHandler = RequestHandler<
   Record<string, never>,

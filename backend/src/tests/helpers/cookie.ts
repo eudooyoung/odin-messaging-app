@@ -14,5 +14,4 @@ export const getCookiePair = (cookie: string) => {
   return separatorIndex === -1 ? cookie : cookie.slice(0, separatorIndex);
 };
 
-export const getCookieValue = (cookiePair: string) =>
-  cookiePair.slice(cookiePair.indexOf("=") + 1);
+export const getCookieValue = (cookiePair: string) => cookiePair.slice(cookiePair.indexOf("=") + 1);

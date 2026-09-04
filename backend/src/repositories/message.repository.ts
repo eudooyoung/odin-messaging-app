@@ -29,11 +29,7 @@ export const findMessagesByConversationId = (
     ...(limit === undefined ? {} : { take: limit + 1 }),
   });
 
-export const createMessage = (
-  conversationId: number,
-  senderId: number,
-  content: string,
-) =>
+export const createMessage = (conversationId: number, senderId: number, content: string) =>
   prisma.message.create({
     data: {
       conversationId,

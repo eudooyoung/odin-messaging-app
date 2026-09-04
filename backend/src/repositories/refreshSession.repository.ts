@@ -1,8 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type {
-  CreateRefreshSessionData,
-  RotateRefreshSessionData,
-} from "@/types/api.types";
+import type { CreateRefreshSessionData, RotateRefreshSessionData } from "@/types/api.types";
 
 export const createRefreshSession = ({ tokenHash, userId, expiresAt }: CreateRefreshSessionData) =>
   prisma.refreshSession.create({

@@ -59,10 +59,7 @@ describe("new message WebSocket push", () => {
     const connectionRegistry = createWebSocketConnectionRegistry();
     const publishMessageCreated = createMessageCreatedPublisher(connectionRegistry);
     const server = createServer(createApp({ publishMessageCreated }));
-    const attachedWebSocketServer = attachWebSocketServer(
-      server,
-      connectionRegistry,
-    );
+    const attachedWebSocketServer = attachWebSocketServer(server, connectionRegistry);
     httpServer = server;
     webSocketServer = attachedWebSocketServer;
 
