@@ -61,9 +61,7 @@ describe("apiFetch", () => {
 
   it("does not refresh when the refresh request itself returns 401", async () => {
     const unauthorizedResponse = new Response(null, { status: 401 });
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(unauthorizedResponse);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(unauthorizedResponse);
 
     const result = await apiFetch("/auth/refresh", { method: "POST" });
 
