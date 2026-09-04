@@ -3,11 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { z } from "zod";
-import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-
-const USERNAME_CONFLICT_ERROR_MESSAGE = "Username already exists";
-const GENERAL_REGISTER_ERROR_MESSAGE = "Something went wrong. Please try again.";
+import { GENERAL_REGISTER_ERROR_MESSAGE, registerUser } from "./registerUser.ts";
 
 const registerSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -27,23 +24,7 @@ export function RegisterPage() {
   });
   const navigate = useNavigate();
   const registerMutation = useMutation({
-    mutationFn: async (input: RegisterInput) => {
-      const response = await apiFetch("/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-
-      if (response.status === 409) {
-        throw new UserFacingError(USERNAME_CONFLICT_ERROR_MESSAGE);
-      }
-
-      if (response.status !== 201) {
-        throw new UserFacingError(GENERAL_REGISTER_ERROR_MESSAGE);
-      }
-
-      return response;
-    },
+    mutationFn: registerUser,
     onSuccess: () => {
       navigate("/login");
     },
