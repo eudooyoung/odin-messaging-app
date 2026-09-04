@@ -3,12 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { z } from "zod";
-import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions } from "./authMeQuery.ts";
-
-const LOGIN_ERROR_MESSAGE = "Login failed";
-const GENERAL_LOGIN_ERROR_MESSAGE = "Something went wrong. Please try again.";
+import { GENERAL_LOGIN_ERROR_MESSAGE, login } from "./login.ts";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -28,23 +25,7 @@ export function LoginPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const loginMutation = useMutation({
-    mutationFn: async (input: LoginInput) => {
-      const response = await apiFetch("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-
-      if (response.status === 401) {
-        throw new UserFacingError(LOGIN_ERROR_MESSAGE);
-      }
-
-      if (!response.ok) {
-        throw new UserFacingError(GENERAL_LOGIN_ERROR_MESSAGE);
-      }
-
-      return response;
-    },
+    mutationFn: login,
     onSuccess: async () => {
       await queryClient.query(authMeQueryOptions);
       navigate("/");
