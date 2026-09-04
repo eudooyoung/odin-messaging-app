@@ -385,11 +385,31 @@
 
 ### Frontend
 
-1. [ ] `QueryClientProvider` 구성
-2. [ ] 공통 `apiFetch`
-3. [ ] auth/me query
-4. [ ] `ProtectedRoute` / `GuestOnlyRoute`
+1. [x] `QueryClientProvider` 구성
+2. [x] 공통 `apiFetch`
+   - [x] 모든 요청에 `credentials: "include"` 적용
+   - [x] `401` 응답 시 refresh 후 원 요청 1회 재시도
+   - [x] refresh 실패 및 재시도 후 `401` 처리
+3. [x] auth/me query
+   - [x] `200` 응답을 현재 사용자로 반환
+   - [x] `401` 응답을 비로그인 상태인 `null`로 변환
+   - [x] 기타 실패 응답 throw
+   - [x] TanStack Query의 `signal`을 `apiFetch`에 전달
+4. [x] `ProtectedRoute` / `GuestOnlyRoute`
+   - [x] 로그인 / 비로그인 접근 제어
+   - [x] pending loading UI
+   - [x] error UI
 5. [ ] Login TDD
+   - [x] React Hook Form 적용
+   - [x] `POST /auth/login` 성공 요청
+   - [x] 로그인 성공 후 auth/me 재조회 완료 뒤 `/` 이동
+   - [x] `401` 실패를 mutation error UI로 표시
+   - [ ] client-side validation
+     - [ ] 빈 username validation 메시지 및 요청 차단
+     - [ ] 12자 미만 password validation 메시지 및 요청 차단
+   - [ ] pending 상태 검토 및 처리
+   - [ ] 예상하지 못한 error 상태 검토 및 처리
+   - [ ] request cancellation 필요 여부 검토
 6. [ ] Register TDD
 7. [ ] Conversation
 8. [ ] Message REST
