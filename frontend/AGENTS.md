@@ -24,6 +24,20 @@ src/
 - `api/`에는 공통 HTTP client와 같은 전역 API 인프라만 둔다. feature별 요청은 해당 feature에 둔다.
 - `routes/`는 route 정의와 인증 접근 제어를 포함한 라우팅 구성을 담당한다.
 
+## 라이브러리 API 사용
+
+- 현재 설치된 패키지 버전을 기준으로 API를 사용한다.
+- deprecated API는 사용하지 않는다.
+
+## 기능 단위 TDD 진행
+
+- 새 frontend 기능을 시작할 때 구현 전에 해당 기능에서 발생 가능한 주요 상태를 먼저 식별한다.
+- 성공 경로는 기존 TDD 원칙대로 먼저 RED → GREEN으로 진행한다.
+- 성공 경로 완료 후 바로 다음 기능으로 넘어가지 않고, 현재 기능의 나머지 상태를 모두 검토한다.
+- 필요에 따라 pending/loading, 예상 가능한 실패/빈 상태, 예상하지 못한 error, request cancellation 여부를 확인한다.
+- 필요한 상태를 모두 RED → GREEN으로 처리하고 해당 기능 전체가 완료된 뒤 다음 기능으로 넘어간다.
+- 모든 기능에 모든 상태를 기계적으로 추가하지 않고 실제로 발생 가능한 상태만 다룬다.
+
 ## 앱 전역 구조와 인증 상태
 
 - 앱 진입점에서 `QueryClientProvider`가 `RouterProvider`를 감싼다.
@@ -34,6 +48,12 @@ src/
 ## HTTP와 인증
 
 - HTTP 요청에는 공통 `apiFetch`를 사용한다.
+- `apiFetch`는 credentials, refresh/retry 같은 공통 HTTP 전송만 담당하고 endpoint별 status 의미를 해석하지 않는다.
+- feature의 query/mutation 함수가 자신의 API 응답 성공/실패를 해석한다.
+- 실패 응답은 TanStack Query가 error 상태로 관리할 수 있도록 throw한다.
+- 컴포넌트는 가능한 한 raw `Response.status`를 직접 확인하지 않고 query/mutation의 상태와 feature에서 해석된 error를 사용한다.
+- `auth/me`의 `401` → `null`처럼 해당 feature에서 정상 상태로 의미가 정해진 예외는 명시적으로 변환할 수 있다.
+- 구체적인 error class나 공통 추상화는 실제로 여러 feature에서 필요해질 때 도입한다.
 - 모든 인증 관련 요청에는 `credentials: "include"`를 설정한다.
 - 일반 요청이 `401`을 반환하면 `POST /auth/refresh`를 시도한다.
 - refresh가 성공하면 원래 요청을 한 번만 재시도한다.
@@ -50,6 +70,8 @@ src/
 
 ## TanStack Query cache
 
+- TanStack Query의 query 요청처럼 취소가 유의미한 fetch에서는 queryFn이 제공하는 `signal`을 HTTP 요청에 전달한다.
+- 별도의 `AbortController`를 직접 생성하기보다 라이브러리가 제공하는 signal을 우선 사용한다.
 - 로그인 성공 후 `["auth", "me"]`를 다시 조회하여 실제 로그인 사용자 상태를 얻는다.
 - `POST /auth/login`은 `204`이므로 로그인 응답에 사용자 정보가 있다고 가정하지 않는다.
 - 로그아웃 후에는 이전 사용자의 conversation 및 message 데이터가 남지 않도록 query cache를 비운다.
