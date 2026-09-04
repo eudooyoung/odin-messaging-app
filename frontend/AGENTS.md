@@ -36,7 +36,9 @@ src/
 - 성공 경로 완료 후 바로 다음 기능으로 넘어가지 않고, 현재 기능의 나머지 상태를 모두 검토한다.
 - 필요에 따라 pending/loading, 예상 가능한 실패/빈 상태, 예상하지 못한 error, request cancellation 여부를 확인한다.
 - 필요한 상태를 모두 RED → GREEN으로 처리하고 해당 기능 전체가 완료된 뒤 다음 기능으로 넘어간다.
-- 모든 기능에 모든 상태를 기계적으로 추가하지 않고 실제로 발생 가능한 상태만 다룬다.
+- query/mutation 작업을 시작했으면 UI 연결로 넘어가기 전에 해당 query/mutation이 실제로 구현하는 주요 분기와 책임을 테스트로 보장한다.
+- query/mutation 테스트에서는 필요에 따라 성공 응답, 의미 있는 HTTP error 해석, transport error passthrough, pagination/pageParam, queryFn `signal` 전달 등을 확인한다.
+- 모든 기능과 query/mutation에 모든 상태를 기계적으로 추가하지 않고 실제로 존재하는 분기와 동작만 다룬다.
 
 ## 앱 전역 구조와 인증 상태
 
@@ -49,11 +51,13 @@ src/
 
 - HTTP 요청에는 공통 `apiFetch`를 사용한다.
 - `apiFetch`는 credentials, refresh/retry 같은 공통 HTTP 전송만 담당하고 endpoint별 status 의미를 해석하지 않는다.
-- feature의 query/mutation 함수가 자신의 API 응답 성공/실패를 해석한다.
-- 실패 응답은 TanStack Query가 error 상태로 관리할 수 있도록 throw한다.
+- queryFn과 mutationFn은 동일한 error 처리 원칙을 따른다.
+- feature의 query/mutation 함수는 HTTP response를 받은 경우 자신의 API 의미에 따라 status를 해석한다.
+- 사용자에게 보여줄 의미가 정해진 HTTP 실패는 공통 `UserFacingError`로 throw한다.
+- `apiFetch` 자체가 reject한 network/abort 등 transport error는 새 error로 wrapping하지 않고 원본을 그대로 전달한다.
 - 컴포넌트는 가능한 한 raw `Response.status`를 직접 확인하지 않고 query/mutation의 상태와 feature에서 해석된 error를 사용한다.
+- `UserFacingError`이면 해당 message를 사용할 수 있고, 그 외 예상하지 못한 error는 feature에 맞는 사용자용 fallback message로 처리한다.
 - `auth/me`의 `401` → `null`처럼 해당 feature에서 정상 상태로 의미가 정해진 예외는 명시적으로 변환할 수 있다.
-- 구체적인 error class나 공통 추상화는 실제로 여러 feature에서 필요해질 때 도입한다.
 - 모든 인증 관련 요청에는 `credentials: "include"`를 설정한다.
 - 일반 요청이 `401`을 반환하면 `POST /auth/refresh`를 시도한다.
 - refresh가 성공하면 원래 요청을 한 번만 재시도한다.
