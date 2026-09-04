@@ -204,9 +204,7 @@ describe("GET /conversations", () => {
     const currentUser = await createTestUser(credentials);
     const accessCookie = createAccessTokenCookie(currentUser.id);
 
-    const response = await request(app)
-      .get("/conversations")
-      .set("Cookie", accessCookie);
+    const response = await request(app).get("/conversations").set("Cookie", accessCookie);
 
     expect(response.status).toBe(200);
     expect(getBody<GetConversationsResponseBody>(response)).toEqual({

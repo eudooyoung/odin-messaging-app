@@ -5,10 +5,7 @@ import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import "@/tests/integration.setup.js";
-import type {
-  UpdateUserProfileInput,
-  UserProfileResponseBody,
-} from "@/types/api.types.js";
+import type { UpdateUserProfileInput, UserProfileResponseBody } from "@/types/api.types.js";
 
 const getBody = <T>(response: Response) => response.body as T;
 

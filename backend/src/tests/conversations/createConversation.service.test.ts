@@ -8,15 +8,12 @@ import type {
 import type { findUserByUsername } from "@/repositories/user.repository.js";
 import { createConversationService } from "@/services/conversation.service.js";
 
-const {
-  createConversationMock,
-  findConversationByParticipantIdsMock,
-  findUserByUsernameMock,
-} = vi.hoisted(() => ({
-  createConversationMock: vi.fn<typeof createConversation>(),
-  findConversationByParticipantIdsMock: vi.fn<typeof findConversationByParticipantIds>(),
-  findUserByUsernameMock: vi.fn<typeof findUserByUsername>(),
-}));
+const { createConversationMock, findConversationByParticipantIdsMock, findUserByUsernameMock } =
+  vi.hoisted(() => ({
+    createConversationMock: vi.fn<typeof createConversation>(),
+    findConversationByParticipantIdsMock: vi.fn<typeof findConversationByParticipantIds>(),
+    findUserByUsernameMock: vi.fn<typeof findUserByUsername>(),
+  }));
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
   createConversation: createConversationMock,

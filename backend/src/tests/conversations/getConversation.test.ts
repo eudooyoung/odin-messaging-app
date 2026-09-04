@@ -78,9 +78,7 @@ describe("GET /conversations/:id", () => {
     const currentUser = await createTestUser(credentials);
     const accessCookie = createAccessTokenCookie(currentUser.id);
 
-    const response = await request(app)
-      .get("/conversations/999999")
-      .set("Cookie", accessCookie);
+    const response = await request(app).get("/conversations/999999").set("Cookie", accessCookie);
 
     expect(response.status).toBe(404);
   });

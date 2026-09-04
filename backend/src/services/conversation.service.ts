@@ -9,10 +9,7 @@ import {
 } from "@/repositories/conversation.repository.js";
 import { findUserByUsername } from "@/repositories/user.repository.js";
 
-export const getConversationService = async (
-  currentUserId: number,
-  conversationId: number,
-) => {
+export const getConversationService = async (currentUserId: number, conversationId: number) => {
   const conversation = await findConversationById(conversationId);
 
   if (!conversation) {
@@ -51,10 +48,7 @@ export const getConversationsService = async (
   };
 };
 
-export const createConversationService = async (
-  currentUserId: number,
-  targetUsername: string,
-) => {
+export const createConversationService = async (currentUserId: number, targetUsername: string) => {
   const targetUser = await findUserByUsername(targetUsername);
 
   if (!targetUser) {

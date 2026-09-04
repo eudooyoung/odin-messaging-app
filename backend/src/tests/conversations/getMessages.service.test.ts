@@ -131,18 +131,9 @@ describe("getMessagesService", () => {
     findConversationByIdMock.mockResolvedValue(conversation);
     findMessagesByConversationIdMock.mockResolvedValue(repositoryMessages);
 
-    const result = await getMessagesService(
-      currentUserId,
-      conversationId,
-      cursor,
-      limit,
-    );
+    const result = await getMessagesService(currentUserId, conversationId, cursor, limit);
 
-    expect(findMessagesByConversationIdMock).toHaveBeenCalledWith(
-      conversationId,
-      cursor,
-      limit,
-    );
+    expect(findMessagesByConversationIdMock).toHaveBeenCalledWith(conversationId, cursor, limit);
     expect(result).toEqual({
       messages: repositoryMessages.slice(0, limit),
       nextCursor: 18,
@@ -183,18 +174,9 @@ describe("getMessagesService", () => {
     findConversationByIdMock.mockResolvedValue(conversation);
     findMessagesByConversationIdMock.mockResolvedValue(repositoryMessages);
 
-    const result = await getMessagesService(
-      currentUserId,
-      conversationId,
-      cursor,
-      limit,
-    );
+    const result = await getMessagesService(currentUserId, conversationId, cursor, limit);
 
-    expect(findMessagesByConversationIdMock).toHaveBeenCalledWith(
-      conversationId,
-      cursor,
-      limit,
-    );
+    expect(findMessagesByConversationIdMock).toHaveBeenCalledWith(conversationId, cursor, limit);
     expect(result).toEqual({
       messages: repositoryMessages,
       nextCursor: null,

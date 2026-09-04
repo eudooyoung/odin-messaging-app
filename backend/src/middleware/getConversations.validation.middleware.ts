@@ -6,9 +6,7 @@ export const validateGetConversations: GetConversationsHandler = (req, res, next
   const result = getConversationsQuerySchema.safeParse(req.query);
 
   if (!result.success) {
-    return next(
-      new BadRequestError("Invalid conversation query", "INVALID_CONVERSATION_QUERY"),
-    );
+    return next(new BadRequestError("Invalid conversation query", "INVALID_CONVERSATION_QUERY"));
   }
 
   if (result.data.cursor !== undefined) {

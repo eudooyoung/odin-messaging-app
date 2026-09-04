@@ -24,13 +24,9 @@ const {
   signMock,
   verifyMock,
 } = vi.hoisted(() => ({
-  findRefreshSessionByTokenHashMock: vi.fn<
-    (tokenHash: string) => Promise<RefreshSession | null>
-  >(),
+  findRefreshSessionByTokenHashMock: vi.fn<(tokenHash: string) => Promise<RefreshSession | null>>(),
   randomUUIDMock: vi.fn(),
-  rotateRefreshSessionMock: vi.fn<
-    (data: RotateRefreshSessionData) => Promise<unknown>
-  >(),
+  rotateRefreshSessionMock: vi.fn<(data: RotateRefreshSessionData) => Promise<unknown>>(),
   signMock: vi.fn(),
   verifyMock: vi.fn(),
 }));

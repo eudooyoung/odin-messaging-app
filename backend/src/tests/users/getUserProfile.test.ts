@@ -56,9 +56,7 @@ describe("GET /users/:username", () => {
     const requestingUser = await createTestUser(credentials);
     const accessCookie = createAccessTokenCookie(requestingUser.id);
 
-    const response = await request(app)
-      .get("/users/missing-user")
-      .set("Cookie", accessCookie);
+    const response = await request(app).get("/users/missing-user").set("Cookie", accessCookie);
 
     expect(response.status).toBe(404);
   });

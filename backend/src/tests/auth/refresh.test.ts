@@ -5,11 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app.js";
 import { env } from "@/config/env.config.js";
 import { prisma } from "@/lib/prisma.js";
-import {
-  getCookiePair,
-  getCookieValue,
-  getSetCookie,
-} from "@/tests/helpers/cookie.js";
+import { getCookiePair, getCookieValue, getSetCookie } from "@/tests/helpers/cookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import { loginAndGetRefreshCookie } from "@/tests/helpers/login.js";
 import "@/tests/integration.setup.js";

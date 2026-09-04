@@ -10,10 +10,7 @@ import type {
 } from "@/types/handler.types.js";
 
 export const getConversationController: GetConversationHandler = async (_req, res) => {
-  const conversation = await getConversationService(
-    res.locals.userId,
-    res.locals.conversationId,
-  );
+  const conversation = await getConversationService(res.locals.userId, res.locals.conversationId);
 
   res.status(200).json({
     id: conversation.id,

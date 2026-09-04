@@ -37,10 +37,7 @@ describe("WebSocket connection authentication", () => {
 
   const startWebSocketServer = async () => {
     const server = createServer(createApp());
-    const attachedWebSocketServer = attachWebSocketServer(
-      server,
-      connectionRegistry,
-    );
+    const attachedWebSocketServer = attachWebSocketServer(server, connectionRegistry);
     httpServer = server;
     webSocketServer = attachedWebSocketServer;
 
@@ -101,11 +98,8 @@ describe("WebSocket connection authentication", () => {
   it("stores the authenticated user id on the server-side WebSocket connection", async () => {
     const user = await createTestUser();
     const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } =
-      await startWebSocketServer();
-    const connectionPromise = waitForAuthenticatedConnection(
-      attachedWebSocketServer,
-    );
+    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
 
     client = new WebSocket(webSocketUrl, {
       headers: {
@@ -121,11 +115,8 @@ describe("WebSocket connection authentication", () => {
   it("registers the authenticated connection by user id", async () => {
     const user = await createTestUser();
     const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } =
-      await startWebSocketServer();
-    const connectionPromise = waitForAuthenticatedConnection(
-      attachedWebSocketServer,
-    );
+    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
 
     client = new WebSocket(webSocketUrl, {
       headers: {
@@ -141,11 +132,8 @@ describe("WebSocket connection authentication", () => {
   it("removes the user entry when their last connection closes", async () => {
     const user = await createTestUser();
     const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } =
-      await startWebSocketServer();
-    const connectionPromise = waitForAuthenticatedConnection(
-      attachedWebSocketServer,
-    );
+    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
 
     const connectedClient = new WebSocket(webSocketUrl, {
       headers: {
@@ -170,11 +158,8 @@ describe("WebSocket connection authentication", () => {
   it("keeps the user entry and remaining connection when one of multiple connections closes", async () => {
     const user = await createTestUser();
     const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } =
-      await startWebSocketServer();
-    const firstConnectionPromise = waitForAuthenticatedConnection(
-      attachedWebSocketServer,
-    );
+    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+    const firstConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
     const firstClient = new WebSocket(webSocketUrl, {
       headers: {
         Cookie: accessTokenCookie,
@@ -186,9 +171,7 @@ describe("WebSocket connection authentication", () => {
       once(firstClient, "open"),
     ]);
 
-    const secondConnectionPromise = waitForAuthenticatedConnection(
-      attachedWebSocketServer,
-    );
+    const secondConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
     const secondClient = new WebSocket(webSocketUrl, {
       headers: {
         Cookie: accessTokenCookie,
