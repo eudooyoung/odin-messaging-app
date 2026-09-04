@@ -1,10 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-import {
-  AUTH_QUERY_ERROR_MESSAGE,
-  authMeQueryOptions,
-} from "@/features/auth/authMeQuery.ts";
+import { AUTH_QUERY_ERROR_MESSAGE, authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 
 export function ProtectedRoute() {
   const { data: currentUser, isPending, isError, error } = useQuery(authMeQueryOptions);

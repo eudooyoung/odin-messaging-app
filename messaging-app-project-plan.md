@@ -386,32 +386,62 @@
 ### Frontend
 
 1. [x] `QueryClientProvider` 구성
-2. [x] 공통 `apiFetch`
+2. [x] 공통 HTTP / error infrastructure
+   - [x] 공통 `apiFetch`
    - [x] 모든 요청에 `credentials: "include"` 적용
    - [x] `401` 응답 시 refresh 후 원 요청 1회 재시도
    - [x] refresh 실패 및 재시도 후 `401` 처리
+   - [x] 공통 `UserFacingError` 도입
+   - [x] feature query/mutation이 HTTP 실패 의미를 해석하고 사용자용 error를 생성
+   - [x] `apiFetch` 자체 reject(network / abort 등)는 wrapping하지 않고 원본 error를 전달
 3. [x] auth/me query
    - [x] `200` 응답을 현재 사용자로 반환
    - [x] `401` 응답을 비로그인 상태인 `null`로 변환
-   - [x] 기타 실패 응답 throw
+   - [x] 기타 HTTP 실패 처리
+   - [x] transport error passthrough
    - [x] TanStack Query의 `signal`을 `apiFetch`에 전달
 4. [x] `ProtectedRoute` / `GuestOnlyRoute`
    - [x] 로그인 / 비로그인 접근 제어
    - [x] pending loading UI
    - [x] error UI
-5. [ ] Login TDD
-   - [x] React Hook Form 적용
+5. [x] Login TDD
+   - [x] React Hook Form + Zod validation
    - [x] `POST /auth/login` 성공 요청
    - [x] 로그인 성공 후 auth/me 재조회 완료 뒤 `/` 이동
-   - [x] `401` 실패를 mutation error UI로 표시
-   - [ ] client-side validation
-     - [ ] 빈 username validation 메시지 및 요청 차단
-     - [ ] 12자 미만 password validation 메시지 및 요청 차단
-   - [ ] pending 상태 검토 및 처리
-   - [ ] 예상하지 못한 error 상태 검토 및 처리
-   - [ ] request cancellation 필요 여부 검토
-6. [ ] Register TDD
+   - [x] 빈 username / 12자 미만 password 요청 차단
+   - [x] pending 중 submit 비활성화 + `Logging in...`
+   - [x] `401` 로그인 실패 처리
+   - [x] 기타 HTTP 실패 / network error 사용자 UI 처리
+   - [x] 실패 후 submit 재활성화
+   - [x] request cancellation 검토: 별도 mutation cancellation 불필요
+6. [x] Register TDD
+   - [x] `POST /auth/register` 성공 요청
+   - [x] `201` 성공 후 `/login` 이동
+   - [x] React Hook Form + Zod validation
+   - [x] 빈 username / displayName, 12자 미만 password 요청 차단
+   - [x] pending 중 submit 비활성화 + `Registering...`
+   - [x] `409` duplicate username 처리
+   - [x] 기타 HTTP 실패 / network error 사용자 UI 처리
+   - [x] 실패 후 submit 재활성화
+   - [x] request cancellation 검토: 별도 mutation cancellation 불필요
 7. [ ] Conversation
+   - [x] conversations infinite query
+     - [x] 첫 페이지 `GET /conversations`
+     - [x] cursor pagination + `nextCursor` / `pageParam`
+     - [x] queryFn `signal` 전달
+     - [x] HTTP 실패 → `UserFacingError`
+     - [x] transport error passthrough
+   - [x] ConversationList
+     - [x] 첫 페이지 conversation 렌더링
+     - [x] 상대 displayName / username / lastMessage / lastActivityAt 표시
+     - [x] 빈 목록 상태
+     - [x] initial loading / error 상태
+     - [x] `Load more`로 다음 페이지 추가 렌더링
+     - [x] next-page pending 중 버튼 비활성화
+     - [x] next-page 실패 시 기존 목록 유지 + 별도 error UI + 재시도 가능 상태
+   - [ ] conversation 선택 → `/conversations/:conversationId` 이동
+   - [ ] conversation 상세 / 선택된 채팅 화면
+   - [ ] 사용자 검색 → conversation 생성 또는 기존 conversation 열기
 8. [ ] Message REST
 9. [ ] WebSocket 실시간 반영
 10. [ ] Profile

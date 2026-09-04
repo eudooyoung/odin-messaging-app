@@ -170,27 +170,29 @@ describe("RegisterPage", () => {
     },
     {
       caseName: "the network request fails",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch")),
+      arrangeFailure: () => vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch")),
     },
-  ])("shows an unexpected error and re-enables registration when $caseName", async ({ arrangeFailure }) => {
-    arrangeFailure();
-    const queryClient = new QueryClient();
-    const user = userEvent.setup();
+  ])(
+    "shows an unexpected error and re-enables registration when $caseName",
+    async ({ arrangeFailure }) => {
+      arrangeFailure();
+      const queryClient = new QueryClient();
+      const user = userEvent.setup();
 
-    renderRegisterPage(queryClient);
+      renderRegisterPage(queryClient);
 
-    await user.type(screen.getByRole("textbox", { name: "Username" }), "new-user");
-    await user.type(screen.getByRole("textbox", { name: "Display name" }), "New User");
-    await user.type(screen.getByLabelText("Password"), "secure-password");
-    await user.click(screen.getByRole("button", { name: "Register" }));
+      await user.type(screen.getByRole("textbox", { name: "Username" }), "new-user");
+      await user.type(screen.getByRole("textbox", { name: "Display name" }), "New User");
+      await user.type(screen.getByLabelText("Password"), "secure-password");
+      await user.click(screen.getByRole("button", { name: "Register" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Something went wrong. Please try again.",
-    );
-    expect(screen.getByRole("button", { name: "Register" })).toBeEnabled();
-    expect(apiFetch).toHaveBeenCalledOnce();
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Something went wrong. Please try again.",
+      );
+      expect(screen.getByRole("button", { name: "Register" })).toBeEnabled();
+      expect(apiFetch).toHaveBeenCalledOnce();
 
-    queryClient.clear();
-  });
+      queryClient.clear();
+    },
+  );
 });
