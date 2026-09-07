@@ -10,7 +10,7 @@ vi.mock("@/api/apiFetch.ts", () => ({
 }));
 
 describe("router", () => {
-  it("renders the conversation list at the root route for an authenticated user", async () => {
+  it("renders the conversation list and user search at the root route for an authenticated user", async () => {
     vi.mocked(apiFetch).mockImplementation((input) => {
       if (input === "/auth/me") {
         return Promise.resolve(
@@ -55,6 +55,7 @@ describe("router", () => {
     );
 
     expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
     expect(apiFetch).toHaveBeenNthCalledWith(1, "/auth/me", {
       signal: expect.any(AbortSignal),
     });
