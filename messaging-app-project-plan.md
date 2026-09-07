@@ -387,8 +387,13 @@
 - [x] cursor pagination — `GET /conversations?cursor=...`
   - [x] 다음 페이지 추가 로드
   - [x] next-page pending / error 상태
-- [ ] conversation 선택 → `/conversations/:conversationId` 이동
+- [x] conversation 선택 → `/conversations/:conversationId` 이동
 - [ ] conversation 상세 / 선택된 채팅 화면 — `GET /conversations/{id}`
+  - [x] 상세 query / signal 전달
+  - [x] success / loading / 기본 error UI
+  - [x] 잘못된 route param 차단
+  - [ ] `403` / `404` 등 의미 있는 HTTP error 처리 점검
+- [ ] Conversation 기능 전체 점검 및 테스트 정리
 - [ ] 사용자 검색 — `GET /users?query=...`
 - [ ] conversation 생성 또는 기존 conversation 열기 — `POST /conversations`
 

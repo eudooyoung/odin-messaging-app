@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import {
   CONVERSATION_QUERY_ERROR_MESSAGE,
   conversationQueryOptions,
@@ -8,6 +9,10 @@ import {
 
 export function ConversationPage() {
   const { conversationId } = useParams();
+  const queryClient = useQueryClient();
+  const currentUser = queryClient.getQueryData<{ username: string }>(
+    authMeQueryOptions.queryKey,
+  );
   const parsedConversationId = Number(conversationId);
   const isValidConversationId =
     Number.isInteger(parsedConversationId) && parsedConversationId > 0;
@@ -39,7 +44,11 @@ export function ConversationPage() {
     );
   }
 
-  const otherUser = conversation?.participants[1];
+  const otherUser = currentUser
+    ? conversation?.participants.find(
+        (participant) => participant.username !== currentUser.username,
+      )
+    : undefined;
 
   if (!otherUser) {
     return null;

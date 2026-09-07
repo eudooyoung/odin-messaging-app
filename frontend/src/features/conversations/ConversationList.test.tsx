@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { UserFacingError } from "@/api/UserFacingError.ts";
 import { ConversationList } from "./ConversationList.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -181,7 +182,7 @@ describe("ConversationList", () => {
 
     expect(await screen.findByText("Second User")).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledTimes(2);
-    expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations?cursor=42", {
+    expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations?cursor=42&limit=20", {
       signal: expect.any(AbortSignal),
     });
     expect(
@@ -337,8 +338,11 @@ describe("ConversationList", () => {
     queryClient.clear();
   });
 
-  it("shows an error state when the initial conversations query fails", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
+  it("shows the user-facing error from the initial conversations query", async () => {
+    const queryError = new UserFacingError(
+      "Conversations are temporarily unavailable",
+    );
+    vi.mocked(apiFetch).mockRejectedValue(queryError);
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -349,7 +353,29 @@ describe("ConversationList", () => {
 
     renderConversationList(queryClient);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversations");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(queryError.message);
+    expect(alert).not.toHaveTextContent("Failed to load conversations");
+
+    queryClient.clear();
+  });
+
+  it("shows the generic fallback when the initial conversations request rejects", async () => {
+    const transportError = new TypeError("Failed to fetch");
+    vi.mocked(apiFetch).mockRejectedValue(transportError);
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    renderConversationList(queryClient);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Failed to load conversations");
+    expect(alert).not.toHaveTextContent(transportError.message);
 
     queryClient.clear();
   });

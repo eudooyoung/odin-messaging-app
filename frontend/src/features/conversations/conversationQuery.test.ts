@@ -45,6 +45,36 @@ describe("conversationQueryOptions", () => {
     queryClient.clear();
   });
 
+  it.each([
+    {
+      status: 403,
+      expectedMessage: "You do not have access to this conversation",
+    },
+    {
+      status: 404,
+      expectedMessage: "Conversation not found",
+    },
+  ])(
+    "throws the status-specific user-facing error when the response status is $status",
+    async ({ status, expectedMessage }) => {
+      vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status }));
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+          },
+        },
+      });
+
+      const result = queryClient.query(conversationQueryOptions(42));
+
+      await expect(result).rejects.toBeInstanceOf(UserFacingError);
+      await expect(result).rejects.toThrow(expectedMessage);
+
+      queryClient.clear();
+    },
+  );
+
   it("throws a user-facing error when the conversation response is unsuccessful", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
     const queryClient = new QueryClient({

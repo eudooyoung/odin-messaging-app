@@ -3,6 +3,7 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 
 export const CONVERSATIONS_QUERY_ERROR_MESSAGE = "Failed to load conversations";
+const CONVERSATIONS_PAGE_LIMIT = 20;
 
 type ConversationsPage = {
   conversations: {
@@ -27,7 +28,10 @@ export const conversationsQueryOptions = infiniteQueryOptions({
   queryKey: ["conversations"] as const,
   initialPageParam: null as number | null,
   queryFn: async ({ signal, pageParam }): Promise<ConversationsPage> => {
-    const path = pageParam === null ? "/conversations" : `/conversations?cursor=${pageParam}`;
+    const path =
+      pageParam === null
+        ? `/conversations?limit=${CONVERSATIONS_PAGE_LIMIT}`
+        : `/conversations?cursor=${pageParam}&limit=${CONVERSATIONS_PAGE_LIMIT}`;
     const response = await apiFetch(path, { signal });
 
     if (!response.ok) {

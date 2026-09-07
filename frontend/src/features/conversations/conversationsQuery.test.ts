@@ -58,12 +58,30 @@ describe("conversationsQueryOptions", () => {
     });
 
     expect(apiFetch).toHaveBeenCalledTimes(2);
-    expect(apiFetch).toHaveBeenNthCalledWith(1, "/conversations", {
+    expect(apiFetch).toHaveBeenNthCalledWith(1, expect.any(String), {
       signal: expect.any(AbortSignal),
     });
-    expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations?cursor=1", {
+    expect(apiFetch).toHaveBeenNthCalledWith(2, expect.any(String), {
       signal: expect.any(AbortSignal),
     });
+    const firstRequestUrl = new URL(
+      vi.mocked(apiFetch).mock.calls[0]?.[0] as string,
+      "http://localhost",
+    );
+    const nextRequestUrl = new URL(
+      vi.mocked(apiFetch).mock.calls[1]?.[0] as string,
+      "http://localhost",
+    );
+    const limit = firstRequestUrl.searchParams.get("limit");
+
+    expect(firstRequestUrl.pathname).toBe("/conversations");
+    expect(firstRequestUrl.searchParams.get("cursor")).toBeNull();
+    expect(limit).not.toBeNull();
+    expect(Number.isInteger(Number(limit))).toBe(true);
+    expect(Number(limit)).toBeGreaterThan(0);
+    expect(nextRequestUrl.pathname).toBe("/conversations");
+    expect(nextRequestUrl.searchParams.get("cursor")).toBe("1");
+    expect(nextRequestUrl.searchParams.get("limit")).toBe(limit);
     expect(result).toEqual({
       pages: [firstPage, secondPage],
       pageParams: [null, 1],
