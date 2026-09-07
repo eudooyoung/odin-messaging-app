@@ -1,4 +1,13 @@
 const REFRESH_PATH = "/auth/refresh";
+const API_URL = import.meta.env.VITE_API_URL;
+
+const resolveRequestInput = (input: string | Request | URL) => {
+  if (typeof input !== "string") {
+    return input;
+  }
+
+  return new URL(input, API_URL).toString();
+};
 
 const isRefreshRequest = (input: string | Request | URL) => {
   const requestUrl = input instanceof Request ? input.url : input.toString();
@@ -10,17 +19,18 @@ const cloneRequestInput = (input: string | Request | URL) =>
   input instanceof Request ? input.clone() : input;
 
 export const apiFetch = async (input: string | Request | URL, init: RequestInit = {}) => {
+  const resolvedInput = resolveRequestInput(input);
   const requestInit: RequestInit = {
     ...init,
     credentials: init.credentials ?? "include",
   };
-  const response = await fetch(cloneRequestInput(input), requestInit);
+  const response = await fetch(cloneRequestInput(resolvedInput), requestInit);
 
-  if (response.status !== 401 || isRefreshRequest(input)) {
+  if (response.status !== 401 || isRefreshRequest(resolvedInput)) {
     return response;
   }
 
-  const refreshResponse = await fetch(REFRESH_PATH, {
+  const refreshResponse = await fetch(resolveRequestInput(REFRESH_PATH), {
     method: "POST",
     credentials: "include",
   });
@@ -29,5 +39,5 @@ export const apiFetch = async (input: string | Request | URL, init: RequestInit 
     return response;
   }
 
-  return fetch(cloneRequestInput(input), requestInit);
+  return fetch(cloneRequestInput(resolvedInput), requestInit);
 };
