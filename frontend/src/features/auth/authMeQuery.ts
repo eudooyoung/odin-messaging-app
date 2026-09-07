@@ -4,7 +4,7 @@ import { UserFacingError } from "@/api/UserFacingError.ts";
 
 export const AUTH_QUERY_ERROR_MESSAGE = "Failed to check authentication";
 
-type AuthUser = {
+export type AuthUser = {
   id: number;
   username: string;
   displayName: string;

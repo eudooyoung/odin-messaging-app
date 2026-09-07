@@ -329,7 +329,7 @@
    - [x] `displayName` + `@username` 표시
    - [x] 실제 `/` 화면에 연결
    - [x] 기능 audit 및 필수 문제 보완
-8. [ ] Conversation
+8. [x] Conversation
    - [x] 목록 infinite query
      - [x] `limit=20`을 첫 페이지와 후속 페이지 모두 전달
      - [x] `pageParam → cursor`, `nextCursor → getNextPageParam`
@@ -346,12 +346,15 @@
      - [x] 현재 사용자 username으로 상대 participant 식별
      - [x] participant 배열 순서에 의존하지 않음
    - [x] 목록/상세 기능 audit 및 필수 문제 보완
-   - [ ] `POST /conversations` 생성/재사용 mutation
-     - [ ] `201` 새 conversation
-     - [ ] `200` 기존 conversation 재사용
-     - [ ] 의미 있는 HTTP error / transport error / pending 상태
-   - [ ] 검색 결과 사용자 선택 → 생성/재사용 → `/conversations/:id` 이동
-   - [ ] Conversation 전체 최종 audit
+   - [x] `POST /conversations` 생성/재사용 mutation
+     - [x] `201` 새 conversation
+     - [x] `200` 기존 conversation 재사용
+     - [x] `400` / `404` 의미 있는 HTTP error 해석
+     - [x] 기타 HTTP error / transport error passthrough
+   - [x] 검색 결과 사용자 선택 → 생성/재사용 → `/conversations/:id` 이동
+     - [x] mutation pending 동안 선택한 결과 비활성화
+     - [x] mutation error UI 및 실패 시 현재 화면 유지
+   - [x] 생성/재사용 흐름 audit 완료 — 필수 수정사항 없음
 9. [ ] Message REST
 10. [ ] WebSocket 실시간 반영
 11. [ ] Profile
@@ -366,12 +369,10 @@
 
 ### 다음 시작점
 
-- Conversation 생성/재사용 mutation의 성공 경로 TDD
-  - `POST /conversations`
-  - request: `{ targetUsername }`
-  - `201`: 새 conversation 생성
-  - `200`: 기존 conversation 재사용
-  - 두 성공 응답 모두 conversation id를 받아 이후 `/conversations/:id` 이동에 사용
+- Message REST TDD
+  - `GET /conversations/:id/messages` 메시지 목록 query부터 시작
+  - 주요 상태를 식별한 뒤 성공 경로 RED → GREEN으로 진행
+  - query 단위 완료 후 메시지 목록 UI로 연결
 
 ## 6. 배포 / 인증 쿠키 정책
 
