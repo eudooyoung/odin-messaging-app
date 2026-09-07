@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { ConversationList } from "./ConversationList.tsx";
@@ -8,6 +9,15 @@ import { ConversationList } from "./ConversationList.tsx";
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+const renderConversationList = (queryClient: QueryClient) =>
+  render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <ConversationList />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
 
 describe("ConversationList", () => {
   it("renders conversations from the first query page", async () => {
@@ -53,11 +63,7 @@ describe("ConversationList", () => {
     );
     const queryClient = new QueryClient();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ConversationList />
-      </QueryClientProvider>,
-    );
+    renderConversationList(queryClient);
 
     expect(await screen.findByText("First User")).toBeInTheDocument();
     expect(screen.getByText("@first-user")).toBeInTheDocument();
@@ -67,6 +73,53 @@ describe("ConversationList", () => {
     expect(screen.getByText("@second-user")).toBeInTheDocument();
     expect(screen.getByText(new Date(secondActivityAt).toLocaleString())).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
+  it("navigates to the selected conversation", async () => {
+    vi.mocked(apiFetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          conversations: [
+            {
+              id: 42,
+              otherUser: {
+                username: "other-user",
+                displayName: "Other User",
+                profileImage: null,
+              },
+              lastMessage: null,
+              lastActivityAt: "2026-09-04T01:00:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<ConversationList />} />
+            <Route path="/conversations/42" element={<h1>Conversation 42</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole("link", { name: /Other User/ }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Conversation 42" }),
+    ).toBeInTheDocument();
 
     queryClient.clear();
   });
@@ -118,11 +171,7 @@ describe("ConversationList", () => {
     const queryClient = new QueryClient();
     const user = userEvent.setup();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ConversationList />
-      </QueryClientProvider>,
-    );
+    renderConversationList(queryClient);
 
     expect(await screen.findByText("First User")).toBeInTheDocument();
     const loadMoreButton = screen.getByRole("button", { name: "Load more" });
@@ -174,11 +223,7 @@ describe("ConversationList", () => {
     const queryClient = new QueryClient();
     const user = userEvent.setup();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ConversationList />
-      </QueryClientProvider>,
-    );
+    renderConversationList(queryClient);
 
     const loadMoreButton = await screen.findByRole("button", { name: "Load more" });
 
@@ -243,11 +288,7 @@ describe("ConversationList", () => {
     });
     const user = userEvent.setup();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ConversationList />
-      </QueryClientProvider>,
-    );
+    renderConversationList(queryClient);
 
     expect(await screen.findByText("First User")).toBeInTheDocument();
 
@@ -277,11 +318,7 @@ describe("ConversationList", () => {
     );
     const queryClient = new QueryClient();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ConversationList />
-      </QueryClientProvider>,
-    );
+    renderConversationList(queryClient);
 
     expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
 
@@ -293,11 +330,7 @@ describe("ConversationList", () => {
     vi.mocked(apiFetch).mockReturnValue(pendingConversationsResponse);
     const queryClient = new QueryClient();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ConversationList />
-      </QueryClientProvider>,
-    );
+    renderConversationList(queryClient);
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading conversations...");
 
@@ -314,11 +347,7 @@ describe("ConversationList", () => {
       },
     });
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ConversationList />
-      </QueryClientProvider>,
-    );
+    renderConversationList(queryClient);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversations");
 

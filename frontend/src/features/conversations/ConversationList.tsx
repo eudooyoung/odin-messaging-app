@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { Link } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import {
   CONVERSATIONS_QUERY_ERROR_MESSAGE,
@@ -45,12 +46,14 @@ export function ConversationList() {
       <ul>
         {conversations.map((conversation) => (
           <li key={conversation.id}>
-            <h2>{conversation.otherUser.displayName}</h2>
-            <p>@{conversation.otherUser.username}</p>
-            {conversation.lastMessage && <p>{conversation.lastMessage.content}</p>}
-            <time dateTime={conversation.lastActivityAt}>
-              {new Date(conversation.lastActivityAt).toLocaleString()}
-            </time>
+            <Link to={`/conversations/${conversation.id}`}>
+              <h2>{conversation.otherUser.displayName}</h2>
+              <p>@{conversation.otherUser.username}</p>
+              {conversation.lastMessage && <p>{conversation.lastMessage.content}</p>}
+              <time dateTime={conversation.lastActivityAt}>
+                {new Date(conversation.lastActivityAt).toLocaleString()}
+              </time>
+            </Link>
           </li>
         ))}
       </ul>
