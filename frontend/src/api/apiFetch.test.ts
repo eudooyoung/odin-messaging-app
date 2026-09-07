@@ -1,15 +1,26 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "./apiFetch.ts";
 
+const { apiUrl } = vi.hoisted(() => {
+  const apiUrl = "http://localhost:3000";
+  vi.stubEnv("VITE_API_URL", apiUrl);
+
+  return { apiUrl };
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("apiFetch", () => {
-  it("forwards a request with included credentials and returns a non-401 response", async () => {
+  it("resolves a relative path against VITE_API_URL and includes credentials", async () => {
     const response = new Response(null, { status: 200 });
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
 
     const result = await apiFetch("/users/me");
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith("/users/me", {
+    expect(fetchMock).toHaveBeenCalledWith(`${apiUrl}/users/me`, {
       credentials: "include",
     });
     expect(result).toBe(response);
@@ -28,14 +39,14 @@ describe("apiFetch", () => {
     const result = await apiFetch("/conversations");
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock).toHaveBeenNthCalledWith(1, "/conversations", {
+    expect(fetchMock).toHaveBeenNthCalledWith(1, `${apiUrl}/conversations`, {
       credentials: "include",
     });
-    expect(fetchMock).toHaveBeenNthCalledWith(2, "/auth/refresh", {
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `${apiUrl}/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
-    expect(fetchMock).toHaveBeenNthCalledWith(3, "/conversations", {
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `${apiUrl}/conversations`, {
       credentials: "include",
     });
     expect(result).toBe(retryResponse);
@@ -52,7 +63,7 @@ describe("apiFetch", () => {
     const result = await apiFetch("/conversations");
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenNthCalledWith(2, "/auth/refresh", {
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `${apiUrl}/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
@@ -66,7 +77,7 @@ describe("apiFetch", () => {
     const result = await apiFetch("/auth/refresh", { method: "POST" });
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith("/auth/refresh", {
+    expect(fetchMock).toHaveBeenCalledWith(`${apiUrl}/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
@@ -86,13 +97,47 @@ describe("apiFetch", () => {
     const result = await apiFetch("/conversations");
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock).toHaveBeenNthCalledWith(2, "/auth/refresh", {
+    expect(fetchMock).toHaveBeenNthCalledWith(2, `${apiUrl}/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
-    expect(fetchMock).toHaveBeenNthCalledWith(3, "/conversations", {
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `${apiUrl}/conversations`, {
       credentials: "include",
     });
     expect(result).toBe(retryUnauthorizedResponse);
+  });
+
+  it("preserves an absolute URL input", async () => {
+    const response = new Response(null, { status: 200 });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    const absoluteUrl = "https://example.com/users/me";
+
+    const result = await apiFetch(absoluteUrl);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith(absoluteUrl, {
+      credentials: "include",
+    });
+    expect(result).toBe(response);
+  });
+
+  it("preserves a Request input", async () => {
+    const response = new Response(null, { status: 200 });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    const request = new Request("https://example.com/users/me", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: "Updated User" }),
+    });
+
+    const result = await apiFetch(request);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const forwardedRequest = fetchMock.mock.calls[0]?.[0];
+    expect(forwardedRequest).toBeInstanceOf(Request);
+    expect((forwardedRequest as Request).url).toBe(request.url);
+    expect((forwardedRequest as Request).method).toBe(request.method);
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual({ credentials: "include" });
+    expect(result).toBe(response);
   });
 });
