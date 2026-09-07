@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
-import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
 import { ConversationPage } from "./ConversationPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -49,11 +49,12 @@ describe("ConversationPage", () => {
       ),
     );
     const queryClient = new QueryClient();
-    queryClient.setQueryData(authMeQueryOptions.queryKey, {
+    const currentUser: AuthUser = {
       id: 1,
       username: "current-user",
       displayName: "Current User",
-    });
+    };
+    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
     renderConversationPage(queryClient);
 
@@ -91,11 +92,12 @@ describe("ConversationPage", () => {
       ),
     );
     const queryClient = new QueryClient();
-    queryClient.setQueryData(authMeQueryOptions.queryKey, {
+    const currentUser: AuthUser = {
       id: 1,
       username: "current-user",
       displayName: "Current User",
-    });
+    };
+    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
     renderConversationPage(queryClient);
 

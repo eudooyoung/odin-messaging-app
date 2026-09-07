@@ -1,10 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createConversation } from "@/features/conversations/createConversation.ts";
 import { USERS_QUERY_ERROR_MESSAGE, usersQueryOptions } from "./usersQuery.ts";
 
 export function UserSearch() {
   const [query, setQuery] = useState("");
+  const navigate = useNavigate();
+  const createConversationMutation = useMutation({
+    mutationFn: createConversation,
+    onSuccess: (conversation) => {
+      navigate(`/conversations/${conversation.id}`);
+    },
+  });
   const {
     data: users,
     isPending,
@@ -33,14 +42,26 @@ export function UserSearch() {
         </p>
       )}
 
+      {createConversationMutation.isError && (
+        <p role="alert">{createConversationMutation.error.message}</p>
+      )}
+
       {!isPending && !isError && users?.length === 0 && <p>No users found</p>}
 
       {!isPending && !isError && users && users.length > 0 && (
         <ul>
           {users.map((user) => (
             <li key={user.username}>
-              <p>{user.displayName}</p>
-              <p>@{user.username}</p>
+              <button
+                type="button"
+                disabled={
+                  createConversationMutation.isPending &&
+                  createConversationMutation.variables === user.username
+                }
+                onClick={() => createConversationMutation.mutate(user.username)}
+              >
+                <span>{user.displayName}</span> <span>@{user.username}</span>
+              </button>
             </li>
           ))}
         </ul>
