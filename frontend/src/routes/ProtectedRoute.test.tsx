@@ -65,7 +65,7 @@ describe("ProtectedRoute", () => {
       data: undefined,
       isPending: false,
       isError: true,
-      error: new Error("Failed to fetch current user"),
+      error: new Error("Failed to check authentication"),
     } as ReturnType<typeof useQuery>);
 
     render(

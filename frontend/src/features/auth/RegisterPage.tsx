@@ -3,7 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { z } from "zod";
-import { apiFetch } from "@/api/apiFetch.ts";
+import { UserFacingError } from "@/api/UserFacingError.ts";
+import { GENERAL_REGISTER_ERROR_MESSAGE, registerUser } from "./registerUser.ts";
 
 const registerSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -23,29 +24,7 @@ export function RegisterPage() {
   });
   const navigate = useNavigate();
   const registerMutation = useMutation({
-    mutationFn: async (input: RegisterInput) => {
-      let response: Response;
-
-      try {
-        response = await apiFetch("/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        });
-      } catch {
-        throw new Error("Something went wrong. Please try again.");
-      }
-
-      if (response.status === 409) {
-        throw new Error("Username already exists");
-      }
-
-      if (response.status !== 201) {
-        throw new Error("Something went wrong. Please try again.");
-      }
-
-      return response;
-    },
+    mutationFn: registerUser,
     onSuccess: () => {
       navigate("/login");
     },
@@ -99,7 +78,13 @@ export function RegisterPage() {
         {registerMutation.isPending ? "Registering..." : "Register"}
       </button>
 
-      {registerMutation.isError && <p role="alert">{registerMutation.error.message}</p>}
+      {registerMutation.isError && (
+        <p role="alert">
+          {registerMutation.error instanceof UserFacingError
+            ? registerMutation.error.message
+            : GENERAL_REGISTER_ERROR_MESSAGE}
+        </p>
+      )}
     </form>
   );
 }

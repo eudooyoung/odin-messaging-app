@@ -309,73 +309,47 @@
 
 ### Backend — Auth
 
-- [x] `POST /auth/register`
-- [x] `POST /auth/login`
-- [x] `POST /auth/refresh`
-- [x] `POST /auth/logout`
-- [x] `GET /auth/me`
-- [x] Access / Refresh Token HttpOnly cookie
-- [x] RefreshSession 서버 저장
-- [x] Refresh token SHA-256 hash 저장
-- [x] Refresh token rotation + Prisma transaction
-- [x] Access token 인증 middleware
-- [x] Zod env validation / test DB 환경 분리
+- [x] 회원가입 — `POST /auth/register`
+- [x] 로그인 — `POST /auth/login`
+- [x] 로그아웃 — `POST /auth/logout`
+- [x] 토큰 갱신 — `POST /auth/refresh`
+- [x] 현재 사용자 조회 — `GET /auth/me`
+- [x] Access Token / Refresh Token 기반 인증
+- [x] RefreshSession 저장 및 refresh token rotation
+- [x] 인증 cookie 정책 적용
+- [x] 환경 변수 validation 및 test DB 분리
 
 ### Backend — User / Profile
 
-- [x] `GET /users/{username}`
-- [x] `PATCH /users/me`
-- [x] `GET /users?query=...`
-- [x] 검색 query validation: trim 후 1~50자
-- [x] 인증 / 404 / profile validation integration test
+- [x] 사용자 프로필 조회 — `GET /users/{username}`
+- [x] 내 프로필 수정 — `PATCH /users/me`
+- [x] 사용자 검색 — `GET /users?query=...`
 
 ### Backend — Conversation
 
-- [x] `POST /conversations`
-  - [x] 새 1:1 대화 생성
-  - [x] 기존 대화 재사용
-  - [x] 자기 자신 차단
-  - [x] target user 404
-  - [x] `targetUsername` validation: trim 후 1~30자
-- [x] `GET /conversations`
-  - [x] 현재 사용자 대화만 조회
-  - [x] 상대 사용자 + 마지막 메시지 반환
-  - [x] `lastActivityAt DESC, id DESC` 정렬
+- [x] 1:1 conversation 생성 / 기존 conversation 재사용 — `POST /conversations`
+- [x] 자기 자신과의 conversation 생성 차단 — `POST /conversations`
+- [x] conversation 목록 조회 — `GET /conversations`
+  - [x] 최근 활동 순 정렬
   - [x] cursor pagination
-  - [x] pagination query validation
-  - [x] 빈 목록 처리
-- [x] `GET /conversations/{id}`
-  - [x] 성공 조회 구현
-  - [x] service의 403 / 404 처리
-  - [x] integration 성공 경로
-  - [x] integration 실패 경로 구현 (`401` / `403` / `404`)
-  - [x] conversation id positive integer validation 구현
+- [x] conversation 단건 조회 및 참여자 권한 확인 — `GET /conversations/{id}`
 
 ### Backend — Message
 
-- [x] `POST /conversations/{id}/messages`
-  - [x] participant 권한 검증
-  - [x] 메시지 validation
-  - [x] Message 생성
+- [x] 메시지 생성 — `POST /conversations/{id}/messages`
+  - [x] conversation 참여자 권한 확인
   - [x] `Conversation.lastActivityAt` 갱신
-- [x] `GET /conversations/{id}/messages`
-  - [x] 최신 메시지 조회
-  - [x] `createdAt DESC, id DESC` 정렬
+- [x] 메시지 목록 조회 — `GET /conversations/{id}/messages`
   - [x] cursor pagination
-  - [x] `401` / `403` / `404` 실패 경로
-  - [x] conversation id / cursor / limit validation
 
 ### Backend — WebSocket
 
 - [x] Access Token cookie 기반 연결 인증
-- [x] userId별 connection registry 관리
-- [x] connection 종료 시 registry 정리
-- [x] 복수 connection 관리
+- [x] 사용자별 connection registry 관리
+- [x] 동일 사용자 복수 connection 지원
 - [x] `message.created` 실시간 전달
-- [x] recipient의 모든 connection에 event 전달
-- [x] sender 제외 검증
-- [x] WebSocket integration test
-- [x] `req.socket.server` / `WeakMap` 의존 제거 및 publisher 주입 구조로 리팩토링
+- [x] recipient의 모든 connection에 전달
+- [x] sender 제외
 
 ### Backend — 최종 검증
 
@@ -383,38 +357,61 @@
 - [x] lint
 - [x] build
 
-### Frontend
+### Frontend — Infrastructure
 
-1. [x] `QueryClientProvider` 구성
-2. [x] 공통 `apiFetch`
-   - [x] 모든 요청에 `credentials: "include"` 적용
-   - [x] `401` 응답 시 refresh 후 원 요청 1회 재시도
-   - [x] refresh 실패 및 재시도 후 `401` 처리
-3. [x] auth/me query
-   - [x] `200` 응답을 현재 사용자로 반환
-   - [x] `401` 응답을 비로그인 상태인 `null`로 변환
-   - [x] 기타 실패 응답 throw
-   - [x] TanStack Query의 `signal`을 `apiFetch`에 전달
-4. [x] `ProtectedRoute` / `GuestOnlyRoute`
-   - [x] 로그인 / 비로그인 접근 제어
-   - [x] pending loading UI
-   - [x] error UI
-5. [ ] Login TDD
-   - [x] React Hook Form 적용
-   - [x] `POST /auth/login` 성공 요청
-   - [x] 로그인 성공 후 auth/me 재조회 완료 뒤 `/` 이동
-   - [x] `401` 실패를 mutation error UI로 표시
-   - [ ] client-side validation
-     - [ ] 빈 username validation 메시지 및 요청 차단
-     - [ ] 12자 미만 password validation 메시지 및 요청 차단
-   - [ ] pending 상태 검토 및 처리
-   - [ ] 예상하지 못한 error 상태 검토 및 처리
-   - [ ] request cancellation 필요 여부 검토
-6. [ ] Register TDD
-7. [ ] Conversation
-8. [ ] Message REST
-9. [ ] WebSocket 실시간 반영
-10. [ ] Profile
+- [x] `QueryClientProvider` 구성
+- [x] 공통 `apiFetch`
+- [x] credential 포함 요청
+- [x] `401` 시 `POST /auth/refresh` 후 원 요청 1회 재시도
+- [x] 공통 사용자용 error 처리
+
+### Frontend — Auth
+
+- [x] 현재 사용자 query — `GET /auth/me`
+- [x] `ProtectedRoute` / `GuestOnlyRoute`
+- [x] Login — `POST /auth/login`
+  - [x] client-side validation
+  - [x] 로그인 성공 후 `GET /auth/me` 갱신
+  - [x] pending / error UI
+- [x] Register — `POST /auth/register`
+  - [x] client-side validation
+  - [x] 성공 후 `/login` 이동
+  - [x] pending / error UI
+
+### Frontend — Conversation
+
+- [x] conversation 목록 query — `GET /conversations`
+- [x] conversation 목록 UI
+  - [x] 상대 사용자 / 마지막 메시지 / 활동 시간 표시
+  - [x] 빈 목록 / loading / error 상태
+- [x] cursor pagination — `GET /conversations?cursor=...`
+  - [x] 다음 페이지 추가 로드
+  - [x] next-page pending / error 상태
+- [x] conversation 선택 → `/conversations/:conversationId` 이동
+- [ ] conversation 상세 / 선택된 채팅 화면 — `GET /conversations/{id}`
+  - [x] 상세 query / signal 전달
+  - [x] success / loading / 기본 error UI
+  - [x] 잘못된 route param 차단
+  - [ ] `403` / `404` 등 의미 있는 HTTP error 처리 점검
+- [ ] Conversation 기능 전체 점검 및 테스트 정리
+- [ ] 사용자 검색 — `GET /users?query=...`
+- [ ] conversation 생성 또는 기존 conversation 열기 — `POST /conversations`
+
+### Frontend — Message
+
+- [ ] 메시지 목록 조회 — `GET /conversations/{id}/messages`
+- [ ] 메시지 전송 — `POST /conversations/{id}/messages`
+- [ ] 과거 메시지 pagination — `GET /conversations/{id}/messages?cursor=...`
+
+### Frontend — Realtime
+
+- [ ] WebSocket 연결
+- [ ] `message.created` 이벤트를 UI / query cache에 반영
+
+### Frontend — Profile
+
+- [ ] 프로필 조회 — `GET /users/{username}`
+- [ ] 프로필 수정 — `PATCH /users/me`
 
 ## 6. 배포 / 인증 쿠키 정책
 

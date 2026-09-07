@@ -3,8 +3,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
 import { z } from "zod";
-import { apiFetch } from "@/api/apiFetch.ts";
+import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions } from "./authMeQuery.ts";
+import { GENERAL_LOGIN_ERROR_MESSAGE, login } from "./login.ts";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -24,29 +25,7 @@ export function LoginPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const loginMutation = useMutation({
-    mutationFn: async (input: LoginInput) => {
-      let response: Response;
-
-      try {
-        response = await apiFetch("/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        });
-      } catch {
-        throw new Error("Something went wrong. Please try again.");
-      }
-
-      if (response.status === 401) {
-        throw new Error("Login failed");
-      }
-
-      if (!response.ok) {
-        throw new Error("Something went wrong. Please try again.");
-      }
-
-      return response;
-    },
+    mutationFn: login,
     onSuccess: async () => {
       await queryClient.query(authMeQueryOptions);
       navigate("/");
@@ -87,7 +66,13 @@ export function LoginPage() {
         {loginMutation.isPending ? "Logging in..." : "Log in"}
       </button>
 
-      {loginMutation.isError && <p role="alert">{loginMutation.error.message}</p>}
+      {loginMutation.isError && (
+        <p role="alert">
+          {loginMutation.error instanceof UserFacingError
+            ? loginMutation.error.message
+            : GENERAL_LOGIN_ERROR_MESSAGE}
+        </p>
+      )}
     </form>
   );
 }
