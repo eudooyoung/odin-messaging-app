@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import { MessageList } from "@/features/messages/MessageList.tsx";
 import { CONVERSATION_QUERY_ERROR_MESSAGE, conversationQueryOptions } from "./conversationQuery.ts";
 
 export function ConversationPage() {
@@ -50,6 +51,7 @@ export function ConversationPage() {
     <>
       <h1>{otherUser.displayName}</h1>
       <p>@{otherUser.username}</p>
+      <MessageList conversationId={parsedConversationId} />
     </>
   );
 }
