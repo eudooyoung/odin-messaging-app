@@ -281,19 +281,14 @@ describe("UserSearch", () => {
         <MemoryRouter initialEntries={["/"]}>
           <Routes>
             <Route path="/" element={<UserSearch />} />
-            <Route
-              path="/conversations/:conversationId"
-              element={<h1>Conversation</h1>}
-            />
+            <Route path="/conversations/:conversationId" element={<h1>Conversation</h1>} />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
     );
 
     await user.type(screen.getByRole("searchbox", { name: "Search users" }), "target");
-    await user.click(
-      await screen.findByRole("button", { name: /Target User @target-user/ }),
-    );
+    await user.click(await screen.findByRole("button", { name: /Target User @target-user/ }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(mutationError.message);
     expect(screen.queryByRole("heading", { name: "Conversation" })).not.toBeInTheDocument();

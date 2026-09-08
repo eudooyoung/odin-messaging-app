@@ -2,9 +2,8 @@ import { infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 
-const MESSAGES_QUERY_ERROR_MESSAGE = "Failed to load messages";
-const MESSAGES_FORBIDDEN_ERROR_MESSAGE =
-  "You do not have access to this conversation";
+export const MESSAGES_QUERY_ERROR_MESSAGE = "Failed to load messages";
+const MESSAGES_FORBIDDEN_ERROR_MESSAGE = "You do not have access to this conversation";
 const CONVERSATION_NOT_FOUND_ERROR_MESSAGE = "Conversation not found";
 
 type MessagesPage = {

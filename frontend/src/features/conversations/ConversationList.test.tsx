@@ -118,9 +118,7 @@ describe("ConversationList", () => {
 
     await user.click(await screen.findByRole("link", { name: /Other User/ }));
 
-    expect(
-      await screen.findByRole("heading", { name: "Conversation 42" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Conversation 42" })).toBeInTheDocument();
 
     queryClient.clear();
   });
@@ -339,9 +337,7 @@ describe("ConversationList", () => {
   });
 
   it("shows the user-facing error from the initial conversations query", async () => {
-    const queryError = new UserFacingError(
-      "Conversations are temporarily unavailable",
-    );
+    const queryError = new UserFacingError("Conversations are temporarily unavailable");
     vi.mocked(apiFetch).mockRejectedValue(queryError);
     const queryClient = new QueryClient({
       defaultOptions: {
