@@ -1,13 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
+import { createMessage } from "@/features/messages/createMessage.ts";
 import { ConversationPage } from "./ConversationPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
+}));
+
+vi.mock("@/features/messages/createMessage.ts", () => ({
+  createMessage: vi.fn(),
 }));
 
 const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conversations/42") =>
@@ -137,6 +143,79 @@ describe("ConversationPage", () => {
       expect(await screen.findByText("Hello from the conversation")).toBeInTheDocument();
       expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages", {
         signal: expect.any(AbortSignal),
+      });
+
+      queryClient.clear();
+    });
+
+    it("sends the entered message to the current conversation", async () => {
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/conversations/42") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                id: 42,
+                participants: [
+                  {
+                    username: "current-user",
+                    displayName: "Current User",
+                    profileImage: null,
+                  },
+                  {
+                    username: "other-user",
+                    displayName: "Other User",
+                    profileImage: null,
+                  },
+                ],
+                createdAt: "2026-09-01T00:00:00.000Z",
+                lastActivityAt: "2026-09-04T01:00:00.000Z",
+              }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
+          );
+        }
+
+        if (input === "/conversations/42/messages") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ messages: [], nextCursor: null }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      vi.mocked(createMessage).mockResolvedValue({
+        id: 10,
+        content: "Hello!",
+        sender: {
+          username: "current-user",
+          displayName: "Current User",
+          profileImage: null,
+        },
+        createdAt: "2026-09-08T01:00:00.000Z",
+      });
+      const queryClient = new QueryClient();
+      const currentUser: AuthUser = {
+        id: 1,
+        username: "current-user",
+        displayName: "Current User",
+      };
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient);
+
+      const messageInput = await screen.findByRole("textbox", { name: "Message" });
+      await user.type(messageInput, "Hello!");
+      await user.click(screen.getByRole("button", { name: "Send" }));
+
+      await waitFor(() => {
+        expect(createMessage).toHaveBeenCalledWith(42, "Hello!");
       });
 
       queryClient.clear();
