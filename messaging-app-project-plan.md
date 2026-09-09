@@ -359,9 +359,10 @@
      - [x] mutation pending 동안 선택한 결과 비활성화
      - [x] mutation error UI 및 실패 시 현재 화면 유지
    - [x] 생성/재사용 흐름 audit 완료 — 필수 수정사항 없음
-9. [ ] Message REST
+9. [x] Message REST
    - [x] `GET /conversations/:id/messages` infinite query
      - [x] 첫 페이지 success
+     - [x] 첫 페이지 / 후속 페이지 모두 `limit=20` 전달
      - [x] `pageParam → cursor`, `nextCursor → getNextPageParam`
      - [x] `403` / `404` 의미 있는 HTTP error 해석
      - [x] 기타 HTTP error / transport error passthrough
@@ -370,12 +371,33 @@
      - [x] initial loading / success / empty / error
      - [x] 다음 페이지 load / pending 중 중복 요청 방지 / 마지막 페이지
      - [x] next-page error 시 기존 메시지 유지 + retry
-     - [x] MessageList audit 완료 — 필수 상태 누락 없음
-   - [ ] `POST /conversations/:id/messages` 전송 mutation
-   - [ ] 메시지 전송 UI 연결
-   - [ ] Message REST 전체 audit
+     - [x] background refetch 실패 시 기존 메시지 목록 유지
+     - [x] 실제 `ConversationPage`에 연결
+   - [x] `POST /conversations/:id/messages` 전송 mutation
+     - [x] `201` 성공 → 생성된 message 반환
+     - [x] `403` / `404` 의미 있는 HTTP error 해석
+     - [x] 기타 HTTP error / transport error passthrough
+   - [x] `MessageComposer`
+     - [x] 현재 conversation id로 메시지 전송
+     - [x] pending 중 중복 전송 방지
+     - [x] 성공 시 입력 초기화 / 실패 시 입력 유지 + error UI
+     - [x] React Hook Form + Zod validation — trim 후 1~2000자
+   - [x] 전송 성공 후 messages cache 즉시 반영
+     - [x] 기존 메시지 / pagination 유지
+     - [x] 동일 message 중복 추가 방지
+     - [x] messages GET과 POST가 겹쳐도 새 메시지 보존
+     - [x] cache 부재 상태에서도 새 메시지 보존
+     - [x] initial GET 실패 후 POST 성공 시 query / pagination 복구
+     - [x] cache 동기화 로직과 테스트를 `syncMessageToCache` 단위로 분리
+   - [x] ConversationPage / router mock을 실제 messages 요청 계약에 맞게 보완
+   - [x] Message REST 전체 audit 및 필수 blocker 보완 완료
 10. [ ] WebSocket 실시간 반영
 11. [ ] Profile
+
+### 별도 후속 TODO
+
+- Conversation feature: conversation 상세 background refetch 실패 시 기존 화면 / draft 유지 여부 보완
+- Backend Message: message 저장과 `Conversation.lastActivityAt` 갱신의 원자성 검토 및 보완
 
 ### Frontend 작업 방식
 
@@ -388,11 +410,11 @@
 
 ### 다음 시작점
 
-- Message REST TDD 계속
-  - `POST /conversations/:id/messages` 전송 mutation 성공 경로 RED부터 시작
-  - request: `{ content }`
-  - success: `201` → 생성된 message 반환
-  - mutation 단위 주요 상태 완료 후 메시지 전송 UI로 연결
+- WebSocket 실시간 반영 TDD 시작
+  - backend의 기존 `message.created` event 계약과 frontend messages cache 구조 확인
+  - WebSocket 연결 / 수신 책임 위치 결정
+  - 상대 사용자가 보낸 `message.created` 이벤트를 현재 TanStack Query messages cache에 반영하는 성공 경로 RED부터 시작
+  - WebSocket 단위 주요 상태 완료 후 실제 `ConversationPage` / router 흐름 연결 여부 확인
 
 ## 6. 배포 / 인증 쿠키 정책
 
