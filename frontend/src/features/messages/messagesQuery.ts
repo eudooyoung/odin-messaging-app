@@ -5,8 +5,9 @@ import { UserFacingError } from "@/api/UserFacingError.ts";
 export const MESSAGES_QUERY_ERROR_MESSAGE = "Failed to load messages";
 const MESSAGES_FORBIDDEN_ERROR_MESSAGE = "You do not have access to this conversation";
 const CONVERSATION_NOT_FOUND_ERROR_MESSAGE = "Conversation not found";
+const MESSAGES_PAGE_LIMIT = 20;
 
-type MessagesPage = {
+export type MessagesPage = {
   messages: {
     id: number;
     content: string;
@@ -27,8 +28,8 @@ export const messagesQueryOptions = (conversationId: number) =>
     queryFn: async ({ signal, pageParam }): Promise<MessagesPage> => {
       const path =
         pageParam === null
-          ? `/conversations/${conversationId}/messages`
-          : `/conversations/${conversationId}/messages?cursor=${pageParam}`;
+          ? `/conversations/${conversationId}/messages?limit=${MESSAGES_PAGE_LIMIT}`
+          : `/conversations/${conversationId}/messages?cursor=${pageParam}&limit=${MESSAGES_PAGE_LIMIT}`;
       const response = await apiFetch(path, { signal });
 
       if (response.status === 403) {

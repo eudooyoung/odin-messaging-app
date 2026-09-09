@@ -5,15 +5,10 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
-import { createMessage } from "@/features/messages/createMessage.ts";
 import { ConversationPage } from "./ConversationPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
-}));
-
-vi.mock("@/features/messages/createMessage.ts", () => ({
-  createMessage: vi.fn(),
 }));
 
 const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conversations/42") =>
@@ -27,34 +22,164 @@ const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conve
     </QueryClientProvider>,
   );
 
+const defaultConversation = {
+  id: 42,
+  participants: [
+    {
+      username: "current-user",
+      displayName: "Current User",
+      profileImage: null,
+    },
+    {
+      username: "other-user",
+      displayName: "Other User",
+      profileImage: null,
+    },
+  ],
+  createdAt: "2026-09-01T00:00:00.000Z",
+  lastActivityAt: "2026-09-04T01:00:00.000Z",
+};
+
+const conversationMessage = {
+  id: 10,
+  content: "Hello from the conversation",
+  sender: {
+    username: "other-user",
+    displayName: "Other User",
+    profileImage: null,
+  },
+  createdAt: "2026-09-04T01:00:00.000Z",
+};
+
+const createdAfterErrorMessage = {
+  id: 11,
+  content: "New message after the load error",
+  sender: {
+    username: "current-user",
+    displayName: "Current User",
+    profileImage: null,
+  },
+  createdAt: "2026-09-08T01:00:00.000Z",
+};
+
+const olderMessage = {
+  id: 9,
+  content: "An older conversation message",
+  sender: {
+    username: "other-user",
+    displayName: "Other User",
+    profileImage: null,
+  },
+  createdAt: "2026-09-03T01:00:00.000Z",
+};
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
+const arrangeConversationPageRequests = ({
+  conversation = defaultConversation,
+  messages = [] as (typeof conversationMessage)[],
+  createdMessage,
+}: {
+  conversation?: typeof defaultConversation;
+  messages?: (typeof conversationMessage)[];
+  createdMessage?: typeof conversationMessage;
+} = {}) => {
+  vi.mocked(apiFetch).mockImplementation((input, init) => {
+    if (input === "/conversations/42") {
+      return Promise.resolve(jsonResponse(conversation));
+    }
+
+    if (input === "/conversations/42/messages?limit=20") {
+      return Promise.resolve(jsonResponse({ messages, nextCursor: null }));
+    }
+
+    if (
+      input === "/conversations/42/messages" &&
+      init?.method === "POST" &&
+      createdMessage
+    ) {
+      return Promise.resolve(jsonResponse(createdMessage, 201));
+    }
+
+    return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+  });
+};
+
+const deferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+};
+
+const arrangeMessagesRecoveryRequests = ({
+  createdMessage,
+  recoveredMessage,
+  olderMessage,
+}: {
+  createdMessage: typeof conversationMessage;
+  recoveredMessage: typeof conversationMessage;
+  olderMessage: typeof conversationMessage;
+}) => {
+  let isInitialMessagesRequest = true;
+  const recoveredMessagesResponse = deferred<Response>();
+
+  vi.mocked(apiFetch).mockImplementation((input, init) => {
+    if (input === "/conversations/42") {
+      return Promise.resolve(jsonResponse(defaultConversation));
+    }
+
+    if (input === "/conversations/42/messages?limit=20") {
+      if (isInitialMessagesRequest) {
+        isInitialMessagesRequest = false;
+        return Promise.resolve(new Response(null, { status: 500 }));
+      }
+
+      return recoveredMessagesResponse.promise;
+    }
+
+    if (
+      input === "/conversations/42/messages" &&
+      init?.method === "POST"
+    ) {
+      return Promise.resolve(jsonResponse(createdMessage, 201));
+    }
+
+    if (input === "/conversations/42/messages?cursor=10&limit=20") {
+      return Promise.resolve(
+        jsonResponse({ messages: [olderMessage], nextCursor: null }),
+      );
+    }
+
+    return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+  });
+
+  return {
+    getFirstPageRequestCount: () =>
+      vi.mocked(apiFetch).mock.calls.filter(
+        ([requestInput]) =>
+          requestInput === "/conversations/42/messages?limit=20",
+      ).length,
+    resolveRecoveredMessages: () =>
+      recoveredMessagesResponse.resolve(
+        jsonResponse({
+          messages: [createdMessage, recoveredMessage],
+          nextCursor: 10,
+        }),
+      ),
+  };
+};
+
 describe("ConversationPage", () => {
   describe("successful rendering", () => {
     it("loads the route conversation and shows the other participant", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            id: 42,
-            participants: [
-              {
-                username: "current-user",
-                displayName: "Current User",
-                profileImage: null,
-              },
-              {
-                username: "other-user",
-                displayName: "Other User",
-                profileImage: null,
-              },
-            ],
-            createdAt: "2026-09-01T00:00:00.000Z",
-            lastActivityAt: "2026-09-04T01:00:00.000Z",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      );
+      arrangeConversationPageRequests();
       const queryClient = new QueryClient();
       const currentUser: AuthUser = {
         id: 1,
@@ -73,62 +198,8 @@ describe("ConversationPage", () => {
     });
 
     it("renders the message list for the route conversation", async () => {
-      vi.mocked(apiFetch).mockImplementation((input) => {
-        if (input === "/conversations/42") {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                id: 42,
-                participants: [
-                  {
-                    username: "current-user",
-                    displayName: "Current User",
-                    profileImage: null,
-                  },
-                  {
-                    username: "other-user",
-                    displayName: "Other User",
-                    profileImage: null,
-                  },
-                ],
-                createdAt: "2026-09-01T00:00:00.000Z",
-                lastActivityAt: "2026-09-04T01:00:00.000Z",
-              }),
-              {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-              },
-            ),
-          );
-        }
-
-        if (input === "/conversations/42/messages") {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                messages: [
-                  {
-                    id: 10,
-                    content: "Hello from the conversation",
-                    sender: {
-                      username: "other-user",
-                      displayName: "Other User",
-                      profileImage: null,
-                    },
-                    createdAt: "2026-09-04T01:00:00.000Z",
-                  },
-                ],
-                nextCursor: null,
-              }),
-              {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-              },
-            ),
-          );
-        }
-
-        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      arrangeConversationPageRequests({
+        messages: [conversationMessage],
       });
       const queryClient = new QueryClient();
       const currentUser: AuthUser = {
@@ -141,56 +212,16 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(await screen.findByText("Hello from the conversation")).toBeInTheDocument();
-      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages", {
+      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?limit=20", {
         signal: expect.any(AbortSignal),
       });
 
       queryClient.clear();
     });
 
-    it("sends the entered message to the current conversation", async () => {
-      vi.mocked(apiFetch).mockImplementation((input) => {
-        if (input === "/conversations/42") {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                id: 42,
-                participants: [
-                  {
-                    username: "current-user",
-                    displayName: "Current User",
-                    profileImage: null,
-                  },
-                  {
-                    username: "other-user",
-                    displayName: "Other User",
-                    profileImage: null,
-                  },
-                ],
-                createdAt: "2026-09-01T00:00:00.000Z",
-                lastActivityAt: "2026-09-04T01:00:00.000Z",
-              }),
-              {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-              },
-            ),
-          );
-        }
-
-        if (input === "/conversations/42/messages") {
-          return Promise.resolve(
-            new Response(JSON.stringify({ messages: [], nextCursor: null }), {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            }),
-          );
-        }
-
-        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
-      });
-      vi.mocked(createMessage).mockResolvedValue({
-        id: 10,
+    it("shows the newly sent message while preserving the existing messages", async () => {
+      const createdMessage = {
+        id: 11,
         content: "Hello!",
         sender: {
           username: "current-user",
@@ -198,6 +229,10 @@ describe("ConversationPage", () => {
           profileImage: null,
         },
         createdAt: "2026-09-08T01:00:00.000Z",
+      };
+      arrangeConversationPageRequests({
+        messages: [conversationMessage],
+        createdMessage,
       });
       const queryClient = new QueryClient();
       const currentUser: AuthUser = {
@@ -210,43 +245,88 @@ describe("ConversationPage", () => {
 
       renderConversationPage(queryClient);
 
+      expect(await screen.findByText(conversationMessage.content)).toBeInTheDocument();
       const messageInput = await screen.findByRole("textbox", { name: "Message" });
       await user.type(messageInput, "Hello!");
       await user.click(screen.getByRole("button", { name: "Send" }));
 
       await waitFor(() => {
-        expect(createMessage).toHaveBeenCalledWith(42, "Hello!");
+        expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: "Hello!" }),
+        });
+      });
+      await waitFor(() => {
+        expect(screen.getByText(conversationMessage.content)).toBeInTheDocument();
+        expect(screen.getByText(createdMessage.content)).toBeInTheDocument();
       });
 
       queryClient.clear();
     });
 
-    it("identifies the other participant by the current user's username", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            id: 42,
-            participants: [
-              {
-                username: "other-user",
-                displayName: "Other User",
-                profileImage: null,
-              },
-              {
-                username: "current-user",
-                displayName: "Current User",
-                profileImage: null,
-              },
-            ],
-            createdAt: "2026-09-01T00:00:00.000Z",
-            lastActivityAt: "2026-09-04T01:00:00.000Z",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
+    it("recovers the messages query and pagination after sending a message following an initial load error", async () => {
+      const { getFirstPageRequestCount, resolveRecoveredMessages } =
+        arrangeMessagesRecoveryRequests({
+          createdMessage: createdAfterErrorMessage,
+          recoveredMessage: conversationMessage,
+          olderMessage,
+        });
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
           },
-        ),
+        },
+      });
+      const currentUser: AuthUser = {
+        id: 1,
+        username: "current-user",
+        displayName: "Current User",
+      };
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Failed to load messages",
       );
+
+      await user.type(
+        screen.getByRole("textbox", { name: "Message" }),
+        createdAfterErrorMessage.content,
+      );
+      await user.click(screen.getByRole("button", { name: "Send" }));
+
+      expect(await screen.findByText(createdAfterErrorMessage.content)).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(getFirstPageRequestCount()).toBe(2);
+      });
+
+      resolveRecoveredMessages();
+
+      expect(await screen.findByText(conversationMessage.content)).toBeInTheDocument();
+      expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole("button", { name: "Load older messages" }),
+      );
+
+      expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
+      expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
+
+      queryClient.clear();
+    });
+
+    it("identifies the other participant by the current user's username", async () => {
+      arrangeConversationPageRequests({
+        conversation: {
+          ...defaultConversation,
+          participants: [...defaultConversation.participants].reverse(),
+        },
+      });
       const queryClient = new QueryClient();
       const currentUser: AuthUser = {
         id: 1,

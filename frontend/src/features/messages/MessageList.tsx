@@ -12,7 +12,7 @@ export function MessageList({ conversationId }: MessageListProps) {
   const {
     data,
     isPending,
-    isError,
+    isLoadingError,
     error,
     hasNextPage,
     fetchNextPage,
@@ -25,7 +25,7 @@ export function MessageList({ conversationId }: MessageListProps) {
     return <p role="status">Loading messages...</p>;
   }
 
-  if (isError && !isFetchNextPageError) {
+  if (isLoadingError) {
     return (
       <p role="alert">
         {error instanceof UserFacingError ? error.message : MESSAGES_QUERY_ERROR_MESSAGE}

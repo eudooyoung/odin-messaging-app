@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
@@ -76,7 +76,7 @@ describe("MessageList", () => {
       expect(screen.getByText(olderMessage.content)).toBeInTheDocument();
       expect(screen.getByText(olderMessage.sender.displayName)).toBeInTheDocument();
       expect(screen.getByText(`@${olderMessage.sender.username}`)).toBeInTheDocument();
-      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages", {
+      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?limit=20", {
         signal: expect.any(AbortSignal),
       });
 
@@ -135,6 +135,64 @@ describe("MessageList", () => {
 
       queryClient.clear();
     });
+
+    it("keeps the rendered messages when a background refetch fails", async () => {
+      let rejectBackgroundRefetch: (reason?: unknown) => void = () => undefined;
+      const backgroundRefetchResponse = new Promise<Response>((_resolve, reject) => {
+        rejectBackgroundRefetch = reject;
+      });
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(messagesResponse([latestMessage], null))
+        .mockReturnValueOnce(backgroundRefetchResponse);
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+          },
+        },
+      });
+
+      renderMessageList(queryClient);
+
+      expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+
+      let backgroundRefetch!: Promise<void>;
+      await act(async () => {
+        backgroundRefetch = queryClient.invalidateQueries({
+          queryKey: ["conversations", 42, "messages"],
+        });
+      });
+
+      await waitFor(() => {
+        expect(apiFetch).toHaveBeenCalledTimes(2);
+        expect(
+          queryClient.getQueryState(["conversations", 42, "messages"])
+            ?.fetchStatus,
+        ).toBe("fetching");
+      });
+
+      await act(async () => {
+        rejectBackgroundRefetch(new TypeError("Failed to fetch"));
+        await backgroundRefetch;
+      });
+
+      await waitFor(() => {
+        expect(
+          queryClient.getQueryState(["conversations", 42, "messages"]),
+        ).toMatchObject({
+          status: "error",
+          fetchStatus: "idle",
+        });
+      });
+      await act(async () => {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(screen.getByText(latestMessage.content)).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+      queryClient.clear();
+    });
   });
 
   describe("pagination", () => {
@@ -158,7 +216,7 @@ describe("MessageList", () => {
       expect(apiFetch).toHaveBeenCalledTimes(2);
       expect(apiFetch).toHaveBeenNthCalledWith(
         2,
-        "/conversations/42/messages?cursor=10",
+        "/conversations/42/messages?cursor=10&limit=20",
         { signal: expect.any(AbortSignal) },
       );
 
@@ -242,7 +300,7 @@ describe("MessageList", () => {
       expect(apiFetch).toHaveBeenCalledTimes(3);
       expect(apiFetch).toHaveBeenNthCalledWith(
         3,
-        "/conversations/42/messages?cursor=10",
+        "/conversations/42/messages?cursor=10&limit=20",
         { signal: expect.any(AbortSignal) },
       );
 

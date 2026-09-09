@@ -90,4 +90,34 @@ describe("MessageComposer", () => {
 
     queryClient.clear();
   });
+
+  it.each([
+    {
+      caseName: "the message is empty after trimming",
+      content: "   ",
+      expectedMessage: "Message is required",
+    },
+    {
+      caseName: "the message is longer than 2000 characters",
+      content: "a".repeat(2001),
+      expectedMessage: "Message must be at most 2000 characters",
+    },
+  ])(
+    "shows a validation error and does not send when $caseName",
+    async ({ content, expectedMessage }) => {
+      vi.mocked(createMessage).mockClear();
+      const queryClient = new QueryClient();
+      const user = userEvent.setup();
+
+      renderMessageComposer(queryClient);
+
+      await user.type(screen.getByRole("textbox", { name: "Message" }), content);
+      await user.click(screen.getByRole("button", { name: "Send" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+      expect(createMessage).not.toHaveBeenCalled();
+
+      queryClient.clear();
+    },
+  );
 });

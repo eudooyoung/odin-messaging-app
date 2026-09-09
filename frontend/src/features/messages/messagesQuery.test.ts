@@ -61,14 +61,14 @@ describe("messagesQueryOptions", () => {
 
     await queryClient.infiniteQuery(messagesQueryOptions(42));
 
-    expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages", {
+    expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?limit=20", {
       signal: expect.any(AbortSignal),
     });
 
     queryClient.clear();
   });
 
-  it("fetches the next page using the previous response cursor", async () => {
+  it("fetches consecutive message pages with the same limit and the next cursor", async () => {
     const firstPage = {
       messages: [
         {
@@ -120,12 +120,24 @@ describe("messagesQueryOptions", () => {
     });
 
     expect(apiFetch).toHaveBeenCalledTimes(2);
+    const firstRequestUrl = new URL(
+      vi.mocked(apiFetch).mock.calls[0]?.[0] as string,
+      "http://localhost",
+    );
     const nextRequestUrl = new URL(
       vi.mocked(apiFetch).mock.calls[1]?.[0] as string,
       "http://localhost",
     );
+    const limit = firstRequestUrl.searchParams.get("limit");
+
+    expect(firstRequestUrl.pathname).toBe("/conversations/42/messages");
+    expect(firstRequestUrl.searchParams.get("cursor")).toBeNull();
+    expect(limit).not.toBeNull();
+    expect(Number.isInteger(Number(limit))).toBe(true);
+    expect(Number(limit)).toBeGreaterThan(0);
     expect(nextRequestUrl.pathname).toBe("/conversations/42/messages");
     expect(nextRequestUrl.searchParams.get("cursor")).toBe("10");
+    expect(nextRequestUrl.searchParams.get("limit")).toBe(limit);
     expect(result).toEqual({
       pages: [firstPage, secondPage],
       pageParams: [null, 10],
