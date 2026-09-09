@@ -295,6 +295,10 @@
    - [x] `401` 응답 시 refresh 후 원 요청 1회 재시도
    - [x] refresh 실패 및 재시도 후 `401` 처리
    - [x] transport error passthrough
+   - [x] `VITE_API_URL`을 기준으로 상대 경로를 backend absolute URL로 변환
+   - [x] absolute string / `Request` / `URL` 입력의 기존 동작 유지
+   - [x] refresh 요청에도 같은 API base URL 적용
+   - [x] `frontend/.env.example`에 `VITE_API_URL` 추가
 3. [x] auth/me query
    - [x] `200` 응답을 현재 사용자로 반환
    - [x] `401` 응답을 비로그인 상태인 `null`로 변환
@@ -356,6 +360,20 @@
      - [x] mutation error UI 및 실패 시 현재 화면 유지
    - [x] 생성/재사용 흐름 audit 완료 — 필수 수정사항 없음
 9. [ ] Message REST
+   - [x] `GET /conversations/:id/messages` infinite query
+     - [x] 첫 페이지 success
+     - [x] `pageParam → cursor`, `nextCursor → getNextPageParam`
+     - [x] `403` / `404` 의미 있는 HTTP error 해석
+     - [x] 기타 HTTP error / transport error passthrough
+     - [x] TanStack Query의 `signal` 전달
+   - [x] `MessageList`
+     - [x] initial loading / success / empty / error
+     - [x] 다음 페이지 load / pending 중 중복 요청 방지 / 마지막 페이지
+     - [x] next-page error 시 기존 메시지 유지 + retry
+     - [x] MessageList audit 완료 — 필수 상태 누락 없음
+   - [ ] `POST /conversations/:id/messages` 전송 mutation
+   - [ ] 메시지 전송 UI 연결
+   - [ ] Message REST 전체 audit
 10. [ ] WebSocket 실시간 반영
 11. [ ] Profile
 
@@ -366,13 +384,15 @@
 - audit에서는 API 계약, query/mutation/UI 상태, 실제 router/page 연결, 사용자 흐름, 테스트 누락·중복을 확인한다.
 - audit에서 발견된 필수 문제를 보완하고 다시 확인한 뒤 다음 큰 기능으로 이동한다.
 - GPT 대화 세션을 교체하기 전에는 현재 진행 상황과 다음 시작점을 이 문서에 먼저 반영한다.
+- 테스트에 의미 있는 기능/흐름 단위가 있으면 `describe`로 그룹화한다. 단, 나눌 실익이 없는 테스트는 억지로 그룹화하지 않는다.
 
 ### 다음 시작점
 
-- Message REST TDD
-  - `GET /conversations/:id/messages` 메시지 목록 query부터 시작
-  - 주요 상태를 식별한 뒤 성공 경로 RED → GREEN으로 진행
-  - query 단위 완료 후 메시지 목록 UI로 연결
+- Message REST TDD 계속
+  - `POST /conversations/:id/messages` 전송 mutation 성공 경로 RED부터 시작
+  - request: `{ content }`
+  - success: `201` → 생성된 message 반환
+  - mutation 단위 주요 상태 완료 후 메시지 전송 UI로 연결
 
 ## 6. 배포 / 인증 쿠키 정책
 

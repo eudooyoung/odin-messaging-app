@@ -157,6 +157,32 @@ describe("router", () => {
         );
       }
 
+      if (input === "/conversations/1/messages?limit=20") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              messages: [
+                {
+                  id: 10,
+                  content: "Hello from the protected route",
+                  sender: {
+                    username: "other-user",
+                    displayName: "Other User",
+                    profileImage: null,
+                  },
+                  createdAt: "2026-09-04T01:00:00.000Z",
+                },
+              ],
+              nextCursor: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
     const queryClient = new QueryClient();
@@ -169,10 +195,16 @@ describe("router", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
+    expect(await screen.findByText("Hello from the protected route")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
     expect(apiFetch).toHaveBeenNthCalledWith(1, "/auth/me", {
       signal: expect.any(AbortSignal),
     });
     expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations/1", {
+      signal: expect.any(AbortSignal),
+    });
+    expect(apiFetch).toHaveBeenNthCalledWith(3, "/conversations/1/messages?limit=20", {
       signal: expect.any(AbortSignal),
     });
 

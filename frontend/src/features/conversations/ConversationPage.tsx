@@ -2,20 +2,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
-import {
-  CONVERSATION_QUERY_ERROR_MESSAGE,
-  conversationQueryOptions,
-} from "./conversationQuery.ts";
+import { MessageComposer } from "@/features/messages/MessageComposer.tsx";
+import { MessageList } from "@/features/messages/MessageList.tsx";
+import { CONVERSATION_QUERY_ERROR_MESSAGE, conversationQueryOptions } from "./conversationQuery.ts";
 
 export function ConversationPage() {
   const { conversationId } = useParams();
   const queryClient = useQueryClient();
-  const currentUser = queryClient.getQueryData<{ username: string }>(
-    authMeQueryOptions.queryKey,
-  );
+  const currentUser = queryClient.getQueryData<{ username: string }>(authMeQueryOptions.queryKey);
   const parsedConversationId = Number(conversationId);
-  const isValidConversationId =
-    Number.isInteger(parsedConversationId) && parsedConversationId > 0;
+  const isValidConversationId = Number.isInteger(parsedConversationId) && parsedConversationId > 0;
   const {
     data: conversation,
     isPending,
@@ -37,9 +33,7 @@ export function ConversationPage() {
   if (isError) {
     return (
       <p role="alert">
-        {error instanceof UserFacingError
-          ? error.message
-          : CONVERSATION_QUERY_ERROR_MESSAGE}
+        {error instanceof UserFacingError ? error.message : CONVERSATION_QUERY_ERROR_MESSAGE}
       </p>
     );
   }
@@ -58,6 +52,8 @@ export function ConversationPage() {
     <>
       <h1>{otherUser.displayName}</h1>
       <p>@{otherUser.username}</p>
+      <MessageList conversationId={parsedConversationId} />
+      <MessageComposer conversationId={parsedConversationId} />
     </>
   );
 }
