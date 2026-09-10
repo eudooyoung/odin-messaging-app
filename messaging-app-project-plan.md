@@ -392,12 +392,53 @@
    - [x] ConversationPage / router mock을 실제 messages 요청 계약에 맞게 보완
    - [x] Message REST 전체 audit 및 필수 blocker 보완 완료
 10. [ ] WebSocket 실시간 반영
+   - [x] backend `message.created` event 계약 확인
+     - [x] payload: `{ type: "message.created", payload: { conversationId, message } }`
+     - [x] sender 제외, 상대 사용자의 열린 connection들에 전송
+     - [x] REST message shape와 WebSocket message shape 일치 확인
+   - [x] frontend `message.created` handler
+     - [x] 해당 conversation의 messages cache에 수신 message 반영
+     - [x] 다른 conversation cache와 격리
+     - [x] 동일 message id 중복 방지
+     - [x] unsupported event / malformed JSON 무시
+     - [x] runtime payload validation — 잘못된 conversationId / message shape 무시
+   - [x] authenticated app-global WebSocket lifecycle
+     - [x] `ProtectedRoute` 하위에 UI-less `AuthenticatedWebSocket` 연결
+     - [x] protected route 간 이동 시 connection 유지
+     - [x] guest route에서는 connection 생성하지 않음
+     - [x] message listener 등록 및 cleanup
+     - [x] unmount 시 listener 제거 + socket close
+     - [x] auth/me가 user → null로 바뀌면 socket cleanup 및 재연결 방지
+   - [x] 실제 router → `ConversationPage` → `MessageList` 실시간 반영 regression test
+   - [x] WebSocket open 시 REST → socket 연결 gap 복구
+     - [x] open 시 cached messages query refetch
+     - [x] 최초 messages GET이 이미 pending인 경우에도 기존 요청 완료 후 새 refetch를 보장
+     - [x] 연결 직전 생성되어 REST/WebSocket 양쪽에서 놓칠 수 있는 message 복구 regression test
+   - [x] unexpected close 시 WebSocket 재연결
+     - [x] unmount cleanup close에서는 재연결하지 않음
+     - [x] 새 connection open 시 기존 gap recovery 재사용
+   - [x] 최종 audit 필수 blocker 보완
+     - [x] POST 응답과 WebSocket event 도착 순서가 뒤섞여도 REST 계약(`createdAt DESC, id DESC`)과 같은 message 정렬 유지
+       - [x] `createdAt`이 다르면 최신 message 우선
+       - [x] `createdAt`이 같으면 `id DESC`로 tie-break
+     - [x] pending cache sync callback이 logout/cache clear 이후 이전 사용자 messages cache를 다시 생성하지 않도록 방어
+       - [x] pending messages query 전후의 TanStack Query 객체 identity를 비교해 clear/recreate 감지
+       - [x] 이전 Query가 제거되거나 같은 queryKey로 새 Query가 생성된 경우 delayed cache sync 중단
+     - [x] access token 만료 상태에서 reconnect가 실패를 반복하지 않도록 auth refresh/recovery 흐름과 retry 간격 설계 및 테스트
+       - [x] unexpected close 후 `auth/me` 재확인이 끝나기 전에는 reconnect하지 않음
+       - [x] auth recovery가 authenticated user를 반환하면 reconnect
+       - [x] auth recovery가 `null`이면 reconnect 중단
+       - [x] auth recovery가 error를 throw하면 1초 후 다시 auth recovery 시도
+       - [x] retry 대기 중 unmount되면 예약된 auth recovery timer 취소
+   - [ ] 필수 blocker 보완 후 WebSocket 최종 재-audit
 11. [ ] Profile
 
 ### 별도 후속 TODO
 
 - Conversation feature: conversation 상세 background refetch 실패 시 기존 화면 / draft 유지 여부 보완
 - Backend Message: message 저장과 `Conversation.lastActivityAt` 갱신의 원자성 검토 및 보완
+- WebSocket optional: `/` ConversationList의 최근 메시지 / 정렬 / 새 conversation 실시간 반영 범위 검토
+- WebSocket optional: URL `http→ws` / `https→wss`, StrictMode 재마운트, reconnect 이후 open→gap recovery→message 수신 회귀 테스트 보강
 
 ### Frontend 작업 방식
 
@@ -410,11 +451,13 @@
 
 ### 다음 시작점
 
-- WebSocket 실시간 반영 TDD 시작
-  - backend의 기존 `message.created` event 계약과 frontend messages cache 구조 확인
-  - WebSocket 연결 / 수신 책임 위치 결정
-  - 상대 사용자가 보낸 `message.created` 이벤트를 현재 TanStack Query messages cache에 반영하는 성공 경로 RED부터 시작
-  - WebSocket 단위 주요 상태 완료 후 실제 `ConversationPage` / router 흐름 연결 여부 확인
+- 새 GPT 세션에서 **WebSocket 기능 전체 최종 re-audit**부터 시작한다.
+  - API / WebSocket event 계약과 실제 구현 일치 여부 확인
+  - query/cache 동기화와 WebSocket lifecycle의 주요 상태 누락 여부 확인
+  - 실제 router → page 흐름과 reconnect / gap recovery / cleanup 회귀 확인
+  - 기존 테스트의 누락·중복 및 구현을 놓치는 테스트 구조 확인
+- 이번 audit에서 필수 문제가 없으면 WebSocket 기능을 완료 처리한다.
+- WebSocket 완료 후 다음 큰 기능인 **Profile**을 TDD로 시작한다.
 
 ## 6. 배포 / 인증 쿠키 정책
 

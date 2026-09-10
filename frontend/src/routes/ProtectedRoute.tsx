@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { AUTH_QUERY_ERROR_MESSAGE, authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import { AuthenticatedWebSocket } from "@/features/messages/AuthenticatedWebSocket.tsx";
 
 export function ProtectedRoute() {
   const { data: currentUser, isPending, isError, error } = useQuery(authMeQueryOptions);
@@ -10,7 +11,7 @@ export function ProtectedRoute() {
     return <p role="status">Loading...</p>;
   }
 
-  if (isError) {
+  if (isError && !currentUser) {
     return (
       <p role="alert">
         {error instanceof UserFacingError ? error.message : AUTH_QUERY_ERROR_MESSAGE}
@@ -23,6 +24,16 @@ export function ProtectedRoute() {
   }
 
   if (currentUser) {
-    return <Outlet />;
+    return (
+      <>
+        {isError && (
+          <p role="alert">
+            {error instanceof UserFacingError ? error.message : AUTH_QUERY_ERROR_MESSAGE}
+          </p>
+        )}
+        <AuthenticatedWebSocket />
+        <Outlet />
+      </>
+    );
   }
 }
