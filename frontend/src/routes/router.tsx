@@ -2,6 +2,7 @@ import { LoginPage } from "@/features/auth/LoginPage.tsx";
 import { RegisterPage } from "@/features/auth/RegisterPage.tsx";
 import { ConversationList } from "@/features/conversations/ConversationList.tsx";
 import { ConversationPage } from "@/features/conversations/ConversationPage.tsx";
+import { ProfilePage } from "@/features/users/ProfilePage.tsx";
 import { UserSearch } from "@/features/users/UserSearch.tsx";
 import { createBrowserRouter } from "react-router";
 import { GuestOnlyRoute } from "./GuestOnlyRoute.tsx";
@@ -23,6 +24,10 @@ const routes = [
       {
         path: "/conversations/:conversationId",
         element: <ConversationPage />,
+      },
+      {
+        path: "/profile",
+        element: <ProfilePage />,
       },
     ],
   },
