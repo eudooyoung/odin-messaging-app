@@ -289,103 +289,175 @@
 
 ### Frontend
 
-- React + Vite
-- React Router
-- TanStack Query
-- native WebSocket API
-- React Hook Form
-- Zod + `@hookform/resolvers/zod`
-- Tailwind CSS
-- Vitest
-- React Testing Library
-- `@testing-library/user-event`
-- 필요 시 MSW
+1. [x] `QueryClientProvider` 구성
+2. [x] 공통 `apiFetch`
+   - [x] 모든 요청에 `credentials: "include"` 적용
+   - [x] `401` 응답 시 refresh 후 원 요청 1회 재시도
+   - [x] refresh 실패 및 재시도 후 `401` 처리
+   - [x] transport error passthrough
+   - [x] `VITE_API_URL`을 기준으로 상대 경로를 backend absolute URL로 변환
+   - [x] absolute string / `Request` / `URL` 입력의 기존 동작 유지
+   - [x] refresh 요청에도 같은 API base URL 적용
+   - [x] `frontend/.env.example`에 `VITE_API_URL` 추가
+3. [x] auth/me query
+   - [x] `200` 응답을 현재 사용자로 반환
+   - [x] `401` 응답을 비로그인 상태인 `null`로 변환
+   - [x] 기타 실패 응답 throw
+   - [x] TanStack Query의 `signal`을 `apiFetch`에 전달
+4. [x] `ProtectedRoute` / `GuestOnlyRoute` / 실제 router 연결
+   - [x] 로그인 / 비로그인 접근 제어
+   - [x] pending loading UI
+   - [x] error UI
+   - [x] `/login` → `LoginPage` + `GuestOnlyRoute`
+   - [x] `/register` → `RegisterPage` + `GuestOnlyRoute`
+   - [x] `/` → `UserSearch` + `ConversationList` + `ProtectedRoute`
+   - [x] `/conversations/:conversationId` → `ConversationPage` + `ProtectedRoute`
+5. [x] Login TDD
+   - [x] React Hook Form + Zod validation
+   - [x] `POST /auth/login` 성공 요청
+   - [x] 로그인 성공 후 auth/me 재조회 완료 뒤 `/` 이동
+   - [x] client-side validation 및 요청 차단
+   - [x] pending 상태
+   - [x] HTTP error / 예상하지 못한 error UI
+6. [x] Register TDD
+   - [x] React Hook Form + Zod validation
+   - [x] `POST /auth/register` 성공 요청
+   - [x] 성공 후 `/login` 이동
+   - [x] client-side validation
+   - [x] 실패 UI
+7. [x] User Search
+   - [x] `GET /users?query=...` query
+   - [x] success / empty / `400` / 기타 HTTP error / transport error
+   - [x] TanStack Query의 `signal` 전달
+   - [x] 검색 UI: loading / success / empty / user-facing error / fallback error
+   - [x] `displayName` + `@username` 표시
+   - [x] 실제 `/` 화면에 연결
+   - [x] 기능 audit 및 필수 문제 보완
+8. [x] Conversation
+   - [x] 목록 infinite query
+     - [x] `limit=20`을 첫 페이지와 후속 페이지 모두 전달
+     - [x] `pageParam → cursor`, `nextCursor → getNextPageParam`
+     - [x] success / HTTP error / transport error / signal
+   - [x] `ConversationList`
+     - [x] loading / success / empty / initial error
+     - [x] 다음 페이지 pending / error / success / 마지막 페이지
+     - [x] conversation 선택 → `/conversations/:conversationId` 이동
+   - [x] conversation 상세 query
+     - [x] success / `403` / `404` / 기타 HTTP error / transport error / signal
+     - [x] `403`과 `404`를 서로 다른 사용자 메시지로 해석
+   - [x] `ConversationPage`
+     - [x] success / loading / error / invalid route param
+     - [x] 현재 사용자 username으로 상대 participant 식별
+     - [x] participant 배열 순서에 의존하지 않음
+   - [x] 목록/상세 기능 audit 및 필수 문제 보완
+   - [x] `POST /conversations` 생성/재사용 mutation
+     - [x] `201` 새 conversation
+     - [x] `200` 기존 conversation 재사용
+     - [x] `400` / `404` 의미 있는 HTTP error 해석
+     - [x] 기타 HTTP error / transport error passthrough
+   - [x] 검색 결과 사용자 선택 → 생성/재사용 → `/conversations/:id` 이동
+     - [x] mutation pending 동안 선택한 결과 비활성화
+     - [x] mutation error UI 및 실패 시 현재 화면 유지
+   - [x] 생성/재사용 흐름 audit 완료 — 필수 수정사항 없음
+9. [x] Message REST
+   - [x] `GET /conversations/:id/messages` infinite query
+     - [x] 첫 페이지 success
+     - [x] 첫 페이지 / 후속 페이지 모두 `limit=20` 전달
+     - [x] `pageParam → cursor`, `nextCursor → getNextPageParam`
+     - [x] `403` / `404` 의미 있는 HTTP error 해석
+     - [x] 기타 HTTP error / transport error passthrough
+     - [x] TanStack Query의 `signal` 전달
+   - [x] `MessageList`
+     - [x] initial loading / success / empty / error
+     - [x] 다음 페이지 load / pending 중 중복 요청 방지 / 마지막 페이지
+     - [x] next-page error 시 기존 메시지 유지 + retry
+     - [x] background refetch 실패 시 기존 메시지 목록 유지
+     - [x] 실제 `ConversationPage`에 연결
+   - [x] `POST /conversations/:id/messages` 전송 mutation
+     - [x] `201` 성공 → 생성된 message 반환
+     - [x] `403` / `404` 의미 있는 HTTP error 해석
+     - [x] 기타 HTTP error / transport error passthrough
+   - [x] `MessageComposer`
+     - [x] 현재 conversation id로 메시지 전송
+     - [x] pending 중 중복 전송 방지
+     - [x] 성공 시 입력 초기화 / 실패 시 입력 유지 + error UI
+     - [x] React Hook Form + Zod validation — trim 후 1~2000자
+   - [x] 전송 성공 후 messages cache 즉시 반영
+     - [x] 기존 메시지 / pagination 유지
+     - [x] 동일 message 중복 추가 방지
+     - [x] messages GET과 POST가 겹쳐도 새 메시지 보존
+     - [x] cache 부재 상태에서도 새 메시지 보존
+     - [x] initial GET 실패 후 POST 성공 시 query / pagination 복구
+     - [x] cache 동기화 로직과 테스트를 `syncMessageToCache` 단위로 분리
+   - [x] ConversationPage / router mock을 실제 messages 요청 계약에 맞게 보완
+   - [x] Message REST 전체 audit 및 필수 blocker 보완 완료
+10. [ ] WebSocket 실시간 반영
+   - [x] backend `message.created` event 계약 확인
+     - [x] payload: `{ type: "message.created", payload: { conversationId, message } }`
+     - [x] sender 제외, 상대 사용자의 열린 connection들에 전송
+     - [x] REST message shape와 WebSocket message shape 일치 확인
+   - [x] frontend `message.created` handler
+     - [x] 해당 conversation의 messages cache에 수신 message 반영
+     - [x] 다른 conversation cache와 격리
+     - [x] 동일 message id 중복 방지
+     - [x] unsupported event / malformed JSON 무시
+     - [x] runtime payload validation — 잘못된 conversationId / message shape 무시
+   - [x] authenticated app-global WebSocket lifecycle
+     - [x] `ProtectedRoute` 하위에 UI-less `AuthenticatedWebSocket` 연결
+     - [x] protected route 간 이동 시 connection 유지
+     - [x] guest route에서는 connection 생성하지 않음
+     - [x] message listener 등록 및 cleanup
+     - [x] unmount 시 listener 제거 + socket close
+     - [x] auth/me가 user → null로 바뀌면 socket cleanup 및 재연결 방지
+   - [x] 실제 router → `ConversationPage` → `MessageList` 실시간 반영 regression test
+   - [x] WebSocket open 시 REST → socket 연결 gap 복구
+     - [x] open 시 cached messages query refetch
+     - [x] 최초 messages GET이 이미 pending인 경우에도 기존 요청 완료 후 새 refetch를 보장
+     - [x] 연결 직전 생성되어 REST/WebSocket 양쪽에서 놓칠 수 있는 message 복구 regression test
+   - [x] unexpected close 시 WebSocket 재연결
+     - [x] unmount cleanup close에서는 재연결하지 않음
+     - [x] 새 connection open 시 기존 gap recovery 재사용
+   - [x] 최종 audit 필수 blocker 보완
+     - [x] POST 응답과 WebSocket event 도착 순서가 뒤섞여도 REST 계약(`createdAt DESC, id DESC`)과 같은 message 정렬 유지
+       - [x] `createdAt`이 다르면 최신 message 우선
+       - [x] `createdAt`이 같으면 `id DESC`로 tie-break
+     - [x] pending cache sync callback이 logout/cache clear 이후 이전 사용자 messages cache를 다시 생성하지 않도록 방어
+       - [x] pending messages query 전후의 TanStack Query 객체 identity를 비교해 clear/recreate 감지
+       - [x] 이전 Query가 제거되거나 같은 queryKey로 새 Query가 생성된 경우 delayed cache sync 중단
+     - [x] access token 만료 상태에서 reconnect가 실패를 반복하지 않도록 auth refresh/recovery 흐름과 retry 간격 설계 및 테스트
+       - [x] unexpected close 후 `auth/me` 재확인이 끝나기 전에는 reconnect하지 않음
+       - [x] auth recovery가 authenticated user를 반환하면 reconnect
+       - [x] auth recovery가 `null`이면 reconnect 중단
+       - [x] auth recovery가 error를 throw하면 1초 후 다시 auth recovery 시도
+       - [x] retry 대기 중 unmount되면 예약된 auth recovery timer 취소
+   - [ ] 필수 blocker 보완 후 WebSocket 최종 재-audit
+11. [ ] Profile
 
-### 미정
+### 별도 후속 TODO
 
-- 프로필 이미지 저장 방식
+- Conversation feature: conversation 상세 background refetch 실패 시 기존 화면 / draft 유지 여부 보완
+- Backend Message: message 저장과 `Conversation.lastActivityAt` 갱신의 원자성 검토 및 보완
+- WebSocket optional: `/` ConversationList의 최근 메시지 / 정렬 / 새 conversation 실시간 반영 범위 검토
+- WebSocket optional: URL `http→ws` / `https→wss`, StrictMode 재마운트, reconnect 이후 open→gap recovery→message 수신 회귀 테스트 보강
 
-## 5. 구현 진행 현황
+### Frontend 작업 방식
 
-### Backend — Auth
+- query / mutation / UI 같은 단위 구현에서는 주요 상태를 모두 검토하고 TDD로 완료한 뒤 다음 단위로 이동한다.
+- 큰 기능 단위가 완료되면 다음 기능으로 넘어가기 전에 기능 전체 audit를 수행한다.
+- audit에서는 API 계약, query/mutation/UI 상태, 실제 router/page 연결, 사용자 흐름, 테스트 누락·중복을 확인한다.
+- audit에서 발견된 필수 문제를 보완하고 다시 확인한 뒤 다음 큰 기능으로 이동한다.
+- GPT 대화 세션을 교체하기 전에는 현재 진행 상황과 다음 시작점을 이 문서에 먼저 반영한다.
+- 테스트에 의미 있는 기능/흐름 단위가 있으면 `describe`로 그룹화한다. 단, 나눌 실익이 없는 테스트는 억지로 그룹화하지 않는다.
 
-- [x] `POST /auth/register`
-- [x] `POST /auth/login`
-- [x] `POST /auth/refresh`
-- [x] `POST /auth/logout`
-- [x] `GET /auth/me`
-- [x] Access / Refresh Token HttpOnly cookie
-- [x] RefreshSession 서버 저장
-- [x] Refresh token SHA-256 hash 저장
-- [x] Refresh token rotation + Prisma transaction
-- [x] Access token 인증 middleware
-- [x] Zod env validation / test DB 환경 분리
+### 다음 시작점
 
-### Backend — User / Profile
-
-- [x] `GET /users/{username}`
-- [x] `PATCH /users/me`
-- [x] `GET /users?query=...`
-- [x] 검색 query validation: trim 후 1~50자
-- [x] 인증 / 404 / profile validation integration test
-
-### Backend — Conversation
-
-- [x] `POST /conversations`
-  - [x] 새 1:1 대화 생성
-  - [x] 기존 대화 재사용
-  - [x] 자기 자신 차단
-  - [x] target user 404
-  - [x] `targetUsername` validation: trim 후 1~30자
-- [x] `GET /conversations`
-  - [x] 현재 사용자 대화만 조회
-  - [x] 상대 사용자 + 마지막 메시지 반환
-  - [x] `lastActivityAt DESC, id DESC` 정렬
-  - [x] cursor pagination
-  - [x] pagination query validation
-  - [x] 빈 목록 처리
-- [x] `GET /conversations/{id}`
-  - [x] 성공 조회 구현
-  - [x] service의 403 / 404 처리
-  - [x] integration 성공 경로
-  - [x] integration 실패 경로 구현 (`401` / `403` / `404`)
-  - [x] conversation id positive integer validation 구현
-
-### Backend — Message
-
-- [x] `POST /conversations/{id}/messages`
-  - [x] participant 권한 검증
-  - [x] 메시지 validation
-  - [x] Message 생성
-  - [x] `Conversation.lastActivityAt` 갱신
-- [x] `GET /conversations/{id}/messages`
-  - [x] 최신 메시지 조회
-  - [x] `createdAt DESC, id DESC` 정렬
-  - [x] cursor pagination
-  - [x] `401` / `403` / `404` 실패 경로
-  - [x] conversation id / cursor / limit validation
-
-### Backend — WebSocket
-
-- [x] Access Token cookie 기반 연결 인증
-- [x] userId별 connection registry 관리
-- [x] connection 종료 시 registry 정리
-- [x] 복수 connection 관리
-- [x] `message.created` 실시간 전달
-- [x] recipient의 모든 connection에 event 전달
-- [x] sender 제외 검증
-- [x] WebSocket integration test
-- [x] `req.socket.server` / `WeakMap` 의존 제거 및 publisher 주입 구조로 리팩토링
-
-### Backend — 최종 검증
-
-- [x] 전체 backend test
-- [x] lint
-- [x] build
-
-### Frontend
-
-- [ ] 구현 시작
+- 새 GPT 세션에서 **WebSocket 기능 전체 최종 re-audit**부터 시작한다.
+  - API / WebSocket event 계약과 실제 구현 일치 여부 확인
+  - query/cache 동기화와 WebSocket lifecycle의 주요 상태 누락 여부 확인
+  - 실제 router → page 흐름과 reconnect / gap recovery / cleanup 회귀 확인
+  - 기존 테스트의 누락·중복 및 구현을 놓치는 테스트 구조 확인
+- 이번 audit에서 필수 문제가 없으면 WebSocket 기능을 완료 처리한다.
+- WebSocket 완료 후 다음 큰 기능인 **Profile**을 TDD로 시작한다.
 
 ## 6. 배포 / 인증 쿠키 정책
 
