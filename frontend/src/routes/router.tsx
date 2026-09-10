@@ -4,7 +4,7 @@ import { ConversationList } from "@/features/conversations/ConversationList.tsx"
 import { ConversationPage } from "@/features/conversations/ConversationPage.tsx";
 import { ProfilePage } from "@/features/users/ProfilePage.tsx";
 import { UserSearch } from "@/features/users/UserSearch.tsx";
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Link } from "react-router";
 import { GuestOnlyRoute } from "./GuestOnlyRoute.tsx";
 import { ProtectedRoute } from "./ProtectedRoute.tsx";
 
@@ -16,6 +16,7 @@ const routes = [
         path: "/",
         element: (
           <>
+            <Link to="/profile">My profile</Link>
             <UserSearch />
             <ConversationList />
           </>

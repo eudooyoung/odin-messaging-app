@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
@@ -95,6 +96,81 @@ describe("router", () => {
     expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations?limit=20", {
       signal: expect.any(AbortSignal),
     });
+
+    queryClient.clear();
+  });
+
+  it("navigates from the main screen to the current user's profile", async () => {
+    vi.mocked(apiFetch).mockImplementation((input) => {
+      if (input === "/auth/me") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: 1,
+              username: "current-user",
+              displayName: "Current User",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (input === "/conversations?limit=20") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              conversations: [],
+              nextCursor: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (input === "/users/current-user") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              username: "current-user",
+              displayName: "Current User",
+              bio: null,
+              profileImage: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+
+    await router.navigate("/");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "My profile" }));
+
+    expect(router.state.location.pathname).toBe("/profile");
+    expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
+      "Current User",
+    );
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
 
     queryClient.clear();
   });
