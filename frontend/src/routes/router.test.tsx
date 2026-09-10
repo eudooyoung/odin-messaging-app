@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
@@ -99,6 +100,81 @@ describe("router", () => {
     queryClient.clear();
   });
 
+  it("navigates from the main screen to the current user's profile", async () => {
+    vi.mocked(apiFetch).mockImplementation((input) => {
+      if (input === "/auth/me") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: 1,
+              username: "current-user",
+              displayName: "Current User",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (input === "/conversations?limit=20") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              conversations: [],
+              nextCursor: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (input === "/users/current-user") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              username: "current-user",
+              displayName: "Current User",
+              bio: null,
+              profileImage: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+
+    await router.navigate("/");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "My profile" }));
+
+    expect(router.state.location.pathname).toBe("/profile");
+    expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
+      "Current User",
+    );
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
   it("renders the login page under the guest-only route for an unauthenticated user", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
     const queryClient = new QueryClient();
@@ -138,6 +214,95 @@ describe("router", () => {
     expect(screen.getByRole("button", { name: "Register" })).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledOnce();
     expect(apiFetch).toHaveBeenCalledWith("/auth/me", {
+      signal: expect.any(AbortSignal),
+    });
+
+    queryClient.clear();
+  });
+
+  it("renders the profile page under the protected route for an authenticated user", async () => {
+    vi.mocked(apiFetch).mockImplementation((input) => {
+      if (input === "/auth/me") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: 1,
+              username: "current-user",
+              displayName: "Current User",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (input === "/users/current-user") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              username: "current-user",
+              displayName: "Current User",
+              bio: "Current bio",
+              profileImage: "https://example.com/current-user.jpg",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+
+    await router.navigate("/profile");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
+      "Current User",
+    );
+    expect(screen.getByRole("textbox", { name: "Bio" })).toHaveValue("Current bio");
+    expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue(
+      "https://example.com/current-user.jpg",
+    );
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenNthCalledWith(1, "/auth/me", {
+      signal: expect.any(AbortSignal),
+    });
+    expect(apiFetch).toHaveBeenNthCalledWith(2, "/users/current-user", {
+      signal: expect.any(AbortSignal),
+    });
+
+    queryClient.clear();
+  });
+
+  it("redirects an unauthenticated user from the profile route to login", async () => {
+    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
+    const queryClient = new QueryClient();
+
+    await router.navigate("/profile");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenCalledTimes(2);
+    expect(apiFetch).toHaveBeenNthCalledWith(1, "/auth/me", {
+      signal: expect.any(AbortSignal),
+    });
+    expect(apiFetch).toHaveBeenNthCalledWith(2, "/auth/me", {
       signal: expect.any(AbortSignal),
     });
 
@@ -292,13 +457,10 @@ describe("router", () => {
 
       if (input === "/conversations/1/messages?limit=20") {
         return Promise.resolve(
-          new Response(
-            JSON.stringify({ messages: [], nextCursor: null }),
-            {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            },
-          ),
+          new Response(JSON.stringify({ messages: [], nextCursor: null }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
         );
       }
 
@@ -343,9 +505,7 @@ describe("router", () => {
       );
     });
 
-    expect(
-      screen.queryByText("Message for another conversation"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Message for another conversation")).not.toBeInTheDocument();
 
     act(() => {
       webSocket.emitMessage(
@@ -368,12 +528,8 @@ describe("router", () => {
       );
     });
 
-    expect(
-      await screen.findByText("New message for the current conversation"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Message for another conversation"),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText("New message for the current conversation")).toBeInTheDocument();
+    expect(screen.queryByText("Message for another conversation")).not.toBeInTheDocument();
 
     queryClient.clear();
   });
