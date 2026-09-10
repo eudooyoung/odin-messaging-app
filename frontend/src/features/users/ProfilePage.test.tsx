@@ -31,11 +31,15 @@ const renderProfilePage = (queryClient: QueryClient) => {
 };
 
 const ProfileQueryObserver = () => {
-  const { data: profile } = useQuery(
-    userProfileQueryOptions(currentUser.username),
-  );
+  const { data: profile } = useQuery(userProfileQueryOptions(currentUser.username));
 
   return <output data-testid="profile-query-display-name">{profile?.displayName}</output>;
+};
+
+const AuthQueryObserver = () => {
+  const { data: user } = useQuery(authMeQueryOptions);
+
+  return <output data-testid="auth-me-display-name">{user?.displayName}</output>;
 };
 
 describe("ProfilePage", () => {
@@ -170,9 +174,7 @@ describe("ProfilePage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent(
-        "Server User",
-      );
+      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Server User");
     });
     expect(queryClient.getQueryData(profileQueryKey)).toEqual(refreshedProfile);
     expect(displayNameInput).toHaveValue("Unsaved User");
@@ -389,6 +391,223 @@ describe("ProfilePage", () => {
     expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
       ...currentUser,
       displayName: "Updated User",
+    });
+
+    queryClient.clear();
+  });
+
+  it("keeps the saved profile when an older profile refetch finishes afterward", async () => {
+    const profile = {
+      username: "current-user",
+      displayName: "Current User",
+      bio: "Current bio",
+      profileImage: null,
+    };
+    const updatedProfile = {
+      ...profile,
+      displayName: "Saved User",
+      bio: "Saved bio",
+    };
+    let profileGetCount = 0;
+    let resolveProfileRefetch: ((response: Response) => void) | undefined;
+    const pendingProfileRefetch = new Promise<Response>((resolve) => {
+      resolveProfileRefetch = resolve;
+    });
+    vi.mocked(apiFetch).mockImplementation((input, init) => {
+      if (input === "/users/current-user") {
+        profileGetCount += 1;
+
+        if (profileGetCount === 1) {
+          return Promise.resolve(
+            new Response(JSON.stringify(profile), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
+        return pendingProfileRefetch;
+      }
+
+      if (input === "/users/me" && init?.method === "PATCH") {
+        return Promise.resolve(
+          new Response(JSON.stringify(updatedProfile), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ProfilePage />
+          <ProfileQueryObserver />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const displayNameInput = await screen.findByRole("textbox", {
+      name: "Display name",
+    });
+    const bioInput = screen.getByRole("textbox", { name: "Bio" });
+    await user.clear(displayNameInput);
+    await user.type(displayNameInput, "Saved User");
+    await user.clear(bioInput);
+    await user.type(bioInput, "Saved bio");
+
+    const profileQueryKey = userProfileQueryOptions("current-user").queryKey;
+    const refetchPromise = queryClient.refetchQueries({
+      queryKey: profileQueryKey,
+      exact: true,
+    });
+    await waitFor(() => {
+      expect(profileGetCount).toBe(2);
+    });
+
+    await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(await screen.findByText("Profile updated")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
+    });
+    expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
+
+    if (!resolveProfileRefetch) {
+      throw new Error("Expected a pending profile refetch");
+    }
+
+    const resolveRefetch = resolveProfileRefetch;
+
+    await act(async () => {
+      resolveRefetch(
+        new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      await refetchPromise;
+    });
+
+    await waitFor(() => {
+      expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
+      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
+    });
+    expect(displayNameInput).toHaveValue("Saved User");
+    expect(bioInput).toHaveValue("Saved bio");
+
+    queryClient.clear();
+  });
+
+  it("keeps the saved display name when an older auth refetch finishes afterward", async () => {
+    const profile = {
+      username: "current-user",
+      displayName: "Current User",
+      bio: null,
+      profileImage: null,
+    };
+    const updatedProfile = {
+      ...profile,
+      displayName: "Saved User",
+    };
+    let resolveAuthRefetch: ((response: Response) => void) | undefined;
+    const pendingAuthRefetch = new Promise<Response>((resolve) => {
+      resolveAuthRefetch = resolve;
+    });
+    vi.mocked(apiFetch).mockImplementation((input, init) => {
+      if (input === "/auth/me") {
+        return pendingAuthRefetch;
+      }
+
+      if (input === "/users/current-user") {
+        return Promise.resolve(
+          new Response(JSON.stringify(profile), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      if (input === "/users/me" && init?.method === "PATCH") {
+        return Promise.resolve(
+          new Response(JSON.stringify(updatedProfile), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ProfilePage />
+          <AuthQueryObserver />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const displayNameInput = await screen.findByRole("textbox", {
+      name: "Display name",
+    });
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/auth/me", {
+        signal: expect.any(AbortSignal),
+      });
+      expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe("fetching");
+    });
+    await user.clear(displayNameInput);
+    await user.type(displayNameInput, "Saved User");
+    await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(await screen.findByText("Profile updated")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
+        ...currentUser,
+        displayName: "Saved User",
+      });
+      expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
+    });
+
+    if (!resolveAuthRefetch) {
+      throw new Error("Expected a pending auth refetch");
+    }
+
+    const resolveFetch = resolveAuthRefetch;
+
+    await act(async () => {
+      resolveFetch(
+        new Response(
+          JSON.stringify({
+            ...currentUser,
+            displayName: "Current User",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+    });
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe("idle");
+      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
+        ...currentUser,
+        displayName: "Saved User",
+      });
+      expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
     });
 
     queryClient.clear();

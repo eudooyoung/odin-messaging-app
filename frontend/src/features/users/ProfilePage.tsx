@@ -51,11 +51,15 @@ export function ProfilePage() {
         bio: input.bio === "" ? null : input.bio,
         profileImage: input.profileImage === "" ? null : input.profileImage,
       }),
-    onSuccess: (updatedProfile) => {
-      queryClient.setQueryData(
-        userProfileQueryOptions(username).queryKey,
-        updatedProfile,
-      );
+    onSuccess: async (updatedProfile) => {
+      const profileQueryKey = userProfileQueryOptions(username).queryKey;
+
+      await queryClient.cancelQueries({ queryKey: profileQueryKey, exact: true });
+      await queryClient.cancelQueries({
+        queryKey: authMeQueryOptions.queryKey,
+        exact: true,
+      });
+      queryClient.setQueryData(profileQueryKey, updatedProfile);
       queryClient.setQueryData<AuthUser | null>(
         authMeQueryOptions.queryKey,
         (user) =>
