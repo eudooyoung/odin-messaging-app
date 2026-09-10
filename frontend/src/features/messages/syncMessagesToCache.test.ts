@@ -100,6 +100,49 @@ describe("syncMessageToCache", () => {
     queryClient.clear();
   });
 
+  it("keeps messages in createdAt descending order when an older message is synced after a newer message", () => {
+    const queryClient = new QueryClient();
+
+    syncMessageToCache(queryClient, conversationId, createdMessage);
+    syncMessageToCache(queryClient, conversationId, latestMessage);
+
+    expect(getMessagesCache(queryClient)).toEqual({
+      pages: [
+        {
+          messages: [createdMessage, latestMessage],
+          nextCursor: null,
+        },
+      ],
+      pageParams: [null],
+    });
+
+    queryClient.clear();
+  });
+
+  it("keeps messages with the same createdAt in id descending order when a lower-id message is synced last", () => {
+    const queryClient = new QueryClient();
+    const higherIdMessage = {
+      ...createdMessage,
+      id: 12,
+      content: "Higher id message",
+    };
+
+    syncMessageToCache(queryClient, conversationId, higherIdMessage);
+    syncMessageToCache(queryClient, conversationId, createdMessage);
+
+    expect(getMessagesCache(queryClient)).toEqual({
+      pages: [
+        {
+          messages: [higherIdMessage, createdMessage],
+          nextCursor: null,
+        },
+      ],
+      pageParams: [null],
+    });
+
+    queryClient.clear();
+  });
+
   it("does not add the same message more than once", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
@@ -156,5 +199,36 @@ describe("syncMessageToCache", () => {
 
     observer.destroy();
     queryClient.clear();
+  });
+
+  it("does not recreate a cleared messages cache when a pending cache sync completes", async () => {
+    const nextPageResponse = deferred<Response>();
+    vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
+    const queryClient = new QueryClient();
+    queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
+      pages: [{ messages: [latestMessage], nextCursor: 10 }],
+      pageParams: [null],
+    });
+    const observer = new InfiniteQueryObserver(queryClient, messagesQueryOptions(conversationId));
+
+    const messagesFetch = observer.fetchNextPage();
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?cursor=10&limit=20", {
+        signal: expect.any(AbortSignal),
+      });
+    });
+
+    syncMessageToCache(queryClient, conversationId, createdMessage);
+    queryClient.clear();
+
+    expect(getMessagesCache(queryClient)).toBeUndefined();
+
+    nextPageResponse.resolve(messagesResponse({ messages: [olderMessage], nextCursor: null }));
+    await messagesFetch;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(getMessagesCache(queryClient)).toBeUndefined();
+
+    observer.destroy();
   });
 });
