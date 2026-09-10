@@ -45,6 +45,36 @@ describe("userProfileQueryOptions", () => {
     expect(firstUserQuery.queryKey).not.toEqual(secondUserQuery.queryKey);
   });
 
+  it.each(["alice#1", "a/b", "name?x"])(
+    "encodes the username %s when using it as a URL path segment",
+    async (username) => {
+      const profile = {
+        username,
+        displayName: "Profile User",
+        bio: null,
+        profileImage: null,
+      };
+      vi.mocked(apiFetch).mockResolvedValue(
+        new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      const queryClient = new QueryClient();
+      const queryOptions = userProfileQueryOptions(username);
+
+      await queryClient.query(queryOptions);
+
+      expect(apiFetch).toHaveBeenCalledWith(
+        `/users/${encodeURIComponent(username)}`,
+        { signal: expect.any(AbortSignal) },
+      );
+      expect(queryOptions.queryKey).toContain(username);
+
+      queryClient.clear();
+    },
+  );
+
   it("throws a user-facing error when the requested profile does not exist", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 404 }));
     const queryClient = new QueryClient({

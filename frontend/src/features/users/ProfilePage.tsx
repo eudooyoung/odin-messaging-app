@@ -25,7 +25,7 @@ export function ProfilePage() {
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData<AuthUser>(authMeQueryOptions.queryKey);
   const username = currentUser?.username ?? "";
-  const { data: profile, isPending } = useQuery({
+  const { data: profile, isPending, isError, error } = useQuery({
     ...userProfileQueryOptions(username),
     enabled: username.length > 0,
   });
@@ -65,6 +65,10 @@ export function ProfilePage() {
 
   if (isPending) {
     return <p role="status">Loading profile...</p>;
+  }
+
+  if (isError) {
+    return <p role="alert">{error.message}</p>;
   }
 
   if (!profile) {

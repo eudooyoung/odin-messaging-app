@@ -108,6 +108,44 @@ describe("ProfilePage", () => {
 
   it.each([
     {
+      caseName: "the requested profile does not exist",
+      arrangeFailure: () =>
+        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 404 })),
+      expectedMessage: "Profile not found",
+    },
+    {
+      caseName: "the profile API returns another unsuccessful response",
+      arrangeFailure: () =>
+        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 })),
+      expectedMessage: "Failed to load profile",
+    },
+    {
+      caseName: "the profile request fails in transport",
+      arrangeFailure: () => vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch")),
+      expectedMessage: "Failed to fetch",
+    },
+  ])(
+    "shows the query error instead of a blank page when $caseName",
+    async ({ arrangeFailure, expectedMessage }) => {
+      arrangeFailure();
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+          },
+        },
+      });
+
+      renderProfilePage(queryClient);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+
+      queryClient.clear();
+    },
+  );
+
+  it.each([
+    {
       caseName: "the display name is blank after trimming",
       fieldName: "Display name",
       value: "   ",
@@ -270,9 +308,9 @@ describe("ProfilePage", () => {
         profileImage: null,
       }),
     });
-    expect(
-      queryClient.getQueryData(userProfileQueryOptions("current-user").queryKey),
-    ).toEqual(updatedProfile);
+    expect(queryClient.getQueryData(userProfileQueryOptions("current-user").queryKey)).toEqual(
+      updatedProfile,
+    );
     expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
       ...currentUser,
       displayName: "Updated User",
@@ -317,9 +355,7 @@ describe("ProfilePage", () => {
 
     const updateCalls = vi
       .mocked(apiFetch)
-      .mock.calls.filter(
-        ([input, init]) => input === "/users/me" && init?.method === "PATCH",
-      );
+      .mock.calls.filter(([input, init]) => input === "/users/me" && init?.method === "PATCH");
     expect(updateCalls).toHaveLength(1);
 
     queryClient.clear();

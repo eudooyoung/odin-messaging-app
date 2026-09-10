@@ -15,7 +15,9 @@ export const userProfileQueryOptions = (username: string) =>
   queryOptions({
     queryKey: ["users", "profile", username] as const,
     queryFn: async ({ signal }): Promise<UserProfile> => {
-      const response = await apiFetch(`/users/${username}`, { signal });
+      const response = await apiFetch(`/users/${encodeURIComponent(username)}`, {
+        signal,
+      });
 
       if (response.status === 404) {
         throw new UserFacingError("Profile not found");
