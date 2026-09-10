@@ -35,6 +35,9 @@ export function ProfilePage() {
     formState: { errors },
   } = useForm<ProfileInput>({
     resolver: zodResolver(profileSchema),
+    resetOptions: {
+      keepDirtyValues: true,
+    },
     values: {
       displayName: profile?.displayName ?? "",
       bio: profile?.bio ?? "",

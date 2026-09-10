@@ -1,5 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -28,6 +28,14 @@ const renderProfilePage = (queryClient: QueryClient) => {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+};
+
+const ProfileQueryObserver = () => {
+  const { data: profile } = useQuery(
+    userProfileQueryOptions(currentUser.username),
+  );
+
+  return <output data-testid="profile-query-display-name">{profile?.displayName}</output>;
 };
 
 describe("ProfilePage", () => {
@@ -102,6 +110,73 @@ describe("ProfilePage", () => {
     );
     expect(screen.getByRole("textbox", { name: "Bio" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue("");
+
+    queryClient.clear();
+  });
+
+  it("preserves unsaved form values after a profile refetch updates the query data", async () => {
+    const profile = {
+      username: "current-user",
+      displayName: "Current User",
+      bio: "Current bio",
+      profileImage: null,
+    };
+    const refreshedProfile = {
+      ...profile,
+      displayName: "Server User",
+      bio: "Server bio",
+    };
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(refreshedProfile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ProfilePage />
+          <ProfileQueryObserver />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const displayNameInput = await screen.findByRole("textbox", {
+      name: "Display name",
+    });
+    const bioInput = screen.getByRole("textbox", { name: "Bio" });
+    expect(displayNameInput).toHaveValue("Current User");
+    expect(bioInput).toHaveValue("Current bio");
+
+    await user.clear(displayNameInput);
+    await user.type(displayNameInput, "Unsaved User");
+    await user.clear(bioInput);
+    await user.type(bioInput, "Unsaved bio");
+
+    const profileQueryKey = userProfileQueryOptions("current-user").queryKey;
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: profileQueryKey, exact: true });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent(
+        "Server User",
+      );
+    });
+    expect(queryClient.getQueryData(profileQueryKey)).toEqual(refreshedProfile);
+    expect(displayNameInput).toHaveValue("Unsaved User");
+    expect(bioInput).toHaveValue("Unsaved bio");
 
     queryClient.clear();
   });
