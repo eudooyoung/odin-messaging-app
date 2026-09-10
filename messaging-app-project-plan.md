@@ -8,9 +8,8 @@
 - [x] 4. 기술 스택 결정
 - [ ] 5. 구현
   - [x] Backend
-  - [ ] Frontend
-    - [x] Auth / User Search / Conversation / Message / WebSocket
-    - [ ] Profile
+  - [x] Frontend
+  - [ ] Cross-cutting hardening
 - [ ] 6. 배포
 
 ## 1. 요구사항 / 서비스 규칙
@@ -374,11 +373,16 @@
   - [x] POST / WebSocket 도착 순서와 무관하게 `createdAt DESC, id DESC` 유지
   - [x] delayed cache sync가 clear된 이전 사용자 cache를 되살리지 않도록 방어
   - [x] 최종 re-audit 완료 — 필수 WebSocket blocker 없음
-- [ ] Profile
-  - [ ] Profile query
-  - [ ] Profile edit mutation
-  - [ ] Profile UI / validation / 주요 상태
-  - [ ] Profile 전체 audit
+- [x] Profile
+  - [x] Profile query
+  - [x] username path segment 인코딩
+  - [x] Profile edit mutation
+  - [x] Profile UI / validation / loading / query error / mutation 상태
+  - [x] null bio/profileImage 표시 및 submit 변환
+  - [x] dirty form의 refetch 입력값 보존
+  - [x] PATCH 성공과 profile/auth-me GET 사이 cache race 방어
+  - [x] `/profile` protected route + 메인 화면 진입 경로
+  - [x] Profile 전체 re-audit 완료 — 필수 blocker 없음
 
 ### 남은 필수 후속 작업
 
@@ -405,11 +409,15 @@ Profile 또는 배포 전 별도 cross-cutting 작업으로 처리한다.
 
 ### 다음 시작점
 
-- **Profile frontend TDD**부터 시작한다.
-- 현재 Profile API 계약과 frontend 구조를 먼저 확인한다.
-- 필요한 query / mutation / UI 상태를 식별한다.
-- 성공 경로부터 RED → GREEN으로 진행한다.
-- Profile 전체 audit 후 남은 cross-cutting 작업과 배포 단계로 이동한다.
+- Frontend Profile까지 기능 구현 및 최종 re-audit을 완료했다.
+- 다음 세션에서는 **남은 cross-cutting hardening**부터 진행한다.
+- 우선순위:
+  1. Auth/cache session isolation
+  2. Auth refresh concurrency / failure semantics
+  3. Backend Message atomicity
+  4. WebSocket deployment security
+- 각 항목은 현재 코드에서 실제 문제가 재현되는지 먼저 확인한 뒤 필요한 경우 TDD로 보완한다.
+- 필수 hardening 완료 후 전체 audit → 배포 단계로 이동한다.
 
 
 ## 6. 배포 / 인증 쿠키 정책
