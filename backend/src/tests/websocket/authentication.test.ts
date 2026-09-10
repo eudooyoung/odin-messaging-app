@@ -2,7 +2,7 @@ import { once } from "node:events";
 import { createServer, type Server } from "node:http";
 import jwt from "jsonwebtoken";
 import WebSocket, { type WebSocketServer } from "ws";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app.js";
 import { env } from "@/config/env.config.js";
 import { attachWebSocketServer, createWebSocketConnectionRegistry } from "@/websocket.js";
@@ -127,6 +127,27 @@ describe("WebSocket connection authentication", () => {
     const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
 
     expect(connectionRegistry.get(user.id)?.has(connection)).toBe(true);
+  });
+
+  it("handles an error from an authenticated connection without throwing", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const user = await createTestUser();
+    const accessTokenCookie = createAccessTokenCookie(user.id);
+    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
+
+    client = new WebSocket(webSocketUrl, {
+      headers: {
+        Cookie: accessTokenCookie,
+      },
+    });
+
+    const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
+    const connectionError = new Error("Connection error");
+
+    expect(() => connection.emit("error", connectionError)).not.toThrow();
+    expect(consoleErrorSpy).toHaveBeenCalledOnce();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(connectionError);
   });
 
   it("removes the user entry when their last connection closes", async () => {

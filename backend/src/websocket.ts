@@ -40,6 +40,9 @@ export const attachWebSocketServer = (
       }
 
       userConnections.add(authenticatedWebSocket);
+      authenticatedWebSocket.on("error", (error) => {
+        console.error(error);
+      });
       authenticatedWebSocket.once("close", () => {
         userConnections.delete(authenticatedWebSocket);
 
