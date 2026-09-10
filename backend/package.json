@@ -36,9 +36,9 @@
   },
   "scripts": {
     "build": "prisma generate && rm -rf dist/ && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
-    "start": "node dist/src/server.js",
-    "dev": "tsx --watch src/server.ts",
-    "test": "vitest",
+    "start": "NODE_ENV=production node dist/src/server.js",
+    "dev": "NODE_ENV=development tsx --watch src/server.ts",
+    "test": "NODE_ENV=test vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
