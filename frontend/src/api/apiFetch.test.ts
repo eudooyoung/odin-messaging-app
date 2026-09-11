@@ -52,6 +52,71 @@ describe("apiFetch", () => {
     expect(result).toBe(retryResponse);
   });
 
+  it("shares one refresh when different requests receive 401 concurrently", async () => {
+    const conversationsUrl = `${apiUrl}/conversations`;
+    const userProfileUrl = `${apiUrl}/users/current-user`;
+    const refreshUrl = `${apiUrl}/auth/refresh`;
+    const retryResponses = new Map([
+      [conversationsUrl, new Response(null, { status: 200 })],
+      [userProfileUrl, new Response(null, { status: 200 })],
+    ]);
+    const requestAttempts = new Map<string, number>();
+    let resolveRefresh: (response: Response) => void = () => undefined;
+    const pendingRefreshResponse = new Promise<Response>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const getRequestUrl = (input: string | URL | Request) =>
+      input instanceof Request ? input.url : input.toString();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const requestUrl = getRequestUrl(input);
+
+      if (requestUrl === refreshUrl) {
+        return pendingRefreshResponse;
+      }
+
+      const attempt = (requestAttempts.get(requestUrl) ?? 0) + 1;
+      requestAttempts.set(requestUrl, attempt);
+
+      if (attempt === 1) {
+        return Promise.resolve(new Response(null, { status: 401 }));
+      }
+
+      const retryResponse = retryResponses.get(requestUrl);
+      if (!retryResponse) {
+        return Promise.reject(new Error(`Unexpected request: ${requestUrl}`));
+      }
+
+      return Promise.resolve(retryResponse);
+    });
+
+    const conversationsRequest = apiFetch("/conversations");
+    const userProfileRequest = apiFetch("/users/current-user");
+
+    await Promise.resolve();
+    const refreshCallCountBeforeResolution = fetchMock.mock.calls.filter(
+      ([input]) => getRequestUrl(input) === refreshUrl,
+    ).length;
+    resolveRefresh(new Response(null, { status: 204 }));
+
+    const [conversationsResponse, userProfileResponse] = await Promise.all([
+      conversationsRequest,
+      userProfileRequest,
+    ]);
+
+    expect(refreshCallCountBeforeResolution).toBe(1);
+    expect(
+      fetchMock.mock.calls.filter(([input]) => getRequestUrl(input) === refreshUrl),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.mock.calls.filter(([input]) => getRequestUrl(input) === conversationsUrl),
+    ).toHaveLength(2);
+    expect(
+      fetchMock.mock.calls.filter(([input]) => getRequestUrl(input) === userProfileUrl),
+    ).toHaveLength(2);
+    expect(conversationsResponse).toBe(retryResponses.get(conversationsUrl));
+    expect(userProfileResponse).toBe(retryResponses.get(userProfileUrl));
+  });
+
   it("returns the original 401 response when refresh fails", async () => {
     const unauthorizedResponse = new Response(null, { status: 401 });
     const refreshResponse = new Response(null, { status: 401 });

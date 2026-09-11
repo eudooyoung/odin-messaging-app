@@ -1,8 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { AUTH_QUERY_ERROR_MESSAGE, authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { AuthenticatedWebSocket } from "@/features/messages/AuthenticatedWebSocket.tsx";
+
+function ClearSessionCacheOnAuthEnd() {
+  const queryClient = useQueryClient();
+
+  useEffect(
+    () => () => {
+      if (queryClient.getQueryData(authMeQueryOptions.queryKey) === null) {
+        queryClient.removeQueries({
+          predicate: ({ queryKey }) => queryKey[0] !== "auth",
+        });
+      }
+    },
+    [queryClient],
+  );
+
+  return null;
+}
 
 export function ProtectedRoute() {
   const { data: currentUser, isPending, isError, error } = useQuery(authMeQueryOptions);
@@ -31,6 +49,7 @@ export function ProtectedRoute() {
             {error instanceof UserFacingError ? error.message : AUTH_QUERY_ERROR_MESSAGE}
           </p>
         )}
+        <ClearSessionCacheOnAuthEnd />
         <AuthenticatedWebSocket />
         <Outlet />
       </>

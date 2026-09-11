@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
+import { messagesQueryOptions } from "@/features/messages/messagesQuery.ts";
 import { router } from "./router.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -168,6 +171,193 @@ describe("router", () => {
       expect(router.state.location.pathname).toBe("/login");
     });
     expect(await screen.findByRole("button", { name: "Log in" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
+  it("clears the previous user's cache when auth ends before another user logs in", async () => {
+    const userA = {
+      id: 1,
+      username: "user-a",
+      displayName: "User A",
+    };
+    const userB = {
+      id: 2,
+      username: "user-b",
+      displayName: "User B",
+    };
+    const userAConversations = {
+      pages: [
+        {
+          conversations: [
+            {
+              id: 10,
+              otherUser: {
+                username: "user-a-friend",
+                displayName: "User A Friend",
+                profileImage: null,
+              },
+              lastMessage: null,
+              lastActivityAt: "2026-09-10T01:00:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        },
+      ],
+      pageParams: [null],
+    };
+    const userAMessages = {
+      pages: [
+        {
+          messages: [
+            {
+              id: 100,
+              content: "Private message for User A",
+              sender: {
+                username: "user-a-friend",
+                displayName: "User A Friend",
+                profileImage: null,
+              },
+              createdAt: "2026-09-10T01:00:00.000Z",
+            },
+          ],
+          nextCursor: null,
+        },
+      ],
+      pageParams: [null],
+    };
+    let authState: "user-a" | "unauthenticated" | "user-b-pending" | "user-b" =
+      "user-a";
+    let resolveUserB: (response: Response) => void = () => undefined;
+    const pendingUserBResponse = new Promise<Response>((resolve) => {
+      resolveUserB = resolve;
+    });
+    let resolveUserBConversations: (response: Response) => void = () => undefined;
+    const pendingUserBConversations = new Promise<Response>((resolve) => {
+      resolveUserBConversations = resolve;
+    });
+    vi.mocked(apiFetch).mockImplementation((input, init) => {
+      if (input === "/auth/me") {
+        if (authState === "user-a") {
+          return Promise.resolve(
+            new Response(JSON.stringify(userA), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
+        if (authState === "unauthenticated") {
+          return Promise.resolve(new Response(null, { status: 401 }));
+        }
+
+        if (authState === "user-b-pending") {
+          return pendingUserBResponse;
+        }
+
+        return Promise.resolve(
+          new Response(JSON.stringify(userB), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      if (input === "/auth/login" && init?.method === "POST") {
+        authState = "user-b-pending";
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+
+      if (input === "/conversations?limit=20") {
+        if (authState === "user-a") {
+          return Promise.resolve(
+            new Response(JSON.stringify(userAConversations.pages[0]), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
+        return pendingUserBConversations;
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+    const messagesQueryKey = messagesQueryOptions(10).queryKey;
+    queryClient.setQueryData(authMeQueryOptions.queryKey, userA);
+    queryClient.setQueryData(conversationsQueryOptions.queryKey, userAConversations);
+    queryClient.setQueryData(messagesQueryKey, userAMessages);
+    const user = userEvent.setup();
+
+    await router.navigate("/");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("User A Friend")).toBeInTheDocument();
+    expect(queryClient.getQueryData(messagesQueryKey)).toEqual(userAMessages);
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus,
+      ).toBe("idle");
+      expect(
+        queryClient.getQueryState(conversationsQueryOptions.queryKey)?.fetchStatus,
+      ).toBe("idle");
+    });
+
+    authState = "unauthenticated";
+    act(() => {
+      queryClient.setQueryData(authMeQueryOptions.queryKey, null);
+    });
+
+    expect(await screen.findByRole("button", { name: "Log in" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(queryClient.getQueryData(conversationsQueryOptions.queryKey)).toBeUndefined();
+      expect(queryClient.getQueryData(messagesQueryKey)).toBeUndefined();
+    });
+    const logoutCalls = vi
+      .mocked(apiFetch)
+      .mock.calls.filter(
+        ([input, init]) => input === "/auth/logout" && init?.method === "POST",
+      );
+    expect(logoutCalls).toHaveLength(0);
+
+    await user.type(screen.getByRole("textbox", { name: "Username" }), "user-b");
+    await user.type(screen.getByLabelText("Password"), "secure-password");
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/auth/me", {
+        signal: expect.any(AbortSignal),
+      });
+      expect(screen.getByRole("button", { name: "Logging in..." })).toBeDisabled();
+    });
+    expect(queryClient.getQueryData(conversationsQueryOptions.queryKey)).toBeUndefined();
+    expect(queryClient.getQueryData(messagesQueryKey)).toBeUndefined();
+
+    authState = "user-b";
+    resolveUserB(
+      new Response(JSON.stringify(userB), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    expect(await screen.findByText("Loading conversations...")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+    expect(screen.queryByText("User A Friend")).not.toBeInTheDocument();
+    expect(screen.queryByText("Private message for User A")).not.toBeInTheDocument();
+
+    resolveUserBConversations(
+      new Response(JSON.stringify({ conversations: [], nextCursor: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
 
     queryClient.clear();
   });

@@ -6,11 +6,10 @@
 - [x] 2. UI / 사용자 흐름 설계
 - [x] 3. 데이터 모델 + API 설계
 - [x] 4. 기술 스택 결정
-- [ ] 5. 구현
+- [x] 5. MVP 구현
   - [x] Backend
   - [x] Frontend
-  - [ ] Cross-cutting hardening
-- [ ] 6. 배포
+- [ ] 6. 배포 전 점검 / 배포
 
 ## 1. 요구사항 / 서비스 규칙
 
@@ -343,7 +342,12 @@
   - [x] `ProtectedRoute` / `GuestOnlyRoute`
   - [x] Login
   - [x] Register
+  - [x] Logout mutation + UI
+  - [x] logout 성공 시 cache clear + `/login` 이동
+  - [x] 동시 `401` 요청의 refresh 공유로 refresh token rotation 경쟁 방지
+  - [x] auth가 authenticated → null로 전환될 때 이전 사용자 cache 정리
   - [x] 인증 query pending / error 상태 처리
+  - [x] Auth MVP audit 완료 — MVP blocker 없음
 - [x] User Search
   - [x] 검색 query와 주요 상태
   - [x] 사용자 선택 → conversation 생성/재사용 → 이동
@@ -384,20 +388,22 @@
   - [x] `/profile` protected route + 메인 화면 진입 경로
   - [x] Profile 전체 re-audit 완료 — 필수 blocker 없음
 
-### 남은 필수 후속 작업
+### 남은 후속 작업
 
-Profile 또는 배포 전 별도 cross-cutting 작업으로 처리한다.
+MVP 기능 구현은 완료했다. 아래는 배포 전 확인하거나 post-MVP hardening으로 남긴 항목이다.
 
-- [ ] Auth/cache session isolation
-  - auth가 `null`로 전환되거나 logout될 때 이전 사용자의 conversation/message cache 정리
-  - 이전 session에서 시작한 pending mutation이 cache clear 이후 이전 사용자 cache를 다시 생성하지 않도록 방어
-- [ ] Auth refresh concurrency / failure semantics
-  - 동시 `401` 요청에서 refresh token rotation 경쟁 방지
-  - refresh 일시 장애(5xx)를 인증 만료(`401`)와 구분
+#### 배포 전 확인
+
 - [ ] Backend Message atomicity
   - message 저장과 `Conversation.lastActivityAt` 갱신을 하나의 원자적 작업으로 보장할지 검토 및 필요 시 보완
 - [ ] WebSocket deployment security
   - cookie 인증 WebSocket upgrade 요청의 허용 `Origin` 검증
+
+#### Post-MVP Auth hardening
+
+- [ ] refresh 일시 장애(5xx)를 인증 만료(`401`)와 구분
+- [ ] 이전 session에서 시작한 pending mutation / refresh가 session 전환 이후 cache, navigation, cookie 상태에 영향을 주지 않도록 방어
+- [ ] 로그인 성공 후 auth/me 확인이 반드시 로그인 이후 시작된 fresh 요청임을 보장
 
 ### 작업 방식
 
@@ -409,15 +415,16 @@ Profile 또는 배포 전 별도 cross-cutting 작업으로 처리한다.
 
 ### 다음 시작점
 
-- Frontend Profile까지 기능 구현 및 최종 re-audit을 완료했다.
-- 다음 세션에서는 **남은 cross-cutting hardening**부터 진행한다.
-- 우선순위:
-  1. Auth/cache session isolation
-  2. Auth refresh concurrency / failure semantics
-  3. Backend Message atomicity
-  4. WebSocket deployment security
-- 각 항목은 현재 코드에서 실제 문제가 재현되는지 먼저 확인한 뒤 필요한 경우 TDD로 보완한다.
-- 필수 hardening 완료 후 전체 audit → 배포 단계로 이동한다.
+- Backend / Frontend의 MVP 기능 구현과 주요 기능 audit을 완료했다.
+- Frontend Auth에서 누락됐던 Logout 구현도 완료했다.
+- Auth audit에서 MVP blocker로 분류한 항목은 모두 보완했다.
+  - 동시 `401` refresh 공유
+  - authenticated → null 전환 시 이전 사용자 cache 정리
+- 다음 작업은 **배포 전 확인 항목**부터 진행한다.
+  1. Backend Message atomicity
+  2. WebSocket Origin 검증
+- Auth의 남은 race / 장애 semantics는 post-MVP hardening으로 유지한다.
+- 배포 전 확인이 끝나면 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 
 
 ## 6. 배포 / 인증 쿠키 정책
