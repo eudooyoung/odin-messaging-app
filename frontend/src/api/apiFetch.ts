@@ -1,5 +1,6 @@
 const REFRESH_PATH = "/auth/refresh";
 const API_URL = import.meta.env.VITE_API_URL;
+let pendingRefresh: Promise<Response> | undefined;
 
 const resolveRequestInput = (input: string | Request | URL) => {
   if (typeof input !== "string") {
@@ -18,6 +19,17 @@ const isRefreshRequest = (input: string | Request | URL) => {
 const cloneRequestInput = (input: string | Request | URL) =>
   input instanceof Request ? input.clone() : input;
 
+const refreshAccessToken = () => {
+  pendingRefresh ??= fetch(resolveRequestInput(REFRESH_PATH), {
+    method: "POST",
+    credentials: "include",
+  }).finally(() => {
+    pendingRefresh = undefined;
+  });
+
+  return pendingRefresh;
+};
+
 export const apiFetch = async (input: string | Request | URL, init: RequestInit = {}) => {
   const resolvedInput = resolveRequestInput(input);
   const requestInit: RequestInit = {
@@ -30,10 +42,7 @@ export const apiFetch = async (input: string | Request | URL, init: RequestInit 
     return response;
   }
 
-  const refreshResponse = await fetch(resolveRequestInput(REFRESH_PATH), {
-    method: "POST",
-    credentials: "include",
-  });
+  const refreshResponse = await refreshAccessToken();
 
   if (!refreshResponse.ok) {
     return response;

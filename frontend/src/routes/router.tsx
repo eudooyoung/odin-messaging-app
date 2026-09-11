@@ -1,4 +1,5 @@
 import { LoginPage } from "@/features/auth/LoginPage.tsx";
+import { LogoutButton } from "@/features/auth/LogoutButton.tsx";
 import { RegisterPage } from "@/features/auth/RegisterPage.tsx";
 import { ConversationList } from "@/features/conversations/ConversationList.tsx";
 import { ConversationPage } from "@/features/conversations/ConversationPage.tsx";
@@ -17,6 +18,7 @@ const routes = [
         element: (
           <>
             <Link to="/profile">My profile</Link>
+            <LogoutButton />
             <UserSearch />
             <ConversationList />
           </>
