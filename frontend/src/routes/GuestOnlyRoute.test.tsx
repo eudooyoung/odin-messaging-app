@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import {
+  AUTH_QUERY_ERROR_MESSAGE,
+  AUTH_QUERY_FALLBACK_MESSAGE,
+  authMeQueryOptions,
+} from "@/features/auth/authMeQuery.ts";
 import { GuestOnlyRoute } from "./GuestOnlyRoute.tsx";
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
@@ -86,7 +90,7 @@ describe("GuestOnlyRoute", () => {
       data: undefined,
       isPending: false,
       isError: true,
-      error: new Error("Failed to check authentication"),
+      error: new Error(AUTH_QUERY_ERROR_MESSAGE),
     } as ReturnType<typeof useQuery>);
 
     render(
@@ -103,6 +107,6 @@ describe("GuestOnlyRoute", () => {
     expect(useQuery).toHaveBeenCalledWith(authMeQueryOptions);
     expect(screen.queryByRole("heading", { name: "Guest content" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Failed to check authentication");
+    expect(screen.getByRole("alert")).toHaveTextContent(AUTH_QUERY_FALLBACK_MESSAGE);
   });
 });
