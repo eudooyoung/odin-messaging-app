@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { UserFacingError } from "@/api/UserFacingError.ts";
+import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
 import {
   CONVERSATIONS_QUERY_ERROR_MESSAGE,
   conversationsQueryOptions,
@@ -26,11 +26,7 @@ export function ConversationList() {
   }
 
   if (isError && !isFetchNextPageError) {
-    return (
-      <p role="alert">
-        {error instanceof UserFacingError ? error.message : CONVERSATIONS_QUERY_ERROR_MESSAGE}
-      </p>
-    );
+    return <QueryErrorMessage error={error} fallbackMessage={CONVERSATIONS_QUERY_ERROR_MESSAGE} />;
   }
 
   if (!conversations) {

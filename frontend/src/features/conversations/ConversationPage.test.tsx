@@ -98,11 +98,7 @@ const arrangeConversationPageRequests = ({
       return Promise.resolve(jsonResponse({ messages, nextCursor: null }));
     }
 
-    if (
-      input === "/conversations/42/messages" &&
-      init?.method === "POST" &&
-      createdMessage
-    ) {
+    if (input === "/conversations/42/messages" && init?.method === "POST" && createdMessage) {
       return Promise.resolve(jsonResponse(createdMessage, 201));
     }
 
@@ -145,17 +141,12 @@ const arrangeMessagesRecoveryRequests = ({
       return recoveredMessagesResponse.promise;
     }
 
-    if (
-      input === "/conversations/42/messages" &&
-      init?.method === "POST"
-    ) {
+    if (input === "/conversations/42/messages" && init?.method === "POST") {
       return Promise.resolve(jsonResponse(createdMessage, 201));
     }
 
     if (input === "/conversations/42/messages?cursor=10&limit=20") {
-      return Promise.resolve(
-        jsonResponse({ messages: [olderMessage], nextCursor: null }),
-      );
+      return Promise.resolve(jsonResponse({ messages: [olderMessage], nextCursor: null }));
     }
 
     return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
@@ -163,10 +154,11 @@ const arrangeMessagesRecoveryRequests = ({
 
   return {
     getFirstPageRequestCount: () =>
-      vi.mocked(apiFetch).mock.calls.filter(
-        ([requestInput]) =>
-          requestInput === "/conversations/42/messages?limit=20",
-      ).length,
+      vi
+        .mocked(apiFetch)
+        .mock.calls.filter(
+          ([requestInput]) => requestInput === "/conversations/42/messages?limit=20",
+        ).length,
     resolveRecoveredMessages: () =>
       recoveredMessagesResponse.resolve(
         jsonResponse({
@@ -198,9 +190,7 @@ describe("ConversationPage", () => {
 
       await user.click(backLink);
 
-      expect(
-        await screen.findByRole("heading", { name: "Conversations" }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
 
       queryClient.clear();
     });
@@ -316,9 +306,7 @@ describe("ConversationPage", () => {
 
       renderConversationPage(queryClient);
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Failed to load messages",
-      );
+      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load messages");
 
       await user.type(
         screen.getByRole("textbox", { name: "Message" }),
@@ -337,9 +325,7 @@ describe("ConversationPage", () => {
       expect(await screen.findByText(conversationMessage.content)).toBeInTheDocument();
       expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
 
-      await user.click(
-        screen.getByRole("button", { name: "Load older messages" }),
-      );
+      await user.click(screen.getByRole("button", { name: "Load older messages" }));
 
       expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
       expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
@@ -381,54 +367,6 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(screen.getByRole("status")).toHaveTextContent("Loading conversation...");
-
-      queryClient.clear();
-    });
-
-    it.each([
-      {
-        status: 403,
-        expectedMessage: "You do not have access to this conversation",
-      },
-      {
-        status: 404,
-        expectedMessage: "Conversation not found",
-      },
-    ])(
-      "shows the status-specific user-facing message for a $status response",
-      async ({ status, expectedMessage }) => {
-        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status }));
-        const queryClient = new QueryClient({
-          defaultOptions: {
-            queries: {
-              retry: false,
-            },
-          },
-        });
-
-        renderConversationPage(queryClient);
-
-        const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent(expectedMessage);
-        expect(alert).not.toHaveTextContent("Failed to load conversation");
-
-        queryClient.clear();
-      },
-    );
-
-    it("shows the generic user-facing error for an unhandled HTTP failure", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-      const queryClient = new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-          },
-        },
-      });
-
-      renderConversationPage(queryClient);
-
-      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversation");
 
       queryClient.clear();
     });

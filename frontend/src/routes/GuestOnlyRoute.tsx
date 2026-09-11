@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate, Outlet } from "react-router";
-import { UserFacingError } from "@/api/UserFacingError.ts";
+import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
 import { AUTH_QUERY_ERROR_MESSAGE, authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 
 export function GuestOnlyRoute() {
@@ -11,11 +11,7 @@ export function GuestOnlyRoute() {
   }
 
   if (isError) {
-    return (
-      <p role="alert">
-        {error instanceof UserFacingError ? error.message : AUTH_QUERY_ERROR_MESSAGE}
-      </p>
-    );
+    return <QueryErrorMessage error={error} fallbackMessage={AUTH_QUERY_ERROR_MESSAGE} />;
   }
 
   if (currentUser === null) {

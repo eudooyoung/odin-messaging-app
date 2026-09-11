@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { UserFacingError } from "@/api/UserFacingError.ts";
+import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { MessageComposer } from "@/features/messages/MessageComposer.tsx";
 import { MessageList } from "@/features/messages/MessageList.tsx";
@@ -31,11 +31,7 @@ export function ConversationPage() {
   }
 
   if (isError) {
-    return (
-      <p role="alert">
-        {error instanceof UserFacingError ? error.message : CONVERSATION_QUERY_ERROR_MESSAGE}
-      </p>
-    );
+    return <QueryErrorMessage error={error} fallbackMessage={CONVERSATION_QUERY_ERROR_MESSAGE} />;
   }
 
   const otherUser = currentUser

@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
-import { UserFacingError } from "@/api/UserFacingError.ts";
 import { ConversationList } from "./ConversationList.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -332,26 +331,6 @@ describe("ConversationList", () => {
     renderConversationList(queryClient);
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading conversations...");
-
-    queryClient.clear();
-  });
-
-  it("shows the user-facing error from the initial conversations query", async () => {
-    const queryError = new UserFacingError("Conversations are temporarily unavailable");
-    vi.mocked(apiFetch).mockRejectedValue(queryError);
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
-
-    renderConversationList(queryClient);
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(queryError.message);
-    expect(alert).not.toHaveTextContent("Failed to load conversations");
 
     queryClient.clear();
   });

@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { z } from "zod";
+import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
 import {
   authMeQueryOptions,
   type AuthUser,
 } from "@/features/auth/authMeQuery.ts";
-import { userProfileQueryOptions } from "./userProfileQuery.ts";
+import { USER_PROFILE_QUERY_ERROR_MESSAGE, userProfileQueryOptions } from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
 
 const profileSchema = z.object({
@@ -85,7 +86,7 @@ export function ProfilePage() {
   }
 
   if (isError) {
-    return <p role="alert">{error.message}</p>;
+    return <QueryErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />;
   }
 
   if (!profile) {

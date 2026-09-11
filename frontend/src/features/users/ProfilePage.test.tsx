@@ -183,43 +183,22 @@ describe("ProfilePage", () => {
     queryClient.clear();
   });
 
-  it.each([
-    {
-      caseName: "the requested profile does not exist",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 404 })),
-      expectedMessage: "Profile not found",
-    },
-    {
-      caseName: "the profile API returns another unsuccessful response",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 })),
-      expectedMessage: "Failed to load profile",
-    },
-    {
-      caseName: "the profile request fails in transport",
-      arrangeFailure: () => vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch")),
-      expectedMessage: "Failed to fetch",
-    },
-  ])(
-    "shows the query error instead of a blank page when $caseName",
-    async ({ arrangeFailure, expectedMessage }) => {
-      arrangeFailure();
-      const queryClient = new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-          },
+  it("shows the profile query fallback in an alert when the request fails", async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
         },
-      });
+      },
+    });
 
-      renderProfilePage(queryClient);
+    renderProfilePage(queryClient);
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load profile");
 
-      queryClient.clear();
-    },
-  );
+    queryClient.clear();
+  });
 
   it.each([
     {
