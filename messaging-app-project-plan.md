@@ -397,17 +397,20 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
 
 #### MVP 사용자 흐름 / UI 완성
 
-- [ ] 실제 브라우저 사용자 흐름 audit
-  - 비로그인 → Login
-  - Login ↔ Register 이동
-  - 회원가입 → 로그인 → 홈
-  - 사용자 검색 → conversation 생성/재사용 → 채팅 진입
-  - 메시지 조회 / 전송 / 실시간 수신
-  - Profile 진입 / 수정
-  - Logout
-- [ ] 필수 navigation 보완
-  - Login ↔ Register 등 현재 끊긴 사용자 이동 경로 연결
-  - 홈 / 대화 / 프로필에서 필요한 기본 이동 동선 확인
+- [x] 실제 브라우저 사용자 흐름 audit
+  - [x] 비로그인 → Login
+  - [x] Login ↔ Register 이동 확인 및 양방향 navigation 보완
+  - [x] 회원가입 → 로그인 → 홈
+  - [x] 사용자 검색 → conversation 생성/재사용 → 채팅 진입
+  - [x] 메시지 조회 / 전송 / 실시간 수신
+  - [x] 메시지 UI 표시 순서 수정 — 오래된 메시지 위 / 최신 메시지 아래
+  - [x] `Load older messages`를 과거 메시지 방향에 맞게 목록 상단으로 이동
+  - [x] Profile 진입 / 수정 및 PATCH 성공 후 즉시 UI 반영
+  - [x] Logout
+- [x] 필수 navigation 보완
+  - [x] Login ↔ Register 양방향 이동
+  - [x] Conversation → 대화 목록/홈 복귀 경로
+  - [x] Profile → 대화 목록/홈 복귀 경로
 - [ ] MVP 기본 UI / CSS
   - Login / Register 폼
   - 데스크톱 메시징 2-column layout
@@ -417,6 +420,28 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
 - [ ] frontend + backend 실제 브라우저 smoke test
   - mock 없이 핵심 흐름을 처음부터 끝까지 실행
   - 테스트에서 드러나지 않는 CORS / cookie / routing / WebSocket integration 문제 확인
+
+
+#### Frontend manual audit / code walkthrough
+
+CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해하고, 읽기 어려운 부분과 작은 리팩토링 지점을 정리한다. 기능 추가보다는 기존 구현의 책임과 lifecycle을 파악하는 단계다.
+
+- [ ] 앱 진입 / 라우팅 / 인증 lifecycle
+  - [x] `main.tsx` — `QueryClientProvider` / `RouterProvider` 관계 확인
+  - [x] router — protected / guest-only route와 `Outlet` 흐름 확인
+  - [x] `ProtectedRoute` — `auth/me`의 `undefined` / `null` / `AuthUser` 상태 의미 확인
+  - [x] query error UI 공통 `QueryErrorMessage`로 정리
+  - [x] `UserFacingError`와 generic fallback message의 책임 분리
+  - [x] `authMeQuery`의 내부 error message와 사용자 fallback message 분리
+  - [x] `ClearSessionCacheOnAuthEnd` — logout/unmount 시 non-auth query cache cleanup 확인
+  - [x] `AuthenticatedWebSocket` connection lifecycle 구조 확인
+    - 기본 WebSocket 연결 / message listener / cleanup과 robustness 보완을 구분해 학습
+    - WebSocket open 시 REST message query refetch를 통한 연결 전 gap recovery 확인
+    - open 시 initial fetch 중이던 message query의 추가 refetch race 방어 확인
+    - unexpected close → auth recovery → reconnect / retry 흐름 확인
+    - timeout retry handle과 unmount cleanup 확인
+  - [ ] 위 범위 관련 테스트 구조 재검토 / 필요한 테스트 리팩토링
+- [ ] 이후 Conversation / Message REST query·cache 흐름부터 계속 manual audit
 
 #### Backend refactor TODO
 
@@ -449,14 +474,17 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
 ### 다음 시작점
 
 - Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했다.
-- 실제 브라우저 smoke test에서 credential CORS 설정 누락을 발견했고, 허용 frontend origin + `credentials: true`로 보완했다.
-- 테스트상 기능 완료와 실제 사용 가능한 MVP 완료를 구분한다. 현재는 **MVP 사용자 흐름 / UI 완성 단계**다.
-- 다음 작업은 **Frontend 실제 사용자 흐름 / UI audit**부터 진행한다.
-  1. 실제 브라우저에서 핵심 사용자 흐름을 순서대로 확인
-  2. Login ↔ Register 등 끊긴 navigation 보완
-  3. 메시징 앱으로 사용할 수 있는 최소 layout / CSS / responsive UI 구현
-  4. frontend + backend 전체 smoke test
-- 위 단계가 끝난 뒤 테스트 / production 코드 리팩토링을 진행한다.
+- 실제 브라우저 사용자 흐름 audit과 필수 navigation 보완도 완료했다.
+- UI audit에서 발견한 메시지 표시 순서, older-message navigation, profile 즉시 반영 문제를 보완했다.
+- 사용자 검색에서 본인 제외는 frontend 필터링 대신 Backend refactor TODO로 유지한다.
+- 현재는 CSS 작업을 잠시 보류하고 **Frontend manual audit / code walkthrough**를 진행 중이다.
+  1. `main.tsx → router → ProtectedRoute` 흐름은 확인 완료
+  2. query error 표현과 auth error/fallback 책임을 정리 완료
+  3. `ClearSessionCacheOnAuthEnd`와 `AuthenticatedWebSocket` lifecycle을 확인 완료
+  4. 다음 세션에서 위 범위의 테스트 구조를 먼저 검토하고 필요한 리팩토링을 정리
+  5. 이후 Conversation / Message REST query·cache 흐름부터 manual audit 계속
+- 프론트 흐름이 충분히 정리되면 MVP 기본 CSS / 2-column layout / responsive UI 작업으로 복귀한다.
+- 그 뒤 frontend + backend 전체 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 race / 장애 semantics는 post-MVP hardening으로 유지한다.
 

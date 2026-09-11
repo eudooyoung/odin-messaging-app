@@ -4,13 +4,12 @@ import { handleWebSocketMessage } from "./handleWebSocketMessage.ts";
 import { authMeQueryOptions } from "../auth/authMeQuery";
 
 const getWebSocketUrl = () => {
-  const webSocketUrl = new URL(import.meta.env.VITE_API_URL);
-  webSocketUrl.protocol = webSocketUrl.protocol === "https:" ? "wss:" : "ws:";
-
-  return webSocketUrl.toString();
+  const apiUrl = new URL(import.meta.env.VITE_API_URL);
+  apiUrl.protocol = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+  return apiUrl.toString();
 };
 
-const messagesQueryFilter = (query: Query) => {
+const isMessagesQuery = (query: Query) => {
   const { queryKey } = query;
   return (
     queryKey.length === 3 &&
@@ -20,6 +19,11 @@ const messagesQueryFilter = (query: Query) => {
   );
 };
 
+const isMessageQueryPendingAtWebSocketOpen = (query: Query) => {
+  const { state } = query;
+  return state.fetchStatus === "fetching" && state.data === undefined;
+};
+
 const createWebSocketConnection = (
   queryClient: QueryClient,
   onUnexpectedClose: () => void | Promise<void>,
@@ -27,17 +31,15 @@ const createWebSocketConnection = (
   const webSocket = new WebSocket(getWebSocketUrl());
   let isConnectionActive = true;
 
-  const handleOpen = async () => {
-    const pendingInitialMessagesQueryKeys = queryClient
+  const handleWebSocketOpen = async () => {
+    const messageQueryKeysPendingAtWebSocketOpen = queryClient
       .getQueryCache()
-      .findAll({
-        predicate: messagesQueryFilter,
-      })
-      .filter(({ state }) => state.fetchStatus === "fetching" && state.data === undefined)
+      .findAll({ predicate: isMessagesQuery })
+      .filter(isMessageQueryPendingAtWebSocketOpen)
       .map(({ queryKey }) => queryKey);
 
     await queryClient.refetchQueries({
-      predicate: messagesQueryFilter,
+      predicate: isMessagesQuery,
     });
 
     if (!isConnectionActive) {
@@ -45,7 +47,7 @@ const createWebSocketConnection = (
     }
 
     await Promise.all(
-      pendingInitialMessagesQueryKeys.map((queryKey) =>
+      messageQueryKeysPendingAtWebSocketOpen.map((queryKey) =>
         queryClient.refetchQueries({ queryKey, exact: true }),
       ),
     );
@@ -55,38 +57,44 @@ const createWebSocketConnection = (
     handleWebSocketMessage(queryClient, event);
   };
 
-  const removeListeners = () => {
-    webSocket.removeEventListener("open", handleOpen);
-    webSocket.removeEventListener("message", handleMessage);
-    webSocket.removeEventListener("close", handleClose);
-  };
-
-  const handleClose = () => {
+  const handleWebSocketClose = () => {
     isConnectionActive = false;
-    removeListeners();
+    removeWebSocketListeners();
     void onUnexpectedClose();
   };
 
-  webSocket.addEventListener("open", handleOpen);
+  const removeWebSocketListeners = () => {
+    webSocket.removeEventListener("open", handleWebSocketOpen);
+    webSocket.removeEventListener("message", handleMessage);
+    webSocket.removeEventListener("close", handleWebSocketClose);
+  };
+
+  webSocket.addEventListener("open", handleWebSocketOpen);
   webSocket.addEventListener("message", handleMessage);
-  webSocket.addEventListener("close", handleClose);
+  webSocket.addEventListener("close", handleWebSocketClose);
 
   return () => {
     isConnectionActive = false;
-    removeListeners();
+    removeWebSocketListeners();
     webSocket.close();
   };
 };
 
-const AUTH_RECOVERY_RETRY_DELAYS_MS = 1000;
+const AUTH_RECOVERY_RETRY_DELAY_MS = 1000;
 
 export const AuthenticatedWebSocket = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
     let shouldReconnect = true;
-    let authRecoveryRetryTimer: ReturnType<typeof setTimeout> | undefined;
+    let authRecoveryRetryTimerId: number | undefined;
     let disconnectCurrentConnection: () => void = () => undefined;
+
+    const startConnection = () => {
+      disconnectCurrentConnection = createWebSocketConnection(queryClient, () => {
+        void recoverAuthAndReconnect();
+      });
+    };
 
     const recoverAuthAndReconnect = async () => {
       try {
@@ -102,25 +110,19 @@ export const AuthenticatedWebSocket = () => {
           return;
         }
 
-        authRecoveryRetryTimer = setTimeout(() => {
-          authRecoveryRetryTimer = undefined;
+        authRecoveryRetryTimerId = setTimeout(() => {
+          authRecoveryRetryTimerId = undefined;
           void recoverAuthAndReconnect();
-        }, AUTH_RECOVERY_RETRY_DELAYS_MS);
+        }, AUTH_RECOVERY_RETRY_DELAY_MS);
       }
-    };
-
-    const startConnection = () => {
-      disconnectCurrentConnection = createWebSocketConnection(queryClient, () => {
-        void recoverAuthAndReconnect();
-      });
     };
 
     startConnection();
 
     return () => {
       shouldReconnect = false;
-      if (authRecoveryRetryTimer !== undefined) {
-        clearTimeout(authRecoveryRetryTimer);
+      if (authRecoveryRetryTimerId !== undefined) {
+        clearTimeout(authRecoveryRetryTimerId);
       }
       disconnectCurrentConnection();
     };
