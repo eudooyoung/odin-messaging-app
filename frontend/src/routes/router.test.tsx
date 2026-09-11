@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -99,6 +99,237 @@ describe("router", () => {
 
     queryClient.clear();
   });
+
+  it("logs out from the main screen, clears the previous user's cache, and navigates to login", async () => {
+    let isAuthenticated = true;
+    vi.mocked(apiFetch).mockImplementation((input, init) => {
+      if (input === "/conversations?limit=20") {
+        return Promise.resolve(
+          new Response(JSON.stringify({ conversations: [], nextCursor: null }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      if (input === "/auth/logout" && init?.method === "POST") {
+        isAuthenticated = false;
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+
+      if (input === "/auth/me") {
+        return Promise.resolve(
+          isAuthenticated
+            ? new Response(
+                JSON.stringify({
+                  id: 1,
+                  username: "current-user",
+                  displayName: "Current User",
+                }),
+                {
+                  status: 200,
+                  headers: { "Content-Type": "application/json" },
+                },
+              )
+            : new Response(null, { status: 401 }),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["auth", "me"], {
+      id: 1,
+      username: "current-user",
+      displayName: "Current User",
+    });
+    queryClient.setQueryData(["previous-user", "private-data"], {
+      value: "private data",
+    });
+    const user = userEvent.setup();
+
+    await router.navigate("/");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+    const logoutButton = screen.getByRole("button", { name: "Log out" });
+
+    await user.click(logoutButton);
+
+    await waitFor(() => {
+      expect(apiFetch).toHaveBeenCalledWith("/auth/logout", {
+        method: "POST",
+      });
+      expect(queryClient.getQueryData(["previous-user", "private-data"])).toBeUndefined();
+      expect(router.state.location.pathname).toBe("/login");
+    });
+    expect(await screen.findByRole("button", { name: "Log in" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
+  it("disables logout and prevents duplicate requests while the mutation is pending", async () => {
+    const pendingLogoutResponse = new Promise<Response>(() => undefined);
+    vi.mocked(apiFetch).mockImplementation((input, init) => {
+      if (input === "/conversations?limit=20") {
+        return Promise.resolve(
+          new Response(JSON.stringify({ conversations: [], nextCursor: null }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      if (input === "/auth/logout" && init?.method === "POST") {
+        return pendingLogoutResponse;
+      }
+
+      if (input === "/auth/me") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: 1,
+              username: "current-user",
+              displayName: "Current User",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+    });
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["auth", "me"], {
+      id: 1,
+      username: "current-user",
+      displayName: "Current User",
+    });
+    const user = userEvent.setup();
+
+    await router.navigate("/");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+    const logoutButton = screen.getByRole("button", { name: "Log out" });
+    await user.click(logoutButton);
+
+    await waitFor(() => {
+      expect(logoutButton).toBeDisabled();
+    });
+    await user.click(logoutButton);
+
+    const logoutCalls = vi
+      .mocked(apiFetch)
+      .mock.calls.filter(
+        ([input, init]) => input === "/auth/logout" && init?.method === "POST",
+      );
+    expect(logoutCalls).toHaveLength(1);
+
+    queryClient.clear();
+  });
+
+  it.each([
+    {
+      caseName: "the server returns an HTTP error",
+      createFailure: () => Promise.resolve(new Response(null, { status: 500 })),
+      expectedMessage: "Logout failed",
+    },
+    {
+      caseName: "the request fails in transport",
+      createFailure: () => Promise.reject(new TypeError("Failed to fetch")),
+      expectedMessage: "Failed to fetch",
+    },
+  ])(
+    "keeps the authenticated screen and allows retrying when $caseName",
+    async ({ createFailure, expectedMessage }) => {
+      vi.mocked(apiFetch).mockImplementation((input, init) => {
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ conversations: [], nextCursor: null }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
+        if (input === "/auth/logout" && init?.method === "POST") {
+          return createFailure();
+        }
+
+        if (input === "/auth/me") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                id: 1,
+                username: "current-user",
+                displayName: "Current User",
+              }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
+          );
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const queryClient = new QueryClient();
+      const previousUserData = { value: "private data" };
+      queryClient.setQueryData(["auth", "me"], {
+        id: 1,
+        username: "current-user",
+        displayName: "Current User",
+      });
+      queryClient.setQueryData(["previous-user", "private-data"], previousUserData);
+      const user = userEvent.setup();
+
+      await router.navigate("/");
+      render(
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>,
+      );
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      const logoutButton = screen.getByRole("button", { name: "Log out" });
+      await user.click(logoutButton);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+      expect(logoutButton).toBeEnabled();
+      expect(router.state.location.pathname).toBe("/");
+      expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(queryClient.getQueryData(["previous-user", "private-data"])).toEqual(
+        previousUserData,
+      );
+
+      await user.click(logoutButton);
+
+      await waitFor(() => {
+        const logoutCalls = vi
+          .mocked(apiFetch)
+          .mock.calls.filter(
+            ([input, init]) => input === "/auth/logout" && init?.method === "POST",
+          );
+        expect(logoutCalls).toHaveLength(2);
+        expect(logoutButton).toBeEnabled();
+      });
+
+      queryClient.clear();
+    },
+  );
 
   it("navigates from the main screen to the current user's profile", async () => {
     vi.mocked(apiFetch).mockImplementation((input) => {
