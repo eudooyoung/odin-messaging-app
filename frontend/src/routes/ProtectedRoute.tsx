@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type Query } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router";
 import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
@@ -8,16 +8,17 @@ import { AuthenticatedWebSocket } from "@/features/messages/AuthenticatedWebSock
 function ClearSessionCacheOnAuthEnd() {
   const queryClient = useQueryClient();
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const isNonAuthQuery = ({ queryKey }: Query) => queryKey[0] !== "auth";
+    const clearSessionCache = () => {
       if (queryClient.getQueryData(authMeQueryOptions.queryKey) === null) {
         queryClient.removeQueries({
-          predicate: ({ queryKey }) => queryKey[0] !== "auth",
+          predicate: isNonAuthQuery,
         });
       }
-    },
-    [queryClient],
-  );
+    };
+    return clearSessionCache;
+  }, [queryClient]);
 
   return null;
 }
