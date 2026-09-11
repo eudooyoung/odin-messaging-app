@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { MessageComposer } from "@/features/messages/MessageComposer.tsx";
@@ -50,6 +50,7 @@ export function ConversationPage() {
 
   return (
     <>
+      <Link to="/">Back to conversations</Link>
       <h1>{otherUser.displayName}</h1>
       <p>@{otherUser.username}</p>
       <MessageList conversationId={parsedConversationId} />

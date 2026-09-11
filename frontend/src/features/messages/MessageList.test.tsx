@@ -83,6 +83,26 @@ describe("MessageList", () => {
       queryClient.clear();
     });
 
+    it("renders messages from oldest to latest when the query data is newest first", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(
+        messagesResponse([latestMessage, olderMessage], null),
+      );
+      const queryClient = new QueryClient();
+
+      renderMessageList(queryClient);
+
+      await screen.findByText(latestMessage.content);
+
+      expect(
+        screen.getAllByRole("listitem").map((listItem) => listItem.textContent),
+      ).toEqual([
+        expect.stringContaining(olderMessage.content),
+        expect.stringContaining(latestMessage.content),
+      ]);
+
+      queryClient.clear();
+    });
+
     it("shows an empty state when the first query page has no messages", async () => {
       vi.mocked(apiFetch).mockResolvedValue(messagesResponse([], null));
       const queryClient = new QueryClient();

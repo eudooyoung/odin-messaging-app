@@ -396,6 +396,53 @@ describe("ProfilePage", () => {
     queryClient.clear();
   });
 
+  it("shows the saved profile values immediately after a successful submission", async () => {
+    const profile = {
+      username: "current-user",
+      displayName: "Current User",
+      bio: "Current bio",
+      profileImage: null,
+    };
+    const updatedProfile = {
+      ...profile,
+      displayName: "Updated User",
+      bio: "Updated bio",
+    };
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(updatedProfile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+
+    renderProfilePage(queryClient);
+
+    const displayNameInput = await screen.findByRole("textbox", {
+      name: "Display name",
+    });
+    const bioInput = screen.getByRole("textbox", { name: "Bio" });
+    await user.clear(displayNameInput);
+    await user.type(displayNameInput, " Updated User ");
+    await user.clear(bioInput);
+    await user.type(bioInput, " Updated bio ");
+    await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
+    expect(displayNameInput).toHaveValue(updatedProfile.displayName);
+    expect(bioInput).toHaveValue(updatedProfile.bio);
+
+    queryClient.clear();
+  });
+
   it("keeps the saved profile when an older profile refetch finishes afterward", async () => {
     const profile = {
       username: "current-user",

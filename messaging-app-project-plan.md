@@ -6,9 +6,11 @@
 - [x] 2. UI / 사용자 흐름 설계
 - [x] 3. 데이터 모델 + API 설계
 - [x] 4. 기술 스택 결정
-- [x] 5. MVP 구현
-  - [x] Backend
-  - [x] Frontend
+- [ ] 5. MVP 완성
+  - [x] Backend 핵심 기능 구현
+  - [x] Frontend 핵심 기능 구현
+  - [ ] Frontend 실제 사용자 흐름 / UI 완성
+  - [ ] 실제 브라우저 smoke test
 - [ ] 6. 배포 전 점검 / 배포
 
 ## 1. 요구사항 / 서비스 규칙
@@ -337,6 +339,7 @@
   - [x] credentials / 401 refresh / 원 요청 1회 retry
   - [x] `VITE_API_URL`
   - [x] transport error passthrough
+  - [x] credential 요청용 CORS 설정 — 허용 frontend origin + `credentials: true`
 - [x] Auth
   - [x] auth/me query
   - [x] `ProtectedRoute` / `GuestOnlyRoute`
@@ -390,7 +393,37 @@
 
 ### 남은 후속 작업
 
-MVP 기능 구현은 완료했다. 아래는 배포 전 확인하거나 post-MVP hardening으로 남긴 항목이다.
+Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했다. 다만 실제 브라우저 기준 사용자 흐름과 UI가 아직 완성되지 않았으므로 MVP 완료로 판정하지 않는다.
+
+#### MVP 사용자 흐름 / UI 완성
+
+- [ ] 실제 브라우저 사용자 흐름 audit
+  - 비로그인 → Login
+  - Login ↔ Register 이동
+  - 회원가입 → 로그인 → 홈
+  - 사용자 검색 → conversation 생성/재사용 → 채팅 진입
+  - 메시지 조회 / 전송 / 실시간 수신
+  - Profile 진입 / 수정
+  - Logout
+- [ ] 필수 navigation 보완
+  - Login ↔ Register 등 현재 끊긴 사용자 이동 경로 연결
+  - 홈 / 대화 / 프로필에서 필요한 기본 이동 동선 확인
+- [ ] MVP 기본 UI / CSS
+  - Login / Register 폼
+  - 데스크톱 메시징 2-column layout
+  - ConversationList / ConversationPage / MessageList / MessageComposer
+  - User Search / Profile / loading / empty / error 상태
+  - 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
+- [ ] frontend + backend 실제 브라우저 smoke test
+  - mock 없이 핵심 흐름을 처음부터 끝까지 실행
+  - 테스트에서 드러나지 않는 CORS / cookie / routing / WebSocket integration 문제 확인
+
+#### Backend refactor TODO
+
+- [ ] 사용자 검색에서 현재 로그인 사용자 제외
+  - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
+  - `POST /conversations`의 자기 자신과 대화 시작 방지 검증은 그대로 유지
+  - backend 적용 시 frontend의 별도 본인 필터링은 두지 않음
 
 #### 배포 전 확인
 
@@ -415,16 +448,17 @@ MVP 기능 구현은 완료했다. 아래는 배포 전 확인하거나 post-MVP
 
 ### 다음 시작점
 
-- Backend / Frontend의 MVP 기능 구현과 주요 기능 audit을 완료했다.
-- Frontend Auth에서 누락됐던 Logout 구현도 완료했다.
-- Auth audit에서 MVP blocker로 분류한 항목은 모두 보완했다.
-  - 동시 `401` refresh 공유
-  - authenticated → null 전환 시 이전 사용자 cache 정리
-- 다음 작업은 **배포 전 확인 항목**부터 진행한다.
-  1. Backend Message atomicity
-  2. WebSocket Origin 검증
+- Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했다.
+- 실제 브라우저 smoke test에서 credential CORS 설정 누락을 발견했고, 허용 frontend origin + `credentials: true`로 보완했다.
+- 테스트상 기능 완료와 실제 사용 가능한 MVP 완료를 구분한다. 현재는 **MVP 사용자 흐름 / UI 완성 단계**다.
+- 다음 작업은 **Frontend 실제 사용자 흐름 / UI audit**부터 진행한다.
+  1. 실제 브라우저에서 핵심 사용자 흐름을 순서대로 확인
+  2. Login ↔ Register 등 끊긴 navigation 보완
+  3. 메시징 앱으로 사용할 수 있는 최소 layout / CSS / responsive UI 구현
+  4. frontend + backend 전체 smoke test
+- 위 단계가 끝난 뒤 테스트 / production 코드 리팩토링을 진행한다.
+- 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 race / 장애 semantics는 post-MVP hardening으로 유지한다.
-- 배포 전 확인이 끝나면 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 
 
 ## 6. 배포 / 인증 쿠키 정책

@@ -17,6 +17,7 @@ const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conve
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/conversations/:conversationId" element={<ConversationPage />} />
+          <Route path="/" element={<h1>Conversations</h1>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -178,6 +179,32 @@ const arrangeMessagesRecoveryRequests = ({
 
 describe("ConversationPage", () => {
   describe("successful rendering", () => {
+    it("shows a link back to conversations and navigates home when clicked", async () => {
+      arrangeConversationPageRequests();
+      const queryClient = new QueryClient();
+      const currentUser: AuthUser = {
+        id: 1,
+        username: "current-user",
+        displayName: "Current User",
+      };
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient);
+
+      const backLink = await screen.findByRole("link", {
+        name: "Back to conversations",
+      });
+
+      await user.click(backLink);
+
+      expect(
+        await screen.findByRole("heading", { name: "Conversations" }),
+      ).toBeInTheDocument();
+
+      queryClient.clear();
+    });
+
     it("loads the route conversation and shows the other participant", async () => {
       arrangeConversationPageRequests();
       const queryClient = new QueryClient();

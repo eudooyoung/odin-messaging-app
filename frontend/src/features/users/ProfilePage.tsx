@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router";
 import { z } from "zod";
 import {
   authMeQueryOptions,
@@ -32,6 +33,7 @@ export function ProfilePage() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ProfileInput>({
     resolver: zodResolver(profileSchema),
@@ -67,6 +69,14 @@ export function ProfilePage() {
             ? { ...user, displayName: updatedProfile.displayName }
             : user,
       );
+      reset(
+        {
+          displayName: updatedProfile.displayName,
+          bio: updatedProfile.bio ?? "",
+          profileImage: updatedProfile.profileImage ?? "",
+        },
+        { keepDirtyValues: false },
+      );
     },
   });
 
@@ -84,6 +94,8 @@ export function ProfilePage() {
 
   return (
     <form onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}>
+      <Link to="/">Back to conversations</Link>
+
       <label htmlFor="display-name">Display name</label>
       <input
         id="display-name"
