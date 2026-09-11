@@ -1,4 +1,5 @@
 import express from "express";
+import { env } from "@/config/env.config.js";
 import errorHandler from "@/errors/errorHandler.js";
 import cors from "cors";
 import authRouter from "@/routes/auth.routes.js";
@@ -19,7 +20,12 @@ export const createApp = ({
   app
     .use(express.json())
     .use(express.urlencoded({ extended: true }))
-    .use(cors())
+    .use(
+      cors({
+        origin: env.frontendOrigin,
+        credentials: true,
+      }),
+    )
     .use("/auth", authRouter)
     .use("/conversations", conversationRouter)
     .use("/users", userRouter)
