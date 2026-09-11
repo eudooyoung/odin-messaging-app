@@ -10,4 +10,5 @@ export const env = {
   debug: parsedEnv.APP_DEBUG,
   jwtSecret: parsedEnv.JWT_SECRET,
   nodeEnv: parsedEnv.NODE_ENV,
+  frontendOrigin: parsedEnv.FRONTEND_ORIGIN ?? "http://localhost:5173",
 };

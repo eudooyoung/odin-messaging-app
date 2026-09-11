@@ -8,6 +8,7 @@ export const envSchema = z
     JWT_SECRET: z.string().min(1),
     DATABASE_URL: z.string().min(1),
     TEST_DATABASE_URL: z.string().min(1).optional(),
+    FRONTEND_ORIGIN: z.url().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "test" && !env.TEST_DATABASE_URL) {
