@@ -441,6 +441,22 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
     - unexpected close → auth recovery → reconnect / retry 흐름 확인
     - timeout retry handle과 unmount cleanup 확인
   - [ ] 위 범위 관련 테스트 구조 재검토 / 필요한 테스트 리팩토링
+    - [x] router 인증 관련 테스트에서 feature/query 구현 세부사항인 `apiFetch` 호출 검증 제거
+    - [x] `apiFetch` 구현 walkthrough / manual audit 완료
+      - 실제 호출부를 기준으로 입력 계약을 `/`로 시작하는 상대경로 `string`으로 축소
+      - absolute URL / `Request` / `URL` 입력 지원과 관련 helper(`resolveRequestInput`, `cloneRequestInput`, `isRefreshRequest`) 제거
+      - API URL은 `${API_URL}${path}`로 직접 조합하고 기본 `credentials: "include"` 유지
+      - `401`일 때만 refresh, refresh endpoint 자체는 재귀 refresh 제외, shared pending refresh, 원 요청 1회 retry 흐름 확인
+      - refresh `401`은 인증 종료로 유지하고, refresh의 non-401 실패는 해당 refresh response를 전달하도록 구분
+      - retry가 다시 `401`이어도 추가 refresh하지 않도록 최대 1회 복구 정책 확인
+    - [x] `apiFetch.test.ts` 리팩토링 완료
+      - 기본 요청 / refresh-retry 테스트의 중복 assertion과 테스트용 path/변수명 정리
+      - non-401 초기 응답은 refresh하지 않는 회귀 테스트 추가
+      - refresh endpoint 자체 401 / refresh non-401 실패 / refresh 401 / retry 401 분기별 검증 정리
+      - concurrent `401` → single refresh 공유 테스트를 행동 단계 기준으로 정리하고 `await Promise.resolve()` 대신 `vi.waitFor` 사용
+      - refresh 요청의 `POST` + `credentials: "include"` 계약은 정상 refresh-retry 테스트에 통합
+      - 테스트는 `when the initial request returns 401` 범위로 묶고 parameterized test는 적용하지 않기로 결정
+    - [ ] `authMeQuery.test.ts` → `ProtectedRoute.test.tsx` 테스트 구조 재검토 계속
 - [ ] 이후 Conversation / Message REST query·cache 흐름부터 계속 manual audit
 
 #### Backend refactor TODO
@@ -459,7 +475,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 
 #### Post-MVP Auth hardening
 
-- [ ] refresh 일시 장애(5xx)를 인증 만료(`401`)와 구분
+- [x] refresh 일시 장애(non-401 failure, 예: 5xx)를 인증 만료(`401`)와 구분
 - [ ] 이전 session에서 시작한 pending mutation / refresh가 session 전환 이후 cache, navigation, cookie 상태에 영향을 주지 않도록 방어
 - [ ] 로그인 성공 후 auth/me 확인이 반드시 로그인 이후 시작된 fresh 요청임을 보장
 
@@ -481,8 +497,12 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   1. `main.tsx → router → ProtectedRoute` 흐름은 확인 완료
   2. query error 표현과 auth error/fallback 책임을 정리 완료
   3. `ClearSessionCacheOnAuthEnd`와 `AuthenticatedWebSocket` lifecycle을 확인 완료
-  4. 다음 세션에서 위 범위의 테스트 구조를 먼저 검토하고 필요한 리팩토링을 정리
-  5. 이후 Conversation / Message REST query·cache 흐름부터 manual audit 계속
+  4. router 인증 테스트의 불필요한 `apiFetch` 구현 세부 검증을 제거
+  5. `apiFetch` manual audit 완료 — 실제 사용 범위에 맞게 상대경로 string 전용 계약으로 축소하고 불필요한 Request/URL 지원 제거
+  6. refresh `401`과 non-401 실패를 구분하고, refresh endpoint 재귀 방지 / 1회 retry / concurrent refresh 공유 정책 확인
+  7. `apiFetch.test.ts` 리팩토링 완료 — 중복 assertion 정리, non-401 회귀 테스트 추가, concurrent 테스트 `vi.waitFor` 개선, refresh 요청 옵션 검증 통합
+  8. 다음 세션은 `authMeQuery.test.ts` 테스트 구조 재검토부터 시작하고 이후 `ProtectedRoute.test.tsx`로 계속
+  9. 이후 Conversation / Message REST query·cache 흐름부터 manual audit 계속
 - 프론트 흐름이 충분히 정리되면 MVP 기본 CSS / 2-column layout / responsive UI 작업으로 복귀한다.
 - 그 뒤 frontend + backend 전체 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
