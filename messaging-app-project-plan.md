@@ -456,7 +456,14 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
       - concurrent `401` → single refresh 공유 테스트를 행동 단계 기준으로 정리하고 `await Promise.resolve()` 대신 `vi.waitFor` 사용
       - refresh 요청의 `POST` + `credentials: "include"` 계약은 정상 refresh-retry 테스트에 통합
       - 테스트는 `when the initial request returns 401` 범위로 묶고 parameterized test는 적용하지 않기로 결정
-    - [ ] `authMeQuery.test.ts` → `ProtectedRoute.test.tsx` 테스트 구조 재검토 계속
+    - [x] `authMeQuery.test.ts` 테스트 구조 재검토 / 리팩토링 완료
+      - 성공 테스트에 `queryKey`, `/auth/me` 호출 + TanStack Query `signal`, 반환 사용자 검증을 함께 유지
+      - 별도 signal 전달 테스트 제거, 중복 `apiFetch` 호출 횟수 검증 제거
+      - `401 → null`은 query 성공 상태이므로 불필요한 `retry: false` 제거
+      - non-401 HTTP 실패 테스트는 500 response body/header를 제거하고 `Failed to fetch current user` reject만 검증
+      - transport error가 원래 Error 객체 그대로 전달되는 passthrough 테스트 추가
+      - 테스트는 별도 하위 `describe` 없이 현재 4개 계약을 평평하게 유지
+    - [ ] `ProtectedRoute.test.tsx` 테스트 구조 재검토
 - [ ] 이후 Conversation / Message REST query·cache 흐름부터 계속 manual audit
 
 #### Backend refactor TODO
@@ -501,8 +508,9 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   5. `apiFetch` manual audit 완료 — 실제 사용 범위에 맞게 상대경로 string 전용 계약으로 축소하고 불필요한 Request/URL 지원 제거
   6. refresh `401`과 non-401 실패를 구분하고, refresh endpoint 재귀 방지 / 1회 retry / concurrent refresh 공유 정책 확인
   7. `apiFetch.test.ts` 리팩토링 완료 — 중복 assertion 정리, non-401 회귀 테스트 추가, concurrent 테스트 `vi.waitFor` 개선, refresh 요청 옵션 검증 통합
-  8. 다음 세션은 `authMeQuery.test.ts` 테스트 구조 재검토부터 시작하고 이후 `ProtectedRoute.test.tsx`로 계속
-  9. 이후 Conversation / Message REST query·cache 흐름부터 manual audit 계속
+  8. `authMeQuery.test.ts` 재검토 완료 — signal 검증을 성공 케이스에 통합하고 중복 호출 검증 제거, 401/null·non-401 error·transport error 계약을 간결하게 정리
+  9. 다음 세션은 `ProtectedRoute.test.tsx` 테스트 구조 재검토부터 시작
+  10. 이후 Conversation / Message REST query·cache 흐름부터 manual audit 계속
 - 프론트 흐름이 충분히 정리되면 MVP 기본 CSS / 2-column layout / responsive UI 작업으로 복귀한다.
 - 그 뒤 frontend + backend 전체 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
