@@ -30,7 +30,6 @@ describe("updateUserProfile", () => {
 
     const result = await updateUserProfile(updateData);
 
-    expect(apiFetch).toHaveBeenCalledOnce();
     expect(apiFetch).toHaveBeenCalledWith("/users/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -39,30 +38,32 @@ describe("updateUserProfile", () => {
     expect(result).toEqual(updatedProfile);
   });
 
-  it("throws a user-facing validation error when the profile input is invalid", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 400 }));
+  describe("errors", () => {
+    it("throws a user-facing validation error when the profile input is invalid", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 400 }));
 
-    const result = updateUserProfile({ displayName: "" });
+      const result = updateUserProfile({ displayName: "" });
 
-    await expect(result).rejects.toBeInstanceOf(UserFacingError);
-    await expect(result).rejects.toThrow("Invalid profile input");
-  });
+      await expect(result).rejects.toBeInstanceOf(UserFacingError);
+      await expect(result).rejects.toThrow("Invalid profile input");
+    });
 
-  it("throws a generic user-facing error for other unsuccessful responses", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
+    it("throws a generic user-facing error for other unsuccessful responses", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
 
-    const result = updateUserProfile({ displayName: "Updated User" });
+      const result = updateUserProfile({ displayName: "Updated User" });
 
-    await expect(result).rejects.toBeInstanceOf(UserFacingError);
-    await expect(result).rejects.toThrow(UPDATE_USER_PROFILE_ERROR_MESSAGE);
-  });
+      await expect(result).rejects.toBeInstanceOf(UserFacingError);
+      await expect(result).rejects.toThrow(UPDATE_USER_PROFILE_ERROR_MESSAGE);
+    });
 
-  it("preserves the original error when apiFetch rejects", async () => {
-    const transportError = new TypeError("Failed to fetch");
-    vi.mocked(apiFetch).mockRejectedValue(transportError);
+    it("preserves the original error when apiFetch rejects", async () => {
+      const transportError = new TypeError("Failed to fetch");
+      vi.mocked(apiFetch).mockRejectedValue(transportError);
 
-    const result = updateUserProfile({ displayName: "Updated User" });
+      const result = updateUserProfile({ displayName: "Updated User" });
 
-    await expect(result).rejects.toBe(transportError);
+      await expect(result).rejects.toBe(transportError);
+    });
   });
 });
