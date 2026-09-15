@@ -1,9 +1,26 @@
 # Backend AGENTS.md
 
 이 파일은 `backend/` 하위 작업에 적용되는 백엔드 전용 규칙만 정의한다.
-공통 작업 방식, TDD 진행 규칙, 변경 범위 관리 등은 루트 `AGENTS.md`를 따른다.
+공통 작업 방식, TDD 진행, 테스트 일반 원칙, 변경 범위 관리는 루트 `AGENTS.md`를 따른다.
 
-## 1. API 계층 구조
+## 1. 기술 스택
+
+- Node.js
+- TypeScript + ESM
+- Express
+- PostgreSQL
+- Prisma
+- JWT Access Token + Refresh Token
+- Argon2id
+- `ws`
+- Zod
+- Vitest + Supertest
+
+현재 설치된 패키지 버전과 기존 구조를 기준으로 사용한다.
+
+---
+
+## 2. API 계층 구조
 
 기본 흐름:
 
@@ -77,7 +94,9 @@ Prisma P2002
 - Prisma query만 담당한다.
 - HTTP status, Express type, business rule을 알지 않는다.
 
-## 2. 에러 처리
+---
+
+## 3. 에러 처리
 
 기본 흐름:
 
@@ -101,34 +120,22 @@ Express 5 error flow
 - `BadRequestError` → 400
 - `ConflictError` → 409
 
-## 3. 타입 규칙
+---
+
+## 4. 타입 규칙
 
 ### API 타입
 
 - HTTP request/response shape는 `api.types.ts`에 둔다.
 - integration test의 HTTP response body에는 `api.types.ts`의 response 타입을 사용한다.
 - integration test의 HTTP response body 타입을 service의 `ReturnType`에서 파생하지 않는다.
-- service 반환값과 HTTP response는 서로 다른 경계로 취급한다. 예를 들어 service의 `Date`가 HTTP response에서는 `string`으로 직렬화될 수 있다.
+- service 반환값과 HTTP response는 서로 다른 경계로 취급한다.
 - 테스트 파일에서 API request/response shape를 복제한 로컬 타입을 새로 정의하지 않는다.
 - 동일한 의미와 shape의 타입이 이미 있으면 새 타입을 만들지 않는다.
-
-예:
-
-```text
-RegisterInput
-RegisterResponseBody
-UserProfileResponseBody
-```
 
 ### Handler 타입
 
 Express `RequestHandler` generic alias는 `handler.types.ts`에 둔다.
-
-예:
-
-```text
-RegisterHandler
-```
 
 ### Service / Repository 타입
 
@@ -153,15 +160,20 @@ CreateUserData
 - `any`를 추가해 lint/type error를 숨기지 않는다.
 - 외부 라이브러리 경계에서 들어오는 `any`는 helper나 명시적 narrowing으로 처리한다.
 - type-aware ESLint 규칙을 우회하지 않는다.
-- `expect.any(...)`, `expect.arrayContaining(...)` 같은 asymmetric matcher가 `@typescript-eslint/no-unsafe-assignment`를 유발하면 사용하지 않는다.
-- 이 경우 `typeof`, `toBe`, `toContainEqual`, 개별 field assertion 등 strict typing을 유지할 수 있는 assertion을 우선한다.
+- asymmetric matcher가 `@typescript-eslint/no-unsafe-assignment`를 유발하면 strict typing을 유지할 수 있는 assertion을 우선한다.
 
-## 4. 테스트 / DB 전용 규칙
+---
+
+## 5. Backend 테스트 / DB 규칙
+
+루트의 공통 테스트 원칙에 더해 다음을 적용한다.
 
 - API 동작은 endpoint 관점의 integration test를 우선한다.
 - 비즈니스 로직이 있는 service는 endpoint integration test와 별도로 unit test를 작성한다.
 - service unit test에서는 repository 등 외부 의존성을 mock한다.
 - unit test는 실제 DB 연결이나 cleanup에 의존하지 않는다.
+- integration test에서는 HTTP 계약을 검증하고 service/repository 내부 구현을 중복 검증하지 않는다.
+- service unit test에서는 비즈니스 규칙과 infrastructure error 해석처럼 service가 책임지는 동작을 검증한다.
 - DB integration test는 test DB만 사용한다.
 - DB cleanup hook은 전역 `setupFiles`에 두지 않고 DB가 필요한 integration test에서 `integration.setup.ts`를 명시적으로 import한다.
 - 테스트 간 DB 상태가 영향을 주지 않도록 cleanup을 유지한다.
@@ -181,21 +193,39 @@ CreateUserData
 - test DB / migration
 - cleanup / fixture helper
 
-## 5. Prisma / DB
+---
+
+## 6. Prisma / DB
 
 - Prisma schema, migration, generated client, 실제 DB 상태를 구분해서 확인한다.
 - dev DB, test DB, production DB를 혼동하지 않는다.
+- Prisma schema와 migration은 사용자 합의 없이 변경하지 않는다.
 - `src/generated/`는 직접 수정하지 않는다.
 
-## 6. TypeScript / ESM
+---
+
+## 7. 인증 / API 계약
+
+- 인증은 합의된 JWT Access Token + Refresh Token 구조를 따른다.
+- 비밀번호는 Argon2id를 사용한다.
+- 기존 API 계약과 HTTP status 규칙을 유지한다.
+- REST API와 WebSocket event의 책임을 구분한다.
+- WebSocket event 이름과 payload를 임의로 변경하지 않는다.
+- 불필요한 query나 persistence 추상화를 추가하지 않는다.
+
+---
+
+## 8. TypeScript / ESM
 
 - TypeScript + ESM 구조를 유지한다.
 - 기존 path alias/import 규칙을 따른다.
 - user-written alias import는 현재 프로젝트의 extension 규칙을 따른다.
 - `dist/`는 직접 수정하지 않는다.
-- VS Code에서 `error typed`나 alias/import 오류가 코드 상태와 맞지 않게 나타나면 실제 타입 오류를 먼저 확인한 뒤 TS Server restart / window reload 가능성을 점검한다.
+- VS Code에서 alias/import 오류가 실제 코드 상태와 맞지 않게 나타나면 실제 타입 오류를 먼저 확인한 뒤 TS Server restart / window reload 가능성을 점검한다.
 
-## 7. Register 구현에서 확정된 현재 패턴
+---
+
+## 9. Register에서 확정된 현재 패턴
 
 `POST /auth/register` validation 정책:
 
