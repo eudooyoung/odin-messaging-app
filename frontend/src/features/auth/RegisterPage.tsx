@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { FormField } from "@/components/FormField.tsx";
 import { GENERAL_REGISTER_ERROR_MESSAGE, registerUser } from "./registerUser.ts";
 
 const registerSchema = z.object({
@@ -32,47 +33,29 @@ export function RegisterPage() {
 
   return (
     <form onSubmit={handleSubmit((input) => registerMutation.mutate(input))}>
-      <label htmlFor="username">Username</label>
-      <input
+      <FormField
         id="username"
+        label="Username"
         type="text"
-        aria-invalid={Boolean(errors.username)}
-        aria-describedby={errors.username ? "username-error" : undefined}
+        error={errors.username?.message}
         {...register("username")}
       />
-      {errors.username && (
-        <p id="username-error" role="alert">
-          {errors.username.message}
-        </p>
-      )}
 
-      <label htmlFor="display-name">Display name</label>
-      <input
+      <FormField
         id="display-name"
+        label="Display name"
         type="text"
-        aria-invalid={Boolean(errors.displayName)}
-        aria-describedby={errors.displayName ? "display-name-error" : undefined}
+        error={errors.displayName?.message}
         {...register("displayName")}
       />
-      {errors.displayName && (
-        <p id="display-name-error" role="alert">
-          {errors.displayName.message}
-        </p>
-      )}
 
-      <label htmlFor="password">Password</label>
-      <input
+      <FormField
         id="password"
+        label="Password"
         type="password"
-        aria-invalid={Boolean(errors.password)}
-        aria-describedby={errors.password ? "password-error" : undefined}
+        error={errors.password?.message}
         {...register("password")}
       />
-      {errors.password && (
-        <p id="password-error" role="alert">
-          {errors.password.message}
-        </p>
-      )}
 
       <button type="submit" disabled={registerMutation.isPending}>
         {registerMutation.isPending ? "Registering..." : "Register"}
