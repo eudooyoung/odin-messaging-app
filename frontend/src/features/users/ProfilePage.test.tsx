@@ -1,15 +1,22 @@
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
 import { ProfilePage } from "./ProfilePage.tsx";
-import { userProfileQueryOptions } from "./userProfileQuery.ts";
+import { type UserProfile, userProfileQueryOptions } from "./userProfileQuery.ts";
+import { updateUserProfile } from "./updateUserProfile.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
+}));
+
+vi.mock("./updateUserProfile.ts", () => ({
+  updateUserProfile: vi.fn(),
 }));
 
 let queryClient: QueryClient;
@@ -37,16 +44,83 @@ const currentUser: AuthUser = {
   displayName: "Current User",
 };
 
-const renderProfilePage = (queryClient: QueryClient) => {
+const baseProfile: UserProfile = {
+  username: currentUser.username,
+  displayName: "Current User",
+  bio: "Current bio",
+  profileImage: null,
+};
+
+const profileQueryKey = userProfileQueryOptions(currentUser.username).queryKey;
+
+const profileResponse = (profile: UserProfile) =>
+  new Response(JSON.stringify(profile), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+const deferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+};
+
+const renderProfilePage = (queryClient: QueryClient, observer?: ReactNode) => {
   queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <ProfilePage />
+        {observer}
       </MemoryRouter>
     </QueryClientProvider>,
   );
+};
+
+const submitProfileChanges = async (
+  user: ReturnType<typeof userEvent.setup>,
+  changes: {
+    displayName: string;
+    bio?: string;
+    profileImage?: string;
+  },
+) => {
+  const displayNameInput = await screen.findByRole("textbox", {
+    name: "Display name",
+  });
+  await user.clear(displayNameInput);
+  if (changes.displayName) {
+    await user.type(displayNameInput, changes.displayName);
+  }
+
+  const bioInput =
+    changes.bio === undefined ? undefined : screen.getByRole("textbox", { name: "Bio" });
+  if (bioInput) {
+    await user.clear(bioInput);
+    if (changes.bio) {
+      await user.type(bioInput, changes.bio);
+    }
+  }
+
+  const profileImageInput =
+    changes.profileImage === undefined
+      ? undefined
+      : screen.getByRole("textbox", { name: "Profile image" });
+  if (profileImageInput) {
+    await user.clear(profileImageInput);
+    if (changes.profileImage) {
+      await user.type(profileImageInput, changes.profileImage);
+    }
+  }
+
+  const submitButton = screen.getByRole("button", { name: "Save profile" });
+  await user.click(submitButton);
+
+  return { displayNameInput, bioInput, profileImageInput, submitButton };
 };
 
 const ProfileQueryObserver = () => {
@@ -62,673 +136,363 @@ const AuthQueryObserver = () => {
 };
 
 describe("ProfilePage", () => {
-  it("loads the current user's profile and shows a loading state while it is pending", async () => {
-    const pendingProfileResponse = new Promise<Response>(() => undefined);
-    vi.mocked(apiFetch).mockReturnValue(pendingProfileResponse);
+  describe("profile loading and form state", () => {
+    it("loads the current user's profile and shows a loading state while it is pending", () => {
+      const pendingProfileResponse = new Promise<Response>(() => undefined);
+      vi.mocked(apiFetch).mockReturnValue(pendingProfileResponse);
 
-    renderProfilePage(queryClient);
+      renderProfilePage(queryClient);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Loading profile...");
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledWith("/users/current-user", {
-        signal: expect.any(AbortSignal),
-      });
+      expect(screen.getByRole("status")).toHaveTextContent("Loading profile...");
     });
 
-  });
-
-  it("shows the current profile values as the initial form values", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          username: "current-user",
-          displayName: "Current User",
+    it("shows the current profile values as the initial form values", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(
+        profileResponse({
+          ...baseProfile,
           bio: "Hello from my profile.",
           profileImage: "https://example.com/current-user.jpg",
         }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
-    renderProfilePage(queryClient);
+      );
+      renderProfilePage(queryClient);
 
-    expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
-      "Current User",
-    );
-    expect(screen.getByRole("textbox", { name: "Bio" })).toHaveValue("Hello from my profile.");
-    expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue(
-      "https://example.com/current-user.jpg",
-    );
+      expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
+        "Current User",
+      );
+      expect(screen.getByRole("textbox", { name: "Bio" })).toHaveValue("Hello from my profile.");
+      expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue(
+        "https://example.com/current-user.jpg",
+      );
+    });
 
-  });
-
-  it("shows empty inputs when the profile bio and profile image are null", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          username: "current-user",
-          displayName: "Current User",
+    it("shows empty inputs when the profile bio and profile image are null", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(
+        profileResponse({
+          ...baseProfile,
           bio: null,
           profileImage: null,
         }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
-    renderProfilePage(queryClient);
-
-    expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
-      "Current User",
-    );
-    expect(screen.getByRole("textbox", { name: "Bio" })).toHaveValue("");
-    expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue("");
-
-  });
-
-  it("preserves unsaved form values after a profile refetch updates the query data", async () => {
-    const profile = {
-      username: "current-user",
-      displayName: "Current User",
-      bio: "Current bio",
-      profileImage: null,
-    };
-    const refreshedProfile = {
-      ...profile,
-      displayName: "Server User",
-      bio: "Server bio",
-    };
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(profile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(refreshedProfile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
       );
-    const user = userEvent.setup();
-    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <ProfilePage />
-          <ProfileQueryObserver />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const displayNameInput = await screen.findByRole("textbox", {
-      name: "Display name",
-    });
-    const bioInput = screen.getByRole("textbox", { name: "Bio" });
-    expect(displayNameInput).toHaveValue("Current User");
-    expect(bioInput).toHaveValue("Current bio");
-
-    await user.clear(displayNameInput);
-    await user.type(displayNameInput, "Unsaved User");
-    await user.clear(bioInput);
-    await user.type(bioInput, "Unsaved bio");
-
-    const profileQueryKey = userProfileQueryOptions("current-user").queryKey;
-    await act(async () => {
-      await queryClient.refetchQueries({ queryKey: profileQueryKey, exact: true });
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Server User");
-    });
-    expect(queryClient.getQueryData(profileQueryKey)).toEqual(refreshedProfile);
-    expect(displayNameInput).toHaveValue("Unsaved User");
-    expect(bioInput).toHaveValue("Unsaved bio");
-
-  });
-
-  it("shows the profile query fallback in an alert when the request fails", async () => {
-    vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
-
-    renderProfilePage(queryClient);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load profile");
-
-  });
-
-  it.each([
-    {
-      caseName: "the display name is blank after trimming",
-      fieldName: "Display name",
-      value: "   ",
-      expectedMessage: "Display name is required",
-    },
-    {
-      caseName: "the display name is longer than 50 characters after trimming",
-      fieldName: "Display name",
-      value: ` ${"a".repeat(51)} `,
-      expectedMessage: "Display name must be at most 50 characters",
-    },
-    {
-      caseName: "the bio is longer than 300 characters after trimming",
-      fieldName: "Bio",
-      value: ` ${"a".repeat(301)} `,
-      expectedMessage: "Bio must be at most 300 characters",
-    },
-  ])(
-    "shows a validation error and does not update the profile when $caseName",
-    async ({ fieldName, value, expectedMessage }) => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            username: "current-user",
-            displayName: "Current User",
-            bio: "Current bio",
-            profileImage: "https://example.com/current-user.jpg",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      );
-      const user = userEvent.setup();
-
       renderProfilePage(queryClient);
 
-      const input = await screen.findByRole("textbox", { name: fieldName });
-      await user.clear(input);
-      await user.type(input, value);
-      await user.click(screen.getByRole("button", { name: "Save profile" }));
-
-      expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
-      expect(apiFetch).toHaveBeenCalledOnce();
-      expect(apiFetch).not.toHaveBeenCalledWith(
-        "/users/me",
-        expect.objectContaining({ method: "PATCH" }),
+      expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
+        "Current User",
       );
-
-    },
-  );
-
-  it("allows empty bio and profile image values", async () => {
-    const profile = {
-      username: "current-user",
-      displayName: "Current User",
-      bio: "Current bio",
-      profileImage: "https://example.com/current-user.jpg",
-    };
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(profile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            ...profile,
-            bio: null,
-            profileImage: null,
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      );
-    const user = userEvent.setup();
-
-    renderProfilePage(queryClient);
-
-    const bioInput = await screen.findByRole("textbox", { name: "Bio" });
-    const profileImageInput = screen.getByRole("textbox", {
-      name: "Profile image",
-    });
-    await user.clear(bioInput);
-    await user.clear(profileImageInput);
-    await user.click(screen.getByRole("button", { name: "Save profile" }));
-
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledTimes(2);
-    });
-    expect(apiFetch).toHaveBeenNthCalledWith(
-      2,
-      "/users/me",
-      expect.objectContaining({ method: "PATCH" }),
-    );
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-
-  });
-
-  it("updates the profile and related caches after a successful submission", async () => {
-    const profile = {
-      username: "current-user",
-      displayName: "Current User",
-      bio: "Current bio",
-      profileImage: "https://example.com/current-user.jpg",
-    };
-    const updatedProfile = {
-      username: "current-user",
-      displayName: "Updated User",
-      bio: null,
-      profileImage: null,
-    };
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(profile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(updatedProfile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
-    const user = userEvent.setup();
-
-    renderProfilePage(queryClient);
-
-    const displayNameInput = await screen.findByRole("textbox", {
-      name: "Display name",
-    });
-    const bioInput = screen.getByRole("textbox", { name: "Bio" });
-    const profileImageInput = screen.getByRole("textbox", {
-      name: "Profile image",
-    });
-    await user.clear(displayNameInput);
-    await user.type(displayNameInput, "Updated User");
-    await user.clear(bioInput);
-    await user.clear(profileImageInput);
-    await user.click(screen.getByRole("button", { name: "Save profile" }));
-
-    expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
-    expect(apiFetch).toHaveBeenNthCalledWith(2, "/users/me", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        displayName: "Updated User",
-        bio: null,
-        profileImage: null,
-      }),
-    });
-    expect(queryClient.getQueryData(userProfileQueryOptions("current-user").queryKey)).toEqual(
-      updatedProfile,
-    );
-    expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
-      ...currentUser,
-      displayName: "Updated User",
+      expect(screen.getByRole("textbox", { name: "Bio" })).toHaveValue("");
+      expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue("");
     });
 
-  });
-
-  it("shows the saved profile values immediately after a successful submission", async () => {
-    const profile = {
-      username: "current-user",
-      displayName: "Current User",
-      bio: "Current bio",
-      profileImage: null,
-    };
-    const updatedProfile = {
-      ...profile,
-      displayName: "Updated User",
-      bio: "Updated bio",
-    };
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(profile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(updatedProfile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
-    const user = userEvent.setup();
-
-    renderProfilePage(queryClient);
-
-    const displayNameInput = await screen.findByRole("textbox", {
-      name: "Display name",
-    });
-    const bioInput = screen.getByRole("textbox", { name: "Bio" });
-    await user.clear(displayNameInput);
-    await user.type(displayNameInput, " Updated User ");
-    await user.clear(bioInput);
-    await user.type(bioInput, " Updated bio ");
-    await user.click(screen.getByRole("button", { name: "Save profile" }));
-
-    expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
-    expect(displayNameInput).toHaveValue(updatedProfile.displayName);
-    expect(bioInput).toHaveValue(updatedProfile.bio);
-
-  });
-
-  it("keeps the saved profile when an older profile refetch finishes afterward", async () => {
-    const profile = {
-      username: "current-user",
-      displayName: "Current User",
-      bio: "Current bio",
-      profileImage: null,
-    };
-    const updatedProfile = {
-      ...profile,
-      displayName: "Saved User",
-      bio: "Saved bio",
-    };
-    let profileGetCount = 0;
-    let resolveProfileRefetch: ((response: Response) => void) | undefined;
-    const pendingProfileRefetch = new Promise<Response>((resolve) => {
-      resolveProfileRefetch = resolve;
-    });
-    vi.mocked(apiFetch).mockImplementation((input, init) => {
-      if (input === "/users/current-user") {
-        profileGetCount += 1;
-
-        if (profileGetCount === 1) {
-          return Promise.resolve(
-            new Response(JSON.stringify(profile), {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            }),
-          );
-        }
-
-        return pendingProfileRefetch;
-      }
-
-      if (input === "/users/me" && init?.method === "PATCH") {
-        return Promise.resolve(
-          new Response(JSON.stringify(updatedProfile), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }),
-        );
-      }
-
-      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
-    });
-    const user = userEvent.setup();
-    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <ProfilePage />
-          <ProfileQueryObserver />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const displayNameInput = await screen.findByRole("textbox", {
-      name: "Display name",
-    });
-    const bioInput = screen.getByRole("textbox", { name: "Bio" });
-    await user.clear(displayNameInput);
-    await user.type(displayNameInput, "Saved User");
-    await user.clear(bioInput);
-    await user.type(bioInput, "Saved bio");
-
-    const profileQueryKey = userProfileQueryOptions("current-user").queryKey;
-    const refetchPromise = queryClient.refetchQueries({
-      queryKey: profileQueryKey,
-      exact: true,
-    });
-    await waitFor(() => {
-      expect(profileGetCount).toBe(2);
-    });
-
-    await user.click(screen.getByRole("button", { name: "Save profile" }));
-
-    expect(await screen.findByText("Profile updated")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
-    });
-    expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
-
-    if (!resolveProfileRefetch) {
-      throw new Error("Expected a pending profile refetch");
-    }
-
-    const resolveRefetch = resolveProfileRefetch;
-
-    await act(async () => {
-      resolveRefetch(
-        new Response(JSON.stringify(profile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
-      await refetchPromise;
-    });
-
-    await waitFor(() => {
-      expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
-      expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
-    });
-    expect(displayNameInput).toHaveValue("Saved User");
-    expect(bioInput).toHaveValue("Saved bio");
-
-  });
-
-  it("keeps the saved display name when an older auth refetch finishes afterward", async () => {
-    const profile = {
-      username: "current-user",
-      displayName: "Current User",
-      bio: null,
-      profileImage: null,
-    };
-    const updatedProfile = {
-      ...profile,
-      displayName: "Saved User",
-    };
-    let resolveAuthRefetch: ((response: Response) => void) | undefined;
-    const pendingAuthRefetch = new Promise<Response>((resolve) => {
-      resolveAuthRefetch = resolve;
-    });
-    vi.mocked(apiFetch).mockImplementation((input, init) => {
-      if (input === "/auth/me") {
-        return pendingAuthRefetch;
-      }
-
-      if (input === "/users/current-user") {
-        return Promise.resolve(
-          new Response(JSON.stringify(profile), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }),
-        );
-      }
-
-      if (input === "/users/me" && init?.method === "PATCH") {
-        return Promise.resolve(
-          new Response(JSON.stringify(updatedProfile), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }),
-        );
-      }
-
-      return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
-    });
-    const user = userEvent.setup();
-    queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <ProfilePage />
-          <AuthQueryObserver />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    const displayNameInput = await screen.findByRole("textbox", {
-      name: "Display name",
-    });
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledWith("/auth/me", {
-        signal: expect.any(AbortSignal),
-      });
-      expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe("fetching");
-    });
-    await user.clear(displayNameInput);
-    await user.type(displayNameInput, "Saved User");
-    await user.click(screen.getByRole("button", { name: "Save profile" }));
-
-    expect(await screen.findByText("Profile updated")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
-        ...currentUser,
-        displayName: "Saved User",
-      });
-      expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
-    });
-
-    if (!resolveAuthRefetch) {
-      throw new Error("Expected a pending auth refetch");
-    }
-
-    const resolveFetch = resolveAuthRefetch;
-
-    await act(async () => {
-      resolveFetch(
-        new Response(
-          JSON.stringify({
-            ...currentUser,
-            displayName: "Current User",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      );
-    });
-
-    await waitFor(() => {
-      expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe("idle");
-      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
-        ...currentUser,
-        displayName: "Saved User",
-      });
-      expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
-    });
-
-  });
-
-  it("disables submission and prevents duplicate updates while the request is pending", async () => {
-    const profile = {
-      username: "current-user",
-      displayName: "Current User",
-      bio: "Current bio",
-      profileImage: null,
-    };
-    const pendingUpdateResponse = new Promise<Response>(() => undefined);
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(profile), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockReturnValueOnce(pendingUpdateResponse);
-    const user = userEvent.setup();
-
-    renderProfilePage(queryClient);
-
-    const displayNameInput = await screen.findByRole("textbox", {
-      name: "Display name",
-    });
-    const submitButton = screen.getByRole("button", { name: "Save profile" });
-    await user.clear(displayNameInput);
-    await user.type(displayNameInput, "Updated User");
-    await user.click(submitButton);
-
-    await waitFor(() => {
-      expect(submitButton).toBeDisabled();
-    });
-    await user.click(submitButton);
-
-    const updateCalls = vi
-      .mocked(apiFetch)
-      .mock.calls.filter(([input, init]) => input === "/users/me" && init?.method === "PATCH");
-    expect(updateCalls).toHaveLength(1);
-
-  });
-
-  it.each([
-    {
-      caseName: "the API rejects the profile input",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockResolvedValueOnce(new Response(null, { status: 400 })),
-      expectedMessage: "Invalid profile input",
-    },
-    {
-      caseName: "the API returns another unsuccessful response",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockResolvedValueOnce(new Response(null, { status: 500 })),
-      expectedMessage: "Failed to update profile",
-    },
-    {
-      caseName: "the profile request fails in transport",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockRejectedValueOnce(new TypeError("Failed to fetch")),
-      expectedMessage: "Failed to fetch",
-    },
-  ])(
-    "shows the error and preserves the form values when $caseName",
-    async ({ arrangeFailure, expectedMessage }) => {
-      vi.mocked(apiFetch).mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            username: "current-user",
-            displayName: "Current User",
-            bio: "Current bio",
-            profileImage: "https://example.com/current-user.jpg",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      );
-      arrangeFailure();
+    it("preserves unsaved form values after a profile refetch updates the query data", async () => {
+      const refreshedProfile = {
+        ...baseProfile,
+        displayName: "Server User",
+        bio: "Server bio",
+      };
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(profileResponse(baseProfile))
+        .mockResolvedValueOnce(profileResponse(refreshedProfile));
       const user = userEvent.setup();
 
-      renderProfilePage(queryClient);
+      renderProfilePage(queryClient, <ProfileQueryObserver />);
 
       const displayNameInput = await screen.findByRole("textbox", {
         name: "Display name",
       });
       const bioInput = screen.getByRole("textbox", { name: "Bio" });
-      const profileImageInput = screen.getByRole("textbox", {
-        name: "Profile image",
-      });
+      expect(displayNameInput).toHaveValue("Current User");
+      expect(bioInput).toHaveValue("Current bio");
+
       await user.clear(displayNameInput);
       await user.type(displayNameInput, "Unsaved User");
       await user.clear(bioInput);
       await user.type(bioInput, "Unsaved bio");
-      await user.clear(profileImageInput);
-      await user.type(profileImageInput, "https://example.com/unsaved.jpg");
+
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: profileQueryKey, exact: true });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Server User");
+      });
+      expect(queryClient.getQueryData(profileQueryKey)).toEqual(refreshedProfile);
+      expect(displayNameInput).toHaveValue("Unsaved User");
+      expect(bioInput).toHaveValue("Unsaved bio");
+    });
+
+    it("shows the profile query fallback in an alert when the request fails", async () => {
+      vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
+
+      renderProfilePage(queryClient);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load profile");
+    });
+  });
+
+  describe("validation", () => {
+    it.each([
+      {
+        caseName: "the display name is blank after trimming",
+        fieldName: "Display name",
+        value: "   ",
+        expectedMessage: "Display name is required",
+      },
+      {
+        caseName: "the display name is longer than 50 characters after trimming",
+        fieldName: "Display name",
+        value: ` ${"a".repeat(51)} `,
+        expectedMessage: "Display name must be at most 50 characters",
+      },
+      {
+        caseName: "the bio is longer than 300 characters after trimming",
+        fieldName: "Bio",
+        value: ` ${"a".repeat(301)} `,
+        expectedMessage: "Bio must be at most 300 characters",
+      },
+    ])(
+      "shows a validation error and does not update the profile when $caseName",
+      async ({ fieldName, value, expectedMessage }) => {
+        vi.mocked(apiFetch).mockResolvedValue(
+          profileResponse({
+            ...baseProfile,
+            profileImage: "https://example.com/current-user.jpg",
+          }),
+        );
+        const user = userEvent.setup();
+
+        renderProfilePage(queryClient);
+
+        const input = await screen.findByRole("textbox", { name: fieldName });
+        await user.clear(input);
+        await user.type(input, value);
+        await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+        expect(updateUserProfile).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe("successful update", () => {
+    it("updates the profile and related caches after a successful submission", async () => {
+      const updatedProfile = {
+        ...baseProfile,
+        displayName: "Updated User",
+        bio: null,
+        profileImage: null,
+      };
+      vi.mocked(apiFetch).mockResolvedValue(
+        profileResponse({
+          ...baseProfile,
+          profileImage: "https://example.com/current-user.jpg",
+        }),
+      );
+      vi.mocked(updateUserProfile).mockResolvedValue(updatedProfile);
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient);
+
+      const { displayNameInput, bioInput, profileImageInput } =
+        await submitProfileChanges(user, {
+          displayName: " Updated User ",
+          bio: "",
+          profileImage: "",
+        });
+
+      expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
+      expect(updateUserProfile).toHaveBeenCalledWith({
+        displayName: "Updated User",
+        bio: null,
+        profileImage: null,
+      });
+      expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
+      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
+        ...currentUser,
+        displayName: "Updated User",
+      });
+      expect(displayNameInput).toHaveValue(updatedProfile.displayName);
+      expect(bioInput).toHaveValue(updatedProfile.bio ?? "");
+      expect(profileImageInput).toHaveValue(updatedProfile.profileImage ?? "");
+    });
+  });
+
+  describe("update lifecycle", () => {
+    it("keeps the saved profile when an older profile refetch finishes afterward", async () => {
+      const updatedProfile = {
+        ...baseProfile,
+        displayName: "Saved User",
+        bio: "Saved bio",
+      };
+      let profileGetCount = 0;
+      const pendingProfileRefetch = deferred<Response>();
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/users/current-user") {
+          profileGetCount += 1;
+
+          if (profileGetCount === 1) {
+            return Promise.resolve(profileResponse(baseProfile));
+          }
+
+          return pendingProfileRefetch.promise;
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      vi.mocked(updateUserProfile).mockResolvedValue(updatedProfile);
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient, <ProfileQueryObserver />);
+
+      const displayNameInput = await screen.findByRole("textbox", {
+        name: "Display name",
+      });
+      const bioInput = screen.getByRole("textbox", { name: "Bio" });
+      await user.clear(displayNameInput);
+      await user.type(displayNameInput, "Saved User");
+      await user.clear(bioInput);
+      await user.type(bioInput, "Saved bio");
+
+      const refetchPromise = queryClient.refetchQueries({
+        queryKey: profileQueryKey,
+        exact: true,
+      });
+      await waitFor(() => {
+        expect(profileGetCount).toBe(2);
+      });
+
       await user.click(screen.getByRole("button", { name: "Save profile" }));
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+      expect(await screen.findByText("Profile updated")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
+      });
+      expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
+
+      await act(async () => {
+        pendingProfileRefetch.resolve(profileResponse(baseProfile));
+        await refetchPromise;
+      });
+
+      await waitFor(() => {
+        expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
+        expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
+      });
+      expect(displayNameInput).toHaveValue("Saved User");
+      expect(bioInput).toHaveValue("Saved bio");
+    });
+
+    it("keeps the saved display name when an older auth refetch finishes afterward", async () => {
+      const profile = {
+        ...baseProfile,
+        bio: null,
+      };
+      const updatedProfile = {
+        ...profile,
+        displayName: "Saved User",
+      };
+      const pendingAuthRefetch = deferred<Response>();
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return pendingAuthRefetch.promise;
+        }
+
+        if (input === "/users/current-user") {
+          return Promise.resolve(profileResponse(profile));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      vi.mocked(updateUserProfile).mockResolvedValue(updatedProfile);
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient, <AuthQueryObserver />);
+
+      await waitFor(() => {
+        expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe(
+          "fetching",
+        );
+      });
+      await submitProfileChanges(user, { displayName: "Saved User" });
+
+      expect(await screen.findByText("Profile updated")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
+          ...currentUser,
+          displayName: "Saved User",
+        });
+        expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
+      });
+
+      await act(async () => {
+        pendingAuthRefetch.resolve(
+          new Response(
+            JSON.stringify({
+              ...currentUser,
+              displayName: "Current User",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      });
+
+      await waitFor(() => {
+        expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe("idle");
+        expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
+          ...currentUser,
+          displayName: "Saved User",
+        });
+        expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
+      });
+    });
+
+    it("disables submission and prevents duplicate updates while the request is pending", async () => {
+      const pendingUpdate = new Promise<never>(() => undefined);
+      vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
+      vi.mocked(updateUserProfile).mockReturnValue(pendingUpdate);
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient);
+
+      const { submitButton } = await submitProfileChanges(user, {
+        displayName: "Updated User",
+      });
+
+      await waitFor(() => {
+        expect(submitButton).toBeDisabled();
+      });
+      await user.click(submitButton);
+
+      expect(updateUserProfile).toHaveBeenCalledOnce();
+    });
+
+    it("shows the mutation error and preserves unsaved form values", async () => {
+      const mutationError = new UserFacingError("Failed to update profile");
+      vi.mocked(apiFetch).mockResolvedValue(
+        profileResponse({
+          ...baseProfile,
+          profileImage: "https://example.com/current-user.jpg",
+        }),
+      );
+      vi.mocked(updateUserProfile).mockRejectedValue(mutationError);
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient);
+
+      const { displayNameInput, bioInput, profileImageInput } =
+        await submitProfileChanges(user, {
+          displayName: "Unsaved User",
+          bio: "Unsaved bio",
+          profileImage: "https://example.com/unsaved.jpg",
+        });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        mutationError.message,
+      );
       expect(displayNameInput).toHaveValue("Unsaved User");
       expect(bioInput).toHaveValue("Unsaved bio");
       expect(profileImageInput).toHaveValue("https://example.com/unsaved.jpg");
-
-    },
-  );
+    });
+  });
 });

@@ -1,14 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { z } from "zod";
+import { FormField } from "@/components/FormField.tsx";
 import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
+import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
 import {
-  authMeQueryOptions,
-  type AuthUser,
-} from "@/features/auth/authMeQuery.ts";
-import { USER_PROFILE_QUERY_ERROR_MESSAGE, userProfileQueryOptions } from "./userProfileQuery.ts";
+  USER_PROFILE_QUERY_ERROR_MESSAGE,
+  type UserProfile,
+  userProfileQueryOptions,
+} from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
 
 const profileSchema = z.object({
@@ -23,11 +30,34 @@ const profileSchema = z.object({
 
 type ProfileInput = z.infer<typeof profileSchema>;
 
+const syncUpdatedProfileToCache = async (
+  queryClient: QueryClient,
+  username: string,
+  updatedProfile: UserProfile,
+) => {
+  const profileQueryKey = userProfileQueryOptions(username).queryKey;
+
+  await queryClient.cancelQueries({ queryKey: profileQueryKey, exact: true });
+  await queryClient.cancelQueries({
+    queryKey: authMeQueryOptions.queryKey,
+    exact: true,
+  });
+  queryClient.setQueryData(profileQueryKey, updatedProfile);
+  queryClient.setQueryData<AuthUser | null>(authMeQueryOptions.queryKey, (user) =>
+    user ? { ...user, displayName: updatedProfile.displayName } : user,
+  );
+};
+
 export function ProfilePage() {
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData<AuthUser>(authMeQueryOptions.queryKey);
   const username = currentUser?.username ?? "";
-  const { data: profile, isPending, isError, error } = useQuery({
+  const {
+    data: profile,
+    isPending,
+    isError,
+    error,
+  } = useQuery({
     ...userProfileQueryOptions(username),
     enabled: username.length > 0,
   });
@@ -50,26 +80,12 @@ export function ProfilePage() {
   const updateProfileMutation = useMutation({
     mutationFn: (input: ProfileInput) =>
       updateUserProfile({
-        ...input,
-        bio: input.bio === "" ? null : input.bio,
-        profileImage: input.profileImage === "" ? null : input.profileImage,
+        displayName: input.displayName,
+        bio: input.bio || null,
+        profileImage: input.profileImage || null,
       }),
     onSuccess: async (updatedProfile) => {
-      const profileQueryKey = userProfileQueryOptions(username).queryKey;
-
-      await queryClient.cancelQueries({ queryKey: profileQueryKey, exact: true });
-      await queryClient.cancelQueries({
-        queryKey: authMeQueryOptions.queryKey,
-        exact: true,
-      });
-      queryClient.setQueryData(profileQueryKey, updatedProfile);
-      queryClient.setQueryData<AuthUser | null>(
-        authMeQueryOptions.queryKey,
-        (user) =>
-          user
-            ? { ...user, displayName: updatedProfile.displayName }
-            : user,
-      );
+      await syncUpdatedProfileToCache(queryClient, username, updatedProfile);
       reset(
         {
           displayName: updatedProfile.displayName,
@@ -97,19 +113,13 @@ export function ProfilePage() {
     <form onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}>
       <Link to="/">Back to conversations</Link>
 
-      <label htmlFor="display-name">Display name</label>
-      <input
+      <FormField
         id="display-name"
         type="text"
-        aria-invalid={Boolean(errors.displayName)}
-        aria-describedby={errors.displayName ? "display-name-error" : undefined}
+        label="Display name"
+        error={errors.displayName?.message}
         {...register("displayName")}
       />
-      {errors.displayName && (
-        <p id="display-name-error" role="alert">
-          {errors.displayName.message}
-        </p>
-      )}
 
       <label htmlFor="bio">Bio</label>
       <textarea
@@ -124,8 +134,12 @@ export function ProfilePage() {
         </p>
       )}
 
-      <label htmlFor="profile-image">Profile image</label>
-      <input id="profile-image" type="url" {...register("profileImage")} />
+      <FormField
+        id="profile-image"
+        type="url"
+        label="Profile image"
+        {...register("profileImage")}
+      />
 
       <button type="submit" disabled={updateProfileMutation.isPending}>
         Save profile
@@ -133,9 +147,7 @@ export function ProfilePage() {
 
       {updateProfileMutation.isSuccess && <p role="status">Profile updated</p>}
 
-      {updateProfileMutation.isError && (
-        <p role="alert">{updateProfileMutation.error.message}</p>
-      )}
+      {updateProfileMutation.isError && <p role="alert">{updateProfileMutation.error.message}</p>}
     </form>
   );
 }

@@ -162,9 +162,7 @@ describe("UserSearch", () => {
 
   describe("conversation creation", () => {
     it("opens the conversation returned after selecting a user", async () => {
-      vi.mocked(apiFetch).mockImplementation(() =>
-        Promise.resolve(usersResponse([targetUser])),
-      );
+      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
       vi.mocked(createConversation).mockResolvedValue({
         id: 42,
         participants: [
@@ -194,7 +192,7 @@ describe("UserSearch", () => {
       await user.type(screen.getByRole("searchbox", { name: "Search users" }), "target");
       await user.click(await screen.findByRole("button", { name: /Target User @target-user/ }));
 
-      expect(createConversation).toHaveBeenCalledWith("target-user");
+      expect(vi.mocked(createConversation).mock.calls[0]?.[0]).toBe("target-user");
       expect(await screen.findByRole("heading", { name: "Conversation 42" })).toBeInTheDocument();
     });
 
@@ -234,9 +232,7 @@ describe("UserSearch", () => {
     });
 
     it("shows the mutation error without navigating when opening a conversation fails", async () => {
-      vi.mocked(apiFetch).mockImplementation(() =>
-        Promise.resolve(usersResponse([targetUser])),
-      );
+      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
       const mutationError = new Error("Failed to create conversation");
       vi.mocked(createConversation).mockRejectedValue(mutationError);
       const user = userEvent.setup();

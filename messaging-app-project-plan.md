@@ -465,7 +465,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
       - 테스트는 별도 하위 `describe` 없이 현재 4개 계약을 평평하게 유지
     - [x] `ProtectedRoute.test.tsx`를 auth 상태별 semantic `describe` 구조로 정리
     - [x] `AuthenticatedWebSocket.test.tsx`를 connection/messages, auth recovery/reconnect, cleanup lifecycle 기준으로 정리
-- [ ] Conversation / Message REST query·cache 흐름 manual audit
+- [x] Conversation / Message REST query·cache 흐름 manual audit
   - [x] `conversationQuery.ts` / test audit — queryKey, signal, 403/404/generic HTTP error, transport passthrough 책임 정리
   - [x] `conversationsQuery.ts` / test audit — initial page/cursor pagination 계약과 component 중복 검증 정리
   - [x] `messagesQuery.ts` / test audit — pagination, 403/404/generic error, transport passthrough 계약 정리
@@ -480,7 +480,26 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
     - assertion 이전 의도적인 `queryClient.clear()`는 유지
     - 전체 frontend 테스트 GREEN 확인
   - [x] `createMessage.ts` / test audit — POST 201 성공, 403/404 status-specific error, generic HTTP error, transport passthrough 계약 확인
-  - [ ] `syncMessagesToCache.ts` / test manual audit
+  - [x] `syncMessagesToCache.ts` / test audit
+    - cache 생성 / pagination 보존 / duplicate 방지 / `createdAt DESC, id DESC` 정렬 계약 확인
+    - pending fetch 완료 후 message 재적용과 initial fetch error recovery refetch 테스트 보완
+    - cache clear 후 stale async sync가 이전 사용자 cache를 되살리지 않는 lifecycle 방어 유지
+    - test를 basic cache sync / ordering / fetch-recovery lifecycle 기준으로 정리
+- [x] User Search / Conversation 생성 흐름 manual audit
+  - [x] `usersQuery.ts` / test — queryKey, URL query encoding, signal, 400/generic HTTP error, transport passthrough 정리
+  - [x] `UserSearch.tsx` / test — trim된 검색값과 원본 input 분리, whitespace-only query 비활성화
+  - [x] conversation mutation pending 동안 전체 사용자 버튼 disabled로 중복 생성/navigation race 방지
+  - [x] search / conversation creation 기준 semantic test 구획과 fixture 중복 정리
+  - [x] `createConversation.ts` / test — 200/201 success, 400/404 status-specific error, generic HTTP error, transport passthrough 정리
+- [x] Profile query / mutation / page 흐름 manual audit
+  - [x] `userProfileQuery.ts` / test — queryKey, username path encoding, signal, 404/generic HTTP error, transport passthrough 정리
+  - [x] `updateUserProfile.ts` / test — PATCH 계약, 400/generic HTTP error, transport passthrough 정리
+  - [x] `ProfilePage.tsx` — input field에 기존 `FormField` 재사용, profile cache 동기화 helper로 성공 lifecycle 가독성 개선
+  - [x] profile form의 `bio` / `profileImage` 빈 문자열 → `null` 변환을 명시적으로 정리
+  - [x] `ProfilePage.test.tsx` — 하위 query/mutation transport 중복 검증 제거 및 component observable behavior 중심으로 정리
+  - [x] profile loading/form state / validation / successful update / update lifecycle 기준 semantic test 구획
+  - [x] profile/auth 이전 refetch와 PATCH 성공 cache race 방어 테스트 유지
+  - [x] 반복 fixture, query key, render wrapper, form interaction helper 정리
 
 #### Backend refactor TODO
 
@@ -532,7 +551,11 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   13. `MessageList` ordering/pagination/refetch 테스트 정리 완료 — 오래된 메시지 위 / 최신 메시지 아래 표시 계약 유지
   14. 반복 `QueryClient` 생성/`clear()`를 안전한 frontend 테스트 16개 파일에서 `beforeEach`/`afterEach` lifecycle로 공통화했고 전체 테스트 GREEN 확인
   15. `createMessage.ts` / test audit 완료
-  16. **다음 세션은 `syncMessagesToCache.ts` / test manual audit부터 시작**
+  16. `syncMessagesToCache.ts` / test audit 완료 — fetch/recovery/cache clear race까지 정리
+  17. User Search 흐름 audit 완료 — 검색값 trim, whitespace 비활성화, conversation mutation 중복 방지 및 테스트 구조 정리
+  18. `createConversation.ts` / test audit 완료
+  19. Profile query / mutation / page audit 완료 — path encoding, cache sync, form reset/dirty lifecycle, stale refetch race와 테스트 중복 정리
+  20. **다음 세션은 남은 Auth form/mutation manual audit부터 시작 (`LoginPage.tsx` / test 우선 확인)**
 - 프론트 흐름이 충분히 정리되면 MVP 기본 CSS / 2-column layout / responsive UI 작업으로 복귀한다.
 - 그 뒤 frontend + backend 전체 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
