@@ -2,11 +2,20 @@ import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-import { messagesQueryOptions } from "./messagesQuery.ts";
+import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
 
 describe("messagesQueryOptions", () => {
   it("fetches and returns the first page of messages without a cursor", async () => {
@@ -31,38 +40,20 @@ describe("messagesQueryOptions", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    const queryClient = new QueryClient();
+    const queryClient = createQueryClient();
+    const queryOptions = messagesQueryOptions(42);
 
-    const result = await queryClient.infiniteQuery(messagesQueryOptions(42));
+    const result = await queryClient.infiniteQuery(queryOptions);
 
+    expect(queryOptions.queryKey).toEqual(["conversations", 42, "messages"]);
+    expect(queryOptions.initialPageParam).toBeNull();
     expect(apiFetch).toHaveBeenCalledOnce();
-    const requestUrl = new URL(
-      vi.mocked(apiFetch).mock.calls[0]?.[0] as string,
-      "http://localhost",
-    );
-    expect(requestUrl.pathname).toBe("/conversations/42/messages");
-    expect(requestUrl.searchParams.get("cursor")).toBeNull();
+    expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?limit=20", {
+      signal: expect.any(AbortSignal),
+    });
     expect(result).toEqual({
       pages: [firstPage],
       pageParams: [null],
-    });
-
-    queryClient.clear();
-  });
-
-  it("forwards the signal provided by TanStack Query to the messages request", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(JSON.stringify({ messages: [], nextCursor: null }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    const queryClient = new QueryClient();
-
-    await queryClient.infiniteQuery(messagesQueryOptions(42));
-
-    expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?limit=20", {
-      signal: expect.any(AbortSignal),
     });
 
     queryClient.clear();
@@ -112,7 +103,7 @@ describe("messagesQueryOptions", () => {
           headers: { "Content-Type": "application/json" },
         }),
       );
-    const queryClient = new QueryClient();
+    const queryClient = createQueryClient();
 
     const result = await queryClient.infiniteQuery({
       ...messagesQueryOptions(42),
@@ -120,24 +111,12 @@ describe("messagesQueryOptions", () => {
     });
 
     expect(apiFetch).toHaveBeenCalledTimes(2);
-    const firstRequestUrl = new URL(
-      vi.mocked(apiFetch).mock.calls[0]?.[0] as string,
-      "http://localhost",
-    );
-    const nextRequestUrl = new URL(
-      vi.mocked(apiFetch).mock.calls[1]?.[0] as string,
-      "http://localhost",
-    );
-    const limit = firstRequestUrl.searchParams.get("limit");
-
-    expect(firstRequestUrl.pathname).toBe("/conversations/42/messages");
-    expect(firstRequestUrl.searchParams.get("cursor")).toBeNull();
-    expect(limit).not.toBeNull();
-    expect(Number.isInteger(Number(limit))).toBe(true);
-    expect(Number(limit)).toBeGreaterThan(0);
-    expect(nextRequestUrl.pathname).toBe("/conversations/42/messages");
-    expect(nextRequestUrl.searchParams.get("cursor")).toBe("10");
-    expect(nextRequestUrl.searchParams.get("limit")).toBe(limit);
+    expect(apiFetch).toHaveBeenNthCalledWith(1, "/conversations/42/messages?limit=20", {
+      signal: expect.any(AbortSignal),
+    });
+    expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations/42/messages?cursor=10&limit=20", {
+      signal: expect.any(AbortSignal),
+    });
     expect(result).toEqual({
       pages: [firstPage, secondPage],
       pageParams: [null, 10],
@@ -159,13 +138,7 @@ describe("messagesQueryOptions", () => {
     "throws the status-specific user-facing error when the response status is $status",
     async ({ status, expectedMessage }) => {
       vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status }));
-      const queryClient = new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-          },
-        },
-      });
+      const queryClient = createQueryClient();
 
       const result = queryClient.infiniteQuery(messagesQueryOptions(42));
 
@@ -178,18 +151,12 @@ describe("messagesQueryOptions", () => {
 
   it("throws a generic user-facing error for any other unsuccessful response", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
+    const queryClient = createQueryClient();
 
     const result = queryClient.infiniteQuery(messagesQueryOptions(42));
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
-    await expect(result).rejects.toThrow("Failed to load messages");
+    await expect(result).rejects.toThrow(MESSAGES_QUERY_ERROR_MESSAGE);
 
     queryClient.clear();
   });
@@ -197,13 +164,7 @@ describe("messagesQueryOptions", () => {
   it("preserves the original error when apiFetch rejects", async () => {
     const transportError = new TypeError("Failed to fetch");
     vi.mocked(apiFetch).mockRejectedValue(transportError);
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
+    const queryClient = createQueryClient();
 
     const result = queryClient.infiniteQuery(messagesQueryOptions(42));
 

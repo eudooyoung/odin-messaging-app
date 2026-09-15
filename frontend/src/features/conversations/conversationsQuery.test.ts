@@ -11,6 +11,15 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
 describe("conversationsQueryOptions", () => {
   it("fetches consecutive conversation pages using the next cursor", async () => {
     const firstPage = {
@@ -50,38 +59,22 @@ describe("conversationsQueryOptions", () => {
           headers: { "Content-Type": "application/json" },
         }),
       );
-    const queryClient = new QueryClient();
+    const queryClient = createQueryClient();
 
     const result = await queryClient.infiniteQuery({
       ...conversationsQueryOptions,
       pages: 2,
     });
 
+    expect(conversationsQueryOptions.queryKey).toEqual(["conversations"]);
+    expect(conversationsQueryOptions.initialPageParam).toBeNull();
     expect(apiFetch).toHaveBeenCalledTimes(2);
-    expect(apiFetch).toHaveBeenNthCalledWith(1, expect.any(String), {
+    expect(apiFetch).toHaveBeenNthCalledWith(1, "/conversations?limit=20", {
       signal: expect.any(AbortSignal),
     });
-    expect(apiFetch).toHaveBeenNthCalledWith(2, expect.any(String), {
+    expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations?cursor=1&limit=20", {
       signal: expect.any(AbortSignal),
     });
-    const firstRequestUrl = new URL(
-      vi.mocked(apiFetch).mock.calls[0]?.[0] as string,
-      "http://localhost",
-    );
-    const nextRequestUrl = new URL(
-      vi.mocked(apiFetch).mock.calls[1]?.[0] as string,
-      "http://localhost",
-    );
-    const limit = firstRequestUrl.searchParams.get("limit");
-
-    expect(firstRequestUrl.pathname).toBe("/conversations");
-    expect(firstRequestUrl.searchParams.get("cursor")).toBeNull();
-    expect(limit).not.toBeNull();
-    expect(Number.isInteger(Number(limit))).toBe(true);
-    expect(Number(limit)).toBeGreaterThan(0);
-    expect(nextRequestUrl.pathname).toBe("/conversations");
-    expect(nextRequestUrl.searchParams.get("cursor")).toBe("1");
-    expect(nextRequestUrl.searchParams.get("limit")).toBe(limit);
     expect(result).toEqual({
       pages: [firstPage, secondPage],
       pageParams: [null, 1],
@@ -92,13 +85,7 @@ describe("conversationsQueryOptions", () => {
 
   it("throws a user-facing error when the conversations response is unsuccessful", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
+    const queryClient = createQueryClient();
 
     const result = queryClient.infiniteQuery(conversationsQueryOptions);
 
@@ -111,13 +98,7 @@ describe("conversationsQueryOptions", () => {
   it("preserves the original error when apiFetch rejects", async () => {
     const networkError = new TypeError("Failed to fetch");
     vi.mocked(apiFetch).mockRejectedValue(networkError);
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
+    const queryClient = createQueryClient();
 
     const result = queryClient.infiniteQuery(conversationsQueryOptions);
 

@@ -11,6 +11,12 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
+const currentUser: AuthUser = {
+  id: 1,
+  username: "current-user",
+  displayName: "Current User",
+};
+
 const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conversations/42") =>
   render(
     <QueryClientProvider client={queryClient}>
@@ -174,11 +180,6 @@ describe("ConversationPage", () => {
     it("shows a link back to conversations and navigates home when clicked", async () => {
       arrangeConversationPageRequests();
       const queryClient = new QueryClient();
-      const currentUser: AuthUser = {
-        id: 1,
-        username: "current-user",
-        displayName: "Current User",
-      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
@@ -198,18 +199,12 @@ describe("ConversationPage", () => {
     it("loads the route conversation and shows the other participant", async () => {
       arrangeConversationPageRequests();
       const queryClient = new QueryClient();
-      const currentUser: AuthUser = {
-        id: 1,
-        username: "current-user",
-        displayName: "Current User",
-      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
       expect(screen.getByText("@other-user")).toBeInTheDocument();
-      expect(vi.mocked(apiFetch).mock.calls[0]?.[0]).toBe("/conversations/42");
 
       queryClient.clear();
     });
@@ -219,19 +214,11 @@ describe("ConversationPage", () => {
         messages: [conversationMessage],
       });
       const queryClient = new QueryClient();
-      const currentUser: AuthUser = {
-        id: 1,
-        username: "current-user",
-        displayName: "Current User",
-      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);
 
       expect(await screen.findByText("Hello from the conversation")).toBeInTheDocument();
-      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?limit=20", {
-        signal: expect.any(AbortSignal),
-      });
 
       queryClient.clear();
     });
@@ -252,11 +239,6 @@ describe("ConversationPage", () => {
         createdMessage,
       });
       const queryClient = new QueryClient();
-      const currentUser: AuthUser = {
-        id: 1,
-        username: "current-user",
-        displayName: "Current User",
-      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
@@ -296,11 +278,6 @@ describe("ConversationPage", () => {
           },
         },
       });
-      const currentUser: AuthUser = {
-        id: 1,
-        username: "current-user",
-        displayName: "Current User",
-      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
@@ -341,11 +318,6 @@ describe("ConversationPage", () => {
         },
       });
       const queryClient = new QueryClient();
-      const currentUser: AuthUser = {
-        id: 1,
-        username: "current-user",
-        displayName: "Current User",
-      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);

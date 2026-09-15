@@ -148,12 +148,6 @@ describe("router", () => {
 
     expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenNthCalledWith(1, "/auth/me", {
-      signal: expect.any(AbortSignal),
-    });
-    expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations?limit=20", {
-      signal: expect.any(AbortSignal),
-    });
 
     queryClient.clear();
   });

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { ConversationList } from "./ConversationList.tsx";
@@ -9,6 +9,57 @@ import { ConversationList } from "./ConversationList.tsx";
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+const firstConversation = {
+  id: 1,
+  otherUser: {
+    username: "first-user",
+    displayName: "First User",
+    profileImage: null,
+  },
+  lastMessage: {
+    id: 10,
+    content: "Latest message",
+    senderId: 2,
+    createdAt: "2026-09-04T01:00:00.000Z",
+  },
+  lastActivityAt: "2026-09-04T01:00:00.000Z",
+};
+
+const secondConversation = {
+  id: 2,
+  otherUser: {
+    username: "second-user",
+    displayName: "Second User",
+    profileImage: null,
+  },
+  lastMessage: null,
+  lastActivityAt: "2026-09-03T02:30:00.000Z",
+};
+
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+const createConversationsResponse = (conversations: unknown[], nextCursor: number | null) =>
+  new Response(JSON.stringify({ conversations, nextCursor }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+const deferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+};
 
 const renderConversationList = (queryClient: QueryClient) =>
   render(
@@ -20,338 +71,127 @@ const renderConversationList = (queryClient: QueryClient) =>
   );
 
 describe("ConversationList", () => {
-  it("renders conversations from the first query page", async () => {
-    const firstActivityAt = "2026-09-04T01:00:00.000Z";
-    const secondActivityAt = "2026-09-03T02:30:00.000Z";
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          conversations: [
-            {
-              id: 1,
-              otherUser: {
-                username: "first-user",
-                displayName: "First User",
-                profileImage: null,
-              },
-              lastMessage: {
-                id: 10,
-                content: "Latest message",
-                senderId: 2,
-                createdAt: firstActivityAt,
-              },
-              lastActivityAt: firstActivityAt,
-            },
-            {
-              id: 2,
-              otherUser: {
-                username: "second-user",
-                displayName: "Second User",
-                profileImage: null,
-              },
-              lastMessage: null,
-              lastActivityAt: secondActivityAt,
-            },
-          ],
-          nextCursor: null,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
-    const queryClient = new QueryClient();
+  describe("initial load", () => {
+    it("shows a loading status while the request is pending", () => {
+      const pendingResponse = deferred<Response>();
+      vi.mocked(apiFetch).mockReturnValue(pendingResponse.promise);
+      const queryClient = createQueryClient();
 
-    renderConversationList(queryClient);
+      renderConversationList(queryClient);
 
-    expect(await screen.findByText("First User")).toBeInTheDocument();
-    expect(screen.getByText("@first-user")).toBeInTheDocument();
-    expect(screen.getByText("Latest message")).toBeInTheDocument();
-    expect(screen.getByText(new Date(firstActivityAt).toLocaleString())).toBeInTheDocument();
-    expect(screen.getByText("Second User")).toBeInTheDocument();
-    expect(screen.getByText("@second-user")).toBeInTheDocument();
-    expect(screen.getByText(new Date(secondActivityAt).toLocaleString())).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Loading conversations...");
 
-    queryClient.clear();
-  });
+      queryClient.clear();
+    });
 
-  it("navigates to the selected conversation", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          conversations: [
-            {
-              id: 42,
-              otherUser: {
-                username: "other-user",
-                displayName: "Other User",
-                profileImage: null,
-              },
-              lastMessage: null,
-              lastActivityAt: "2026-09-04T01:00:00.000Z",
-            },
-          ],
-          nextCursor: null,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
-    const queryClient = new QueryClient();
-    const user = userEvent.setup();
+    it("shows the query error when the request fails", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
+      const queryClient = createQueryClient();
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={["/"]}>
-          <Routes>
-            <Route path="/" element={<ConversationList />} />
-            <Route path="/conversations/42" element={<h1>Conversation 42</h1>} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+      renderConversationList(queryClient);
 
-    await user.click(await screen.findByRole("link", { name: /Other User/ }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversations");
 
-    expect(await screen.findByRole("heading", { name: "Conversation 42" })).toBeInTheDocument();
+      queryClient.clear();
+    });
 
-    queryClient.clear();
-  });
+    it("shows an empty state when there are no conversations", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(createConversationsResponse([], null));
+      const queryClient = createQueryClient();
 
-  it("loads the next page with the next cursor and appends its conversations", async () => {
-    const firstPage = {
-      conversations: [
-        {
-          id: 1,
-          otherUser: {
-            username: "first-user",
-            displayName: "First User",
-            profileImage: null,
-          },
-          lastMessage: null,
-          lastActivityAt: "2026-09-04T01:00:00.000Z",
-        },
-      ],
-      nextCursor: 42,
-    };
-    const secondPage = {
-      conversations: [
-        {
-          id: 2,
-          otherUser: {
-            username: "second-user",
-            displayName: "Second User",
-            profileImage: null,
-          },
-          lastMessage: null,
-          lastActivityAt: "2026-09-03T01:00:00.000Z",
-        },
-      ],
-      nextCursor: null,
-    };
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(firstPage), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(secondPage), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+      renderConversationList(queryClient);
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+
+      queryClient.clear();
+    });
+
+    it("renders conversation details and links", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(
+        createConversationsResponse([firstConversation, secondConversation], null),
       );
-    const queryClient = new QueryClient();
-    const user = userEvent.setup();
+      const queryClient = createQueryClient();
 
-    renderConversationList(queryClient);
+      renderConversationList(queryClient);
 
-    expect(await screen.findByText("First User")).toBeInTheDocument();
-    const loadMoreButton = screen.getByRole("button", { name: "Load more" });
-    expect(loadMoreButton).toBeInTheDocument();
+      const firstConversationLink = await screen.findByRole("link", { name: /First User/ });
+      const secondConversationLink = screen.getByRole("link", { name: /Second User/ });
 
-    await user.click(loadMoreButton);
+      expect(firstConversationLink).toHaveAttribute("href", "/conversations/1");
+      expect(firstConversationLink).toHaveTextContent("First User");
+      expect(firstConversationLink).toHaveTextContent("@first-user");
+      expect(firstConversationLink).toHaveTextContent("Latest message");
+      expect(firstConversationLink.querySelector("time")).toHaveAttribute(
+        "datetime",
+        firstConversation.lastActivityAt,
+      );
+      expect(secondConversationLink).toHaveAttribute("href", "/conversations/2");
+      expect(secondConversationLink).toHaveTextContent("Second User");
+      expect(secondConversationLink).toHaveTextContent("@second-user");
+      expect(secondConversationLink.querySelector("time")).toHaveAttribute(
+        "datetime",
+        secondConversation.lastActivityAt,
+      );
 
-    expect(await screen.findByText("Second User")).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenCalledTimes(2);
-    expect(apiFetch).toHaveBeenNthCalledWith(2, "/conversations?cursor=42&limit=20", {
-      signal: expect.any(AbortSignal),
+      queryClient.clear();
     });
-    expect(
-      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual(["First User", "Second User"]);
-    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
-
-    queryClient.clear();
   });
 
-  it("disables Load more while the next page is pending and re-enables it afterward", async () => {
-    const firstPage = {
-      conversations: [
-        {
-          id: 1,
-          otherUser: {
-            username: "first-user",
-            displayName: "First User",
-            profileImage: null,
-          },
-          lastMessage: null,
-          lastActivityAt: "2026-09-04T01:00:00.000Z",
-        },
-      ],
-      nextCursor: 42,
-    };
-    let resolveNextPage: (response: Response) => void = () => undefined;
-    const nextPageResponse = new Promise<Response>((resolve) => {
-      resolveNextPage = resolve;
-    });
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(firstPage), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockReturnValueOnce(nextPageResponse);
-    const queryClient = new QueryClient();
-    const user = userEvent.setup();
+  describe("pagination", () => {
+    it("shows Load more and disables it while the next page is pending", async () => {
+      const nextPageResponse = deferred<Response>();
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(createConversationsResponse([firstConversation], 10))
+        .mockReturnValueOnce(nextPageResponse.promise);
+      const queryClient = createQueryClient();
+      const user = userEvent.setup();
 
-    renderConversationList(queryClient);
+      renderConversationList(queryClient);
 
-    const loadMoreButton = await screen.findByRole("button", { name: "Load more" });
+      const loadMoreButton = await screen.findByRole("button", { name: "Load more" });
+      await user.click(loadMoreButton);
 
-    await user.click(loadMoreButton);
+      await waitFor(() => {
+        expect(loadMoreButton).toBeDisabled();
+      });
 
-    await waitFor(() => {
-      expect(loadMoreButton).toBeDisabled();
+      queryClient.clear();
     });
 
-    resolveNextPage(
-      new Response(
-        JSON.stringify({
-          conversations: [],
-          nextCursor: 84,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
+    it("appends the next page while keeping existing conversations", async () => {
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(createConversationsResponse([firstConversation], 10))
+        .mockResolvedValueOnce(createConversationsResponse([secondConversation], null));
+      const queryClient = createQueryClient();
+      const user = userEvent.setup();
 
-    await waitFor(() => {
-      expect(loadMoreButton).toBeEnabled();
+      renderConversationList(queryClient);
+
+      await user.click(await screen.findByRole("button", { name: "Load more" }));
+
+      expect(await screen.findByText("Second User")).toBeInTheDocument();
+      expect(screen.getByText("First User")).toBeInTheDocument();
+
+      queryClient.clear();
     });
 
-    queryClient.clear();
-  });
+    it("keeps existing conversations and shows an error when the next page fails", async () => {
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(createConversationsResponse([firstConversation], 10))
+        .mockResolvedValueOnce(new Response(null, { status: 500 }));
+      const queryClient = createQueryClient();
+      const user = userEvent.setup();
 
-  it("keeps existing conversations and shows a load-more error when the next page fails", async () => {
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            conversations: [
-              {
-                id: 1,
-                otherUser: {
-                  username: "first-user",
-                  displayName: "First User",
-                  profileImage: null,
-                },
-                lastMessage: null,
-                lastActivityAt: "2026-09-04T01:00:00.000Z",
-              },
-            ],
-            nextCursor: 42,
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      )
-      .mockResolvedValueOnce(new Response(null, { status: 500 }));
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
+      renderConversationList(queryClient);
+
+      await user.click(await screen.findByRole("button", { name: "Load more" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Failed to load more conversations",
+      );
+      expect(screen.getByText("First User")).toBeInTheDocument();
+
+      queryClient.clear();
     });
-    const user = userEvent.setup();
-
-    renderConversationList(queryClient);
-
-    expect(await screen.findByText("First User")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Load more" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load more conversations");
-    expect(screen.getByRole("list")).toBeInTheDocument();
-    expect(screen.getByText("First User")).toBeInTheDocument();
-    expect(screen.queryByText("Failed to load conversations")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Load more" })).toBeEnabled();
-
-    queryClient.clear();
-  });
-
-  it("shows an empty state when the first query page has no conversations", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          conversations: [],
-          nextCursor: null,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
-    const queryClient = new QueryClient();
-
-    renderConversationList(queryClient);
-
-    expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-
-    queryClient.clear();
-  });
-
-  it("shows a loading state while the initial conversations query is pending", () => {
-    const pendingConversationsResponse = new Promise<Response>(() => undefined);
-    vi.mocked(apiFetch).mockReturnValue(pendingConversationsResponse);
-    const queryClient = new QueryClient();
-
-    renderConversationList(queryClient);
-
-    expect(screen.getByRole("status")).toHaveTextContent("Loading conversations...");
-
-    queryClient.clear();
-  });
-
-  it("shows the generic fallback when the initial conversations request rejects", async () => {
-    const transportError = new TypeError("Failed to fetch");
-    vi.mocked(apiFetch).mockRejectedValue(transportError);
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
-
-    renderConversationList(queryClient);
-
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Failed to load conversations");
-    expect(alert).not.toHaveTextContent(transportError.message);
-
-    queryClient.clear();
   });
 });

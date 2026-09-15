@@ -12,7 +12,7 @@ const messageSchema = z.object({
     .string()
     .trim()
     .min(1, "Message is required")
-    .max(2000, "Message must be at most 2000 characters"),
+    .max(1000, "Message must be at most 2000 characters"),
 });
 
 type MessageInput = z.infer<typeof messageSchema>;

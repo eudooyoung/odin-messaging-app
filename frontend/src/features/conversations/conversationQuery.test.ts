@@ -8,6 +8,15 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
 describe("conversationQueryOptions", () => {
   it("fetches and returns the conversation for the given id", async () => {
     const conversation = {
@@ -33,10 +42,12 @@ describe("conversationQueryOptions", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    const queryClient = new QueryClient();
+    const queryClient = createQueryClient();
+    const queryOptions = conversationQueryOptions(42);
 
-    const result = await queryClient.query(conversationQueryOptions(42));
+    const result = await queryClient.query(queryOptions);
 
+    expect(queryOptions.queryKey).toEqual(["conversations", 42]);
     expect(apiFetch).toHaveBeenCalledWith("/conversations/42", {
       signal: expect.any(AbortSignal),
     });
@@ -58,13 +69,7 @@ describe("conversationQueryOptions", () => {
     "throws the status-specific user-facing error when the response status is $status",
     async ({ status, expectedMessage }) => {
       vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status }));
-      const queryClient = new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-          },
-        },
-      });
+      const queryClient = createQueryClient();
 
       const result = queryClient.query(conversationQueryOptions(42));
 
@@ -77,13 +82,7 @@ describe("conversationQueryOptions", () => {
 
   it("throws a user-facing error when the conversation response is unsuccessful", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
+    const queryClient = createQueryClient();
 
     const result = queryClient.query(conversationQueryOptions(42));
 
@@ -96,13 +95,7 @@ describe("conversationQueryOptions", () => {
   it("preserves the original error when apiFetch rejects", async () => {
     const networkError = new TypeError("Failed to fetch");
     vi.mocked(apiFetch).mockRejectedValue(networkError);
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
+    const queryClient = createQueryClient();
 
     const result = queryClient.query(conversationQueryOptions(42));
 
