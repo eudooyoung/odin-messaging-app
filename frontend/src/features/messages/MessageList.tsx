@@ -19,7 +19,7 @@ export function MessageList({ conversationId }: MessageListProps) {
     isFetchingNextPage,
     isFetchNextPageError,
   } = useInfiniteQuery(messagesQueryOptions(conversationId));
-  const messages = data?.pages.flatMap((page) => page.messages);
+  const messages = data?.pages.flatMap((page) => page.messages).reverse();
 
   if (isPending) {
     return <p role="status">Loading messages...</p>;
@@ -43,6 +43,15 @@ export function MessageList({ conversationId }: MessageListProps) {
 
   return (
     <>
+      {hasNextPage && (
+        <button
+          type="button"
+          disabled={isFetchingNextPage}
+          onClick={() => void fetchNextPage()}
+        >
+          Load older messages
+        </button>
+      )}
       <ul>
         {messages.map((message) => (
           <li key={message.id}>
@@ -54,15 +63,6 @@ export function MessageList({ conversationId }: MessageListProps) {
       </ul>
       {isFetchNextPageError && (
         <p role="alert">{LOAD_OLDER_MESSAGES_ERROR_MESSAGE}</p>
-      )}
-      {hasNextPage && (
-        <button
-          type="button"
-          disabled={isFetchingNextPage}
-          onClick={() => void fetchNextPage()}
-        >
-          Load older messages
-        </button>
       )}
     </>
   );

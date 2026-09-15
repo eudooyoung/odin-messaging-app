@@ -47,6 +47,61 @@ afterEach(() => {
 });
 
 describe("router", () => {
+  it("renders the login page under the guest-only route for an unauthenticated user", async () => {
+    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
+    const queryClient = new QueryClient();
+
+    await router.navigate("/login");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
+  it("renders the register page under the guest-only route for an unauthenticated user", async () => {
+    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
+    const queryClient = new QueryClient();
+
+    await router.navigate("/register");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Display name" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Register" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
+  it("redirects an unauthenticated user from the profile route to login", async () => {
+    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
+    const queryClient = new QueryClient();
+
+    await router.navigate("/profile");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
   it("renders the conversation list and user search at the root route for an authenticated user", async () => {
     vi.mocked(apiFetch).mockImplementation((input) => {
       if (input === "/auth/me") {
@@ -226,8 +281,7 @@ describe("router", () => {
       ],
       pageParams: [null],
     };
-    let authState: "user-a" | "unauthenticated" | "user-b-pending" | "user-b" =
-      "user-a";
+    let authState: "user-a" | "unauthenticated" | "user-b-pending" | "user-b" = "user-a";
     let resolveUserB: (response: Response) => void = () => undefined;
     const pendingUserBResponse = new Promise<Response>((resolve) => {
       resolveUserB = resolve;
@@ -300,12 +354,10 @@ describe("router", () => {
     expect(await screen.findByText("User A Friend")).toBeInTheDocument();
     expect(queryClient.getQueryData(messagesQueryKey)).toEqual(userAMessages);
     await waitFor(() => {
-      expect(
-        queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus,
-      ).toBe("idle");
-      expect(
-        queryClient.getQueryState(conversationsQueryOptions.queryKey)?.fetchStatus,
-      ).toBe("idle");
+      expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe("idle");
+      expect(queryClient.getQueryState(conversationsQueryOptions.queryKey)?.fetchStatus).toBe(
+        "idle",
+      );
     });
 
     authState = "unauthenticated";
@@ -320,9 +372,7 @@ describe("router", () => {
     });
     const logoutCalls = vi
       .mocked(apiFetch)
-      .mock.calls.filter(
-        ([input, init]) => input === "/auth/logout" && init?.method === "POST",
-      );
+      .mock.calls.filter(([input, init]) => input === "/auth/logout" && init?.method === "POST");
     expect(logoutCalls).toHaveLength(0);
 
     await user.type(screen.getByRole("textbox", { name: "Username" }), "user-b");
@@ -422,9 +472,7 @@ describe("router", () => {
 
     const logoutCalls = vi
       .mocked(apiFetch)
-      .mock.calls.filter(
-        ([input, init]) => input === "/auth/logout" && init?.method === "POST",
-      );
+      .mock.calls.filter(([input, init]) => input === "/auth/logout" && init?.method === "POST");
     expect(logoutCalls).toHaveLength(1);
 
     queryClient.clear();
@@ -501,9 +549,7 @@ describe("router", () => {
       expect(logoutButton).toBeEnabled();
       expect(router.state.location.pathname).toBe("/");
       expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
-      expect(queryClient.getQueryData(["previous-user", "private-data"])).toEqual(
-        previousUserData,
-      );
+      expect(queryClient.getQueryData(["previous-user", "private-data"])).toEqual(previousUserData);
 
       await user.click(logoutButton);
 
@@ -596,51 +642,6 @@ describe("router", () => {
     queryClient.clear();
   });
 
-  it("renders the login page under the guest-only route for an unauthenticated user", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const queryClient = new QueryClient();
-
-    await router.navigate("/login");
-    render(
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenCalledOnce();
-    expect(apiFetch).toHaveBeenCalledWith("/auth/me", {
-      signal: expect.any(AbortSignal),
-    });
-
-    queryClient.clear();
-  });
-
-  it("renders the register page under the guest-only route for an unauthenticated user", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const queryClient = new QueryClient();
-
-    await router.navigate("/register");
-    render(
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Display name" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Register" })).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenCalledOnce();
-    expect(apiFetch).toHaveBeenCalledWith("/auth/me", {
-      signal: expect.any(AbortSignal),
-    });
-
-    queryClient.clear();
-  });
-
   it("renders the profile page under the protected route for an authenticated user", async () => {
     vi.mocked(apiFetch).mockImplementation((input) => {
       if (input === "/auth/me") {
@@ -699,31 +700,6 @@ describe("router", () => {
       signal: expect.any(AbortSignal),
     });
     expect(apiFetch).toHaveBeenNthCalledWith(2, "/users/current-user", {
-      signal: expect.any(AbortSignal),
-    });
-
-    queryClient.clear();
-  });
-
-  it("redirects an unauthenticated user from the profile route to login", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const queryClient = new QueryClient();
-
-    await router.navigate("/profile");
-    render(
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenCalledTimes(2);
-    expect(apiFetch).toHaveBeenNthCalledWith(1, "/auth/me", {
-      signal: expect.any(AbortSignal),
-    });
-    expect(apiFetch).toHaveBeenNthCalledWith(2, "/auth/me", {
       signal: expect.any(AbortSignal),
     });
 

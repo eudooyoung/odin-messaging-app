@@ -1,12 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router";
 import { z } from "zod";
+import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
 import {
   authMeQueryOptions,
   type AuthUser,
 } from "@/features/auth/authMeQuery.ts";
-import { userProfileQueryOptions } from "./userProfileQuery.ts";
+import { USER_PROFILE_QUERY_ERROR_MESSAGE, userProfileQueryOptions } from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
 
 const profileSchema = z.object({
@@ -32,6 +34,7 @@ export function ProfilePage() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ProfileInput>({
     resolver: zodResolver(profileSchema),
@@ -67,6 +70,14 @@ export function ProfilePage() {
             ? { ...user, displayName: updatedProfile.displayName }
             : user,
       );
+      reset(
+        {
+          displayName: updatedProfile.displayName,
+          bio: updatedProfile.bio ?? "",
+          profileImage: updatedProfile.profileImage ?? "",
+        },
+        { keepDirtyValues: false },
+      );
     },
   });
 
@@ -75,7 +86,7 @@ export function ProfilePage() {
   }
 
   if (isError) {
-    return <p role="alert">{error.message}</p>;
+    return <QueryErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />;
   }
 
   if (!profile) {
@@ -84,6 +95,8 @@ export function ProfilePage() {
 
   return (
     <form onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}>
+      <Link to="/">Back to conversations</Link>
+
       <label htmlFor="display-name">Display name</label>
       <input
         id="display-name"

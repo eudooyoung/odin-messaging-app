@@ -6,9 +6,11 @@
 - [x] 2. UI / 사용자 흐름 설계
 - [x] 3. 데이터 모델 + API 설계
 - [x] 4. 기술 스택 결정
-- [x] 5. MVP 구현
-  - [x] Backend
-  - [x] Frontend
+- [ ] 5. MVP 완성
+  - [x] Backend 핵심 기능 구현
+  - [x] Frontend 핵심 기능 구현
+  - [ ] Frontend 실제 사용자 흐름 / UI 완성
+  - [ ] 실제 브라우저 smoke test
 - [ ] 6. 배포 전 점검 / 배포
 
 ## 1. 요구사항 / 서비스 규칙
@@ -337,6 +339,7 @@
   - [x] credentials / 401 refresh / 원 요청 1회 retry
   - [x] `VITE_API_URL`
   - [x] transport error passthrough
+  - [x] credential 요청용 CORS 설정 — 허용 frontend origin + `credentials: true`
 - [x] Auth
   - [x] auth/me query
   - [x] `ProtectedRoute` / `GuestOnlyRoute`
@@ -390,7 +393,85 @@
 
 ### 남은 후속 작업
 
-MVP 기능 구현은 완료했다. 아래는 배포 전 확인하거나 post-MVP hardening으로 남긴 항목이다.
+Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했다. 다만 실제 브라우저 기준 사용자 흐름과 UI가 아직 완성되지 않았으므로 MVP 완료로 판정하지 않는다.
+
+#### MVP 사용자 흐름 / UI 완성
+
+- [x] 실제 브라우저 사용자 흐름 audit
+  - [x] 비로그인 → Login
+  - [x] Login ↔ Register 이동 확인 및 양방향 navigation 보완
+  - [x] 회원가입 → 로그인 → 홈
+  - [x] 사용자 검색 → conversation 생성/재사용 → 채팅 진입
+  - [x] 메시지 조회 / 전송 / 실시간 수신
+  - [x] 메시지 UI 표시 순서 수정 — 오래된 메시지 위 / 최신 메시지 아래
+  - [x] `Load older messages`를 과거 메시지 방향에 맞게 목록 상단으로 이동
+  - [x] Profile 진입 / 수정 및 PATCH 성공 후 즉시 UI 반영
+  - [x] Logout
+- [x] 필수 navigation 보완
+  - [x] Login ↔ Register 양방향 이동
+  - [x] Conversation → 대화 목록/홈 복귀 경로
+  - [x] Profile → 대화 목록/홈 복귀 경로
+- [ ] MVP 기본 UI / CSS
+  - Login / Register 폼
+  - 데스크톱 메시징 2-column layout
+  - ConversationList / ConversationPage / MessageList / MessageComposer
+  - User Search / Profile / loading / empty / error 상태
+  - 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
+- [ ] frontend + backend 실제 브라우저 smoke test
+  - mock 없이 핵심 흐름을 처음부터 끝까지 실행
+  - 테스트에서 드러나지 않는 CORS / cookie / routing / WebSocket integration 문제 확인
+
+
+#### Frontend manual audit / code walkthrough
+
+CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해하고, 읽기 어려운 부분과 작은 리팩토링 지점을 정리한다. 기능 추가보다는 기존 구현의 책임과 lifecycle을 파악하는 단계다.
+
+- [ ] 앱 진입 / 라우팅 / 인증 lifecycle
+  - [x] `main.tsx` — `QueryClientProvider` / `RouterProvider` 관계 확인
+  - [x] router — protected / guest-only route와 `Outlet` 흐름 확인
+  - [x] `ProtectedRoute` — `auth/me`의 `undefined` / `null` / `AuthUser` 상태 의미 확인
+  - [x] query error UI 공통 `QueryErrorMessage`로 정리
+  - [x] `UserFacingError`와 generic fallback message의 책임 분리
+  - [x] `authMeQuery`의 내부 error message와 사용자 fallback message 분리
+  - [x] `ClearSessionCacheOnAuthEnd` — logout/unmount 시 non-auth query cache cleanup 확인
+  - [x] `AuthenticatedWebSocket` connection lifecycle 구조 확인
+    - 기본 WebSocket 연결 / message listener / cleanup과 robustness 보완을 구분해 학습
+    - WebSocket open 시 REST message query refetch를 통한 연결 전 gap recovery 확인
+    - open 시 initial fetch 중이던 message query의 추가 refetch race 방어 확인
+    - unexpected close → auth recovery → reconnect / retry 흐름 확인
+    - timeout retry handle과 unmount cleanup 확인
+  - [ ] 위 범위 관련 테스트 구조 재검토 / 필요한 테스트 리팩토링
+    - [x] router 인증 관련 테스트에서 feature/query 구현 세부사항인 `apiFetch` 호출 검증 제거
+    - [x] `apiFetch` 구현 walkthrough / manual audit 완료
+      - 실제 호출부를 기준으로 입력 계약을 `/`로 시작하는 상대경로 `string`으로 축소
+      - absolute URL / `Request` / `URL` 입력 지원과 관련 helper(`resolveRequestInput`, `cloneRequestInput`, `isRefreshRequest`) 제거
+      - API URL은 `${API_URL}${path}`로 직접 조합하고 기본 `credentials: "include"` 유지
+      - `401`일 때만 refresh, refresh endpoint 자체는 재귀 refresh 제외, shared pending refresh, 원 요청 1회 retry 흐름 확인
+      - refresh `401`은 인증 종료로 유지하고, refresh의 non-401 실패는 해당 refresh response를 전달하도록 구분
+      - retry가 다시 `401`이어도 추가 refresh하지 않도록 최대 1회 복구 정책 확인
+    - [x] `apiFetch.test.ts` 리팩토링 완료
+      - 기본 요청 / refresh-retry 테스트의 중복 assertion과 테스트용 path/변수명 정리
+      - non-401 초기 응답은 refresh하지 않는 회귀 테스트 추가
+      - refresh endpoint 자체 401 / refresh non-401 실패 / refresh 401 / retry 401 분기별 검증 정리
+      - concurrent `401` → single refresh 공유 테스트를 행동 단계 기준으로 정리하고 `await Promise.resolve()` 대신 `vi.waitFor` 사용
+      - refresh 요청의 `POST` + `credentials: "include"` 계약은 정상 refresh-retry 테스트에 통합
+      - 테스트는 `when the initial request returns 401` 범위로 묶고 parameterized test는 적용하지 않기로 결정
+    - [x] `authMeQuery.test.ts` 테스트 구조 재검토 / 리팩토링 완료
+      - 성공 테스트에 `queryKey`, `/auth/me` 호출 + TanStack Query `signal`, 반환 사용자 검증을 함께 유지
+      - 별도 signal 전달 테스트 제거, 중복 `apiFetch` 호출 횟수 검증 제거
+      - `401 → null`은 query 성공 상태이므로 불필요한 `retry: false` 제거
+      - non-401 HTTP 실패 테스트는 500 response body/header를 제거하고 `Failed to fetch current user` reject만 검증
+      - transport error가 원래 Error 객체 그대로 전달되는 passthrough 테스트 추가
+      - 테스트는 별도 하위 `describe` 없이 현재 4개 계약을 평평하게 유지
+    - [ ] `ProtectedRoute.test.tsx` 테스트 구조 재검토
+- [ ] 이후 Conversation / Message REST query·cache 흐름부터 계속 manual audit
+
+#### Backend refactor TODO
+
+- [ ] 사용자 검색에서 현재 로그인 사용자 제외
+  - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
+  - `POST /conversations`의 자기 자신과 대화 시작 방지 검증은 그대로 유지
+  - backend 적용 시 frontend의 별도 본인 필터링은 두지 않음
 
 #### 배포 전 확인
 
@@ -401,7 +482,7 @@ MVP 기능 구현은 완료했다. 아래는 배포 전 확인하거나 post-MVP
 
 #### Post-MVP Auth hardening
 
-- [ ] refresh 일시 장애(5xx)를 인증 만료(`401`)와 구분
+- [x] refresh 일시 장애(non-401 failure, 예: 5xx)를 인증 만료(`401`)와 구분
 - [ ] 이전 session에서 시작한 pending mutation / refresh가 session 전환 이후 cache, navigation, cookie 상태에 영향을 주지 않도록 방어
 - [ ] 로그인 성공 후 auth/me 확인이 반드시 로그인 이후 시작된 fresh 요청임을 보장
 
@@ -415,16 +496,25 @@ MVP 기능 구현은 완료했다. 아래는 배포 전 확인하거나 post-MVP
 
 ### 다음 시작점
 
-- Backend / Frontend의 MVP 기능 구현과 주요 기능 audit을 완료했다.
-- Frontend Auth에서 누락됐던 Logout 구현도 완료했다.
-- Auth audit에서 MVP blocker로 분류한 항목은 모두 보완했다.
-  - 동시 `401` refresh 공유
-  - authenticated → null 전환 시 이전 사용자 cache 정리
-- 다음 작업은 **배포 전 확인 항목**부터 진행한다.
-  1. Backend Message atomicity
-  2. WebSocket Origin 검증
+- Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했다.
+- 실제 브라우저 사용자 흐름 audit과 필수 navigation 보완도 완료했다.
+- UI audit에서 발견한 메시지 표시 순서, older-message navigation, profile 즉시 반영 문제를 보완했다.
+- 사용자 검색에서 본인 제외는 frontend 필터링 대신 Backend refactor TODO로 유지한다.
+- 현재는 CSS 작업을 잠시 보류하고 **Frontend manual audit / code walkthrough**를 진행 중이다.
+  1. `main.tsx → router → ProtectedRoute` 흐름은 확인 완료
+  2. query error 표현과 auth error/fallback 책임을 정리 완료
+  3. `ClearSessionCacheOnAuthEnd`와 `AuthenticatedWebSocket` lifecycle을 확인 완료
+  4. router 인증 테스트의 불필요한 `apiFetch` 구현 세부 검증을 제거
+  5. `apiFetch` manual audit 완료 — 실제 사용 범위에 맞게 상대경로 string 전용 계약으로 축소하고 불필요한 Request/URL 지원 제거
+  6. refresh `401`과 non-401 실패를 구분하고, refresh endpoint 재귀 방지 / 1회 retry / concurrent refresh 공유 정책 확인
+  7. `apiFetch.test.ts` 리팩토링 완료 — 중복 assertion 정리, non-401 회귀 테스트 추가, concurrent 테스트 `vi.waitFor` 개선, refresh 요청 옵션 검증 통합
+  8. `authMeQuery.test.ts` 재검토 완료 — signal 검증을 성공 케이스에 통합하고 중복 호출 검증 제거, 401/null·non-401 error·transport error 계약을 간결하게 정리
+  9. 다음 세션은 `ProtectedRoute.test.tsx` 테스트 구조 재검토부터 시작
+  10. 이후 Conversation / Message REST query·cache 흐름부터 manual audit 계속
+- 프론트 흐름이 충분히 정리되면 MVP 기본 CSS / 2-column layout / responsive UI 작업으로 복귀한다.
+- 그 뒤 frontend + backend 전체 smoke test를 진행한다.
+- 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 race / 장애 semantics는 post-MVP hardening으로 유지한다.
-- 배포 전 확인이 끝나면 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 
 
 ## 6. 배포 / 인증 쿠키 정책

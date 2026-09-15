@@ -16,6 +16,7 @@ const renderLoginPage = (queryClient: QueryClient) =>
       <MemoryRouter initialEntries={["/login"]}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<h1>Register</h1>} />
           <Route path="/" element={<h1>Home</h1>} />
         </Routes>
       </MemoryRouter>
@@ -23,6 +24,23 @@ const renderLoginPage = (queryClient: QueryClient) =>
   );
 
 describe("LoginPage", () => {
+  it("shows a registration link and navigates to register when clicked", async () => {
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+
+    renderLoginPage(queryClient);
+
+    const registerLink = screen.getByRole("link", { name: "Register" });
+
+    expect(registerLink).toBeInTheDocument();
+
+    await user.click(registerLink);
+
+    expect(await screen.findByRole("heading", { name: "Register" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
   it("submits the username and password to POST /auth/login", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 204 }));
     const queryClient = new QueryClient();

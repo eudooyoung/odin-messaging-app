@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions } from "./authMeQuery.ts";
@@ -65,6 +65,8 @@ export function LoginPage() {
       <button type="submit" disabled={loginMutation.isPending}>
         {loginMutation.isPending ? "Logging in..." : "Log in"}
       </button>
+
+      <Link to="/register">Register</Link>
 
       {loginMutation.isError && (
         <p role="alert">

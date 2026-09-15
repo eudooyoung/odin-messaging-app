@@ -23,6 +23,23 @@ const renderRegisterPage = (queryClient: QueryClient) =>
   );
 
 describe("RegisterPage", () => {
+  it("shows a login link and navigates to login when clicked", async () => {
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+
+    renderRegisterPage(queryClient);
+
+    const loginLink = screen.getByRole("link", { name: "Log in" });
+
+    expect(loginLink).toBeInTheDocument();
+
+    await user.click(loginLink);
+
+    expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument();
+
+    queryClient.clear();
+  });
+
   it("submits valid registration details and navigates to login after a 201 response", async () => {
     vi.mocked(apiFetch).mockResolvedValue(
       new Response(

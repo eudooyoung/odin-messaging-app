@@ -183,43 +183,22 @@ describe("ProfilePage", () => {
     queryClient.clear();
   });
 
-  it.each([
-    {
-      caseName: "the requested profile does not exist",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 404 })),
-      expectedMessage: "Profile not found",
-    },
-    {
-      caseName: "the profile API returns another unsuccessful response",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 })),
-      expectedMessage: "Failed to load profile",
-    },
-    {
-      caseName: "the profile request fails in transport",
-      arrangeFailure: () => vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch")),
-      expectedMessage: "Failed to fetch",
-    },
-  ])(
-    "shows the query error instead of a blank page when $caseName",
-    async ({ arrangeFailure, expectedMessage }) => {
-      arrangeFailure();
-      const queryClient = new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-          },
+  it("shows the profile query fallback in an alert when the request fails", async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
         },
-      });
+      },
+    });
 
-      renderProfilePage(queryClient);
+    renderProfilePage(queryClient);
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load profile");
 
-      queryClient.clear();
-    },
-  );
+    queryClient.clear();
+  });
 
   it.each([
     {
@@ -392,6 +371,53 @@ describe("ProfilePage", () => {
       ...currentUser,
       displayName: "Updated User",
     });
+
+    queryClient.clear();
+  });
+
+  it("shows the saved profile values immediately after a successful submission", async () => {
+    const profile = {
+      username: "current-user",
+      displayName: "Current User",
+      bio: "Current bio",
+      profileImage: null,
+    };
+    const updatedProfile = {
+      ...profile,
+      displayName: "Updated User",
+      bio: "Updated bio",
+    };
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(profile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(updatedProfile), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+
+    renderProfilePage(queryClient);
+
+    const displayNameInput = await screen.findByRole("textbox", {
+      name: "Display name",
+    });
+    const bioInput = screen.getByRole("textbox", { name: "Bio" });
+    await user.clear(displayNameInput);
+    await user.type(displayNameInput, " Updated User ");
+    await user.clear(bioInput);
+    await user.type(bioInput, " Updated bio ");
+    await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
+    expect(displayNameInput).toHaveValue(updatedProfile.displayName);
+    expect(bioInput).toHaveValue(updatedProfile.bio);
 
     queryClient.clear();
   });

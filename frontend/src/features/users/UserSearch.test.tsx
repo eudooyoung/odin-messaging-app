@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { createConversation } from "@/features/conversations/createConversation.ts";
 import { UserSearch } from "./UserSearch.tsx";
 

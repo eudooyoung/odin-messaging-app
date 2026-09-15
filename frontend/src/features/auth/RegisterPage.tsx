@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { GENERAL_REGISTER_ERROR_MESSAGE, registerUser } from "./registerUser.ts";
@@ -77,6 +77,8 @@ export function RegisterPage() {
       <button type="submit" disabled={registerMutation.isPending}>
         {registerMutation.isPending ? "Registering..." : "Register"}
       </button>
+
+      <Link to="/login">Log in</Link>
 
       {registerMutation.isError && (
         <p role="alert">
