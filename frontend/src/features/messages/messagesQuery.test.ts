@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
@@ -7,6 +7,8 @@ import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQu
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+let queryClient: QueryClient;
 
 const createQueryClient = () =>
   new QueryClient({
@@ -16,6 +18,14 @@ const createQueryClient = () =>
       },
     },
   });
+
+beforeEach(() => {
+  queryClient = createQueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 describe("messagesQueryOptions", () => {
   it("fetches and returns the first page of messages without a cursor", async () => {
@@ -40,7 +50,6 @@ describe("messagesQueryOptions", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    const queryClient = createQueryClient();
     const queryOptions = messagesQueryOptions(42);
 
     const result = await queryClient.infiniteQuery(queryOptions);
@@ -56,7 +65,6 @@ describe("messagesQueryOptions", () => {
       pageParams: [null],
     });
 
-    queryClient.clear();
   });
 
   it("fetches consecutive message pages with the same limit and the next cursor", async () => {
@@ -103,8 +111,6 @@ describe("messagesQueryOptions", () => {
           headers: { "Content-Type": "application/json" },
         }),
       );
-    const queryClient = createQueryClient();
-
     const result = await queryClient.infiniteQuery({
       ...messagesQueryOptions(42),
       pages: 2,
@@ -122,7 +128,6 @@ describe("messagesQueryOptions", () => {
       pageParams: [null, 10],
     });
 
-    queryClient.clear();
   });
 
   it.each([
@@ -138,38 +143,29 @@ describe("messagesQueryOptions", () => {
     "throws the status-specific user-facing error when the response status is $status",
     async ({ status, expectedMessage }) => {
       vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status }));
-      const queryClient = createQueryClient();
-
       const result = queryClient.infiniteQuery(messagesQueryOptions(42));
 
       await expect(result).rejects.toBeInstanceOf(UserFacingError);
       await expect(result).rejects.toThrow(expectedMessage);
 
-      queryClient.clear();
     },
   );
 
   it("throws a generic user-facing error for any other unsuccessful response", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-    const queryClient = createQueryClient();
-
     const result = queryClient.infiniteQuery(messagesQueryOptions(42));
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
     await expect(result).rejects.toThrow(MESSAGES_QUERY_ERROR_MESSAGE);
 
-    queryClient.clear();
   });
 
   it("preserves the original error when apiFetch rejects", async () => {
     const transportError = new TypeError("Failed to fetch");
     vi.mocked(apiFetch).mockRejectedValue(transportError);
-    const queryClient = createQueryClient();
-
     const result = queryClient.infiniteQuery(messagesQueryOptions(42));
 
     await expect(result).rejects.toBe(transportError);
 
-    queryClient.clear();
   });
 });

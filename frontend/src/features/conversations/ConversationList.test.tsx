@@ -2,13 +2,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { ConversationList } from "./ConversationList.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+let queryClient: QueryClient;
 
 const firstConversation = {
   id: 1,
@@ -46,6 +48,14 @@ const createQueryClient = () =>
     },
   });
 
+beforeEach(() => {
+  queryClient = createQueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
+
 const createConversationsResponse = (conversations: unknown[], nextCursor: number | null) =>
   new Response(JSON.stringify({ conversations, nextCursor }), {
     status: 200,
@@ -75,43 +85,35 @@ describe("ConversationList", () => {
     it("shows a loading status while the request is pending", () => {
       const pendingResponse = deferred<Response>();
       vi.mocked(apiFetch).mockReturnValue(pendingResponse.promise);
-      const queryClient = createQueryClient();
 
       renderConversationList(queryClient);
 
       expect(screen.getByRole("status")).toHaveTextContent("Loading conversations...");
 
-      queryClient.clear();
     });
 
     it("shows the query error when the request fails", async () => {
       vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-      const queryClient = createQueryClient();
 
       renderConversationList(queryClient);
 
       expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversations");
 
-      queryClient.clear();
     });
 
     it("shows an empty state when there are no conversations", async () => {
       vi.mocked(apiFetch).mockResolvedValue(createConversationsResponse([], null));
-      const queryClient = createQueryClient();
 
       renderConversationList(queryClient);
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("renders conversation details and links", async () => {
       vi.mocked(apiFetch).mockResolvedValue(
         createConversationsResponse([firstConversation, secondConversation], null),
       );
-      const queryClient = createQueryClient();
-
       renderConversationList(queryClient);
 
       const firstConversationLink = await screen.findByRole("link", { name: /First User/ });
@@ -133,7 +135,6 @@ describe("ConversationList", () => {
         secondConversation.lastActivityAt,
       );
 
-      queryClient.clear();
     });
   });
 
@@ -143,7 +144,6 @@ describe("ConversationList", () => {
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(createConversationsResponse([firstConversation], 10))
         .mockReturnValueOnce(nextPageResponse.promise);
-      const queryClient = createQueryClient();
       const user = userEvent.setup();
 
       renderConversationList(queryClient);
@@ -155,14 +155,12 @@ describe("ConversationList", () => {
         expect(loadMoreButton).toBeDisabled();
       });
 
-      queryClient.clear();
     });
 
     it("appends the next page while keeping existing conversations", async () => {
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(createConversationsResponse([firstConversation], 10))
         .mockResolvedValueOnce(createConversationsResponse([secondConversation], null));
-      const queryClient = createQueryClient();
       const user = userEvent.setup();
 
       renderConversationList(queryClient);
@@ -172,14 +170,12 @@ describe("ConversationList", () => {
       expect(await screen.findByText("Second User")).toBeInTheDocument();
       expect(screen.getByText("First User")).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("keeps existing conversations and shows an error when the next page fails", async () => {
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(createConversationsResponse([firstConversation], 10))
         .mockResolvedValueOnce(new Response(null, { status: 500 }));
-      const queryClient = createQueryClient();
       const user = userEvent.setup();
 
       renderConversationList(queryClient);
@@ -191,7 +187,6 @@ describe("ConversationList", () => {
       );
       expect(screen.getByText("First User")).toBeInTheDocument();
 
-      queryClient.clear();
     });
   });
 });

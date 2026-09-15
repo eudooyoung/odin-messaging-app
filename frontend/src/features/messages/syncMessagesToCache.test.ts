@@ -1,6 +1,6 @@
 import { type InfiniteData, InfiniteQueryObserver, QueryClient } from "@tanstack/react-query";
 import { waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
 import { syncMessageToCache } from "./syncMessagesToCache.ts";
@@ -8,6 +8,8 @@ import { syncMessageToCache } from "./syncMessagesToCache.ts";
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+let queryClient: QueryClient;
 
 const conversationId = 42;
 const queryKey = messagesQueryOptions(conversationId).queryKey;
@@ -63,10 +65,16 @@ const messagesResponse = (page: MessagesPage) =>
     headers: { "Content-Type": "application/json" },
   });
 
+beforeEach(() => {
+  queryClient = new QueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
+
 describe("syncMessageToCache", () => {
   it("creates the messages cache when it does not exist", () => {
-    const queryClient = new QueryClient();
-
     syncMessageToCache(queryClient, conversationId, createdMessage);
 
     expect(getMessagesCache(queryClient)).toEqual({
@@ -74,11 +82,9 @@ describe("syncMessageToCache", () => {
       pageParams: [null],
     });
 
-    queryClient.clear();
   });
 
   it("adds a new message while preserving the existing cache", () => {
-    const queryClient = new QueryClient();
     queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
       pages: [
         { messages: [latestMessage], nextCursor: 10 },
@@ -97,12 +103,9 @@ describe("syncMessageToCache", () => {
       pageParams: [null, 10],
     });
 
-    queryClient.clear();
   });
 
   it("keeps messages in createdAt descending order when an older message is synced after a newer message", () => {
-    const queryClient = new QueryClient();
-
     syncMessageToCache(queryClient, conversationId, createdMessage);
     syncMessageToCache(queryClient, conversationId, latestMessage);
 
@@ -116,11 +119,9 @@ describe("syncMessageToCache", () => {
       pageParams: [null],
     });
 
-    queryClient.clear();
   });
 
   it("keeps messages with the same createdAt in id descending order when a lower-id message is synced last", () => {
-    const queryClient = new QueryClient();
     const higherIdMessage = {
       ...createdMessage,
       id: 12,
@@ -140,11 +141,9 @@ describe("syncMessageToCache", () => {
       pageParams: [null],
     });
 
-    queryClient.clear();
   });
 
   it("does not add the same message more than once", () => {
-    const queryClient = new QueryClient();
     queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
       pages: [{ messages: [createdMessage, latestMessage], nextCursor: null }],
       pageParams: [null],
@@ -157,13 +156,11 @@ describe("syncMessageToCache", () => {
       .filter((message) => message.id === createdMessage.id);
     expect(matchingMessages).toEqual([createdMessage]);
 
-    queryClient.clear();
   });
 
   it("reapplies the new message after an in-progress messages fetch completes", async () => {
     const nextPageResponse = deferred<Response>();
     vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
-    const queryClient = new QueryClient();
     queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
       pages: [{ messages: [latestMessage], nextCursor: 10 }],
       pageParams: [null],
@@ -198,13 +195,11 @@ describe("syncMessageToCache", () => {
     });
 
     observer.destroy();
-    queryClient.clear();
   });
 
   it("does not recreate a cleared messages cache when a pending cache sync completes", async () => {
     const nextPageResponse = deferred<Response>();
     vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
-    const queryClient = new QueryClient();
     queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
       pages: [{ messages: [latestMessage], nextCursor: 10 }],
       pageParams: [null],

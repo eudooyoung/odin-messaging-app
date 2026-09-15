@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createMessage } from "./createMessage.ts";
 import { MessageComposer } from "./MessageComposer.tsx";
@@ -10,7 +10,17 @@ vi.mock("./createMessage.ts", () => ({
   createMessage: vi.fn(),
 }));
 
+let queryClient: QueryClient;
+
 const createQueryClient = () => new QueryClient();
+
+beforeEach(() => {
+  queryClient = createQueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 const renderMessageComposer = (queryClient: QueryClient, conversationId = 42) =>
   render(
@@ -24,7 +34,6 @@ describe("MessageComposer", () => {
     it("disables the input and prevents duplicate sends while the mutation is pending", async () => {
       const pendingMessage = new Promise<never>(() => undefined);
       vi.mocked(createMessage).mockReturnValue(pendingMessage);
-      const queryClient = createQueryClient();
       const user = userEvent.setup();
 
       renderMessageComposer(queryClient);
@@ -43,7 +52,6 @@ describe("MessageComposer", () => {
 
       expect(createMessage).toHaveBeenCalledOnce();
 
-      queryClient.clear();
     });
 
     it("sends the message and clears the input after success", async () => {
@@ -57,7 +65,6 @@ describe("MessageComposer", () => {
         },
         createdAt: "2026-09-08T01:00:00.000Z",
       });
-      const queryClient = createQueryClient();
       const user = userEvent.setup();
 
       renderMessageComposer(queryClient);
@@ -71,13 +78,11 @@ describe("MessageComposer", () => {
         expect(messageInput).toHaveValue("");
       });
 
-      queryClient.clear();
     });
 
     it("shows the UserFacingError message and preserves the input value", async () => {
       const mutationError = new UserFacingError("Conversation is unavailable");
       vi.mocked(createMessage).mockRejectedValue(mutationError);
-      const queryClient = createQueryClient();
       const user = userEvent.setup();
 
       renderMessageComposer(queryClient);
@@ -92,13 +97,11 @@ describe("MessageComposer", () => {
       expect(messageInput).toHaveValue("Hello!");
       expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
 
-      queryClient.clear();
     });
 
     it("shows a fallback error and preserves the input for unexpected errors", async () => {
       const transportError = new TypeError("Network connection failed");
       vi.mocked(createMessage).mockRejectedValue(transportError);
-      const queryClient = createQueryClient();
       const user = userEvent.setup();
 
       renderMessageComposer(queryClient);
@@ -113,7 +116,6 @@ describe("MessageComposer", () => {
       expect(messageInput).toHaveValue("Hello!");
       expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
 
-      queryClient.clear();
     });
   });
 
@@ -133,7 +135,6 @@ describe("MessageComposer", () => {
       "shows a validation error and does not send when $caseName",
       async ({ content, expectedMessage }) => {
         vi.mocked(createMessage).mockClear();
-        const queryClient = createQueryClient();
         const user = userEvent.setup();
 
         renderMessageComposer(queryClient);
@@ -149,7 +150,6 @@ describe("MessageComposer", () => {
         );
         expect(createMessage).not.toHaveBeenCalled();
 
-        queryClient.clear();
       },
     );
   });

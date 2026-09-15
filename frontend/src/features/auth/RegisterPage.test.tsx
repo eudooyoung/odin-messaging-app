@@ -2,13 +2,23 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { RegisterPage } from "./RegisterPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+let queryClient: QueryClient;
+
+beforeEach(() => {
+  queryClient = new QueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 const renderRegisterPage = (queryClient: QueryClient) =>
   render(
@@ -24,7 +34,6 @@ const renderRegisterPage = (queryClient: QueryClient) =>
 
 describe("RegisterPage", () => {
   it("shows a login link and navigates to login when clicked", async () => {
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderRegisterPage(queryClient);
@@ -37,7 +46,6 @@ describe("RegisterPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("submits valid registration details and navigates to login after a 201 response", async () => {
@@ -54,7 +62,6 @@ describe("RegisterPage", () => {
         },
       ),
     );
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderRegisterPage(queryClient);
@@ -92,7 +99,6 @@ describe("RegisterPage", () => {
     });
     expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it.each([
@@ -120,7 +126,6 @@ describe("RegisterPage", () => {
   ])(
     "shows a validation message and does not submit when $caseName",
     async ({ username, displayName, password, expectedMessage }) => {
-      const queryClient = new QueryClient();
       const user = userEvent.setup();
 
       renderRegisterPage(queryClient);
@@ -137,14 +142,12 @@ describe("RegisterPage", () => {
       expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
       expect(apiFetch).not.toHaveBeenCalled();
 
-      queryClient.clear();
     },
   );
 
   it("disables the register button and shows a pending label while registration is in progress", async () => {
     const pendingRegisterResponse = new Promise<Response>(() => undefined);
     vi.mocked(apiFetch).mockReturnValue(pendingRegisterResponse);
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderRegisterPage(queryClient);
@@ -157,12 +160,10 @@ describe("RegisterPage", () => {
     expect(await screen.findByRole("button", { name: "Registering..." })).toBeDisabled();
     expect(apiFetch).toHaveBeenCalledOnce();
 
-    queryClient.clear();
   });
 
   it("shows a username conflict error and re-enables registration when registration returns 409", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 409 }));
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderRegisterPage(queryClient);
@@ -176,7 +177,6 @@ describe("RegisterPage", () => {
     expect(screen.getByRole("button", { name: "Register" })).toBeEnabled();
     expect(apiFetch).toHaveBeenCalledOnce();
 
-    queryClient.clear();
   });
 
   it.each([
@@ -193,7 +193,6 @@ describe("RegisterPage", () => {
     "shows an unexpected error and re-enables registration when $caseName",
     async ({ arrangeFailure }) => {
       arrangeFailure();
-      const queryClient = new QueryClient();
       const user = userEvent.setup();
 
       renderRegisterPage(queryClient);
@@ -209,7 +208,6 @@ describe("RegisterPage", () => {
       expect(screen.getByRole("button", { name: "Register" })).toBeEnabled();
       expect(apiFetch).toHaveBeenCalledOnce();
 
-      queryClient.clear();
     },
   );
 });

@@ -2,13 +2,23 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { LoginPage } from "./LoginPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+let queryClient: QueryClient;
+
+beforeEach(() => {
+  queryClient = new QueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 const renderLoginPage = (queryClient: QueryClient) =>
   render(
@@ -25,7 +35,6 @@ const renderLoginPage = (queryClient: QueryClient) =>
 
 describe("LoginPage", () => {
   it("shows a registration link and navigates to register when clicked", async () => {
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -38,12 +47,10 @@ describe("LoginPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Register" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("submits the username and password to POST /auth/login", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 204 }));
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -71,11 +78,9 @@ describe("LoginPage", () => {
       });
     });
 
-    queryClient.clear();
   });
 
   it("shows a validation message and does not submit when username is empty", async () => {
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -86,11 +91,9 @@ describe("LoginPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Username is required");
     expect(apiFetch).not.toHaveBeenCalled();
 
-    queryClient.clear();
   });
 
   it("shows a validation message and does not submit when password is shorter than 12 characters", async () => {
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -104,13 +107,11 @@ describe("LoginPage", () => {
     );
     expect(apiFetch).not.toHaveBeenCalled();
 
-    queryClient.clear();
   });
 
   it("disables the login button and shows a pending label while login is in progress", async () => {
     const pendingLoginResponse = new Promise<Response>(() => undefined);
     vi.mocked(apiFetch).mockReturnValue(pendingLoginResponse);
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -122,7 +123,6 @@ describe("LoginPage", () => {
     expect(await screen.findByRole("button", { name: "Logging in..." })).toBeDisabled();
     expect(apiFetch).toHaveBeenCalledOnce();
 
-    queryClient.clear();
   });
 
   it("refetches the current user before navigating home after login succeeds", async () => {
@@ -138,7 +138,6 @@ describe("LoginPage", () => {
     vi.mocked(apiFetch)
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockReturnValueOnce(authMeResponse);
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -164,12 +163,10 @@ describe("LoginPage", () => {
     expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
     expect(queryClient.getQueryData(["auth", "me"])).toEqual(currentUser);
 
-    queryClient.clear();
   });
 
   it("shows a login failure without refetching auth or navigating when login returns 401", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -183,7 +180,6 @@ describe("LoginPage", () => {
     expect(apiFetch).toHaveBeenCalledWith("/auth/login", expect.any(Object));
     expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it.each([
@@ -198,7 +194,6 @@ describe("LoginPage", () => {
     },
   ])("shows an unexpected error message when $caseName", async ({ arrangeFailure }) => {
     arrangeFailure();
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderLoginPage(queryClient);
@@ -213,6 +208,5 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
     expect(apiFetch).toHaveBeenCalledOnce();
 
-    queryClient.clear();
   });
 });

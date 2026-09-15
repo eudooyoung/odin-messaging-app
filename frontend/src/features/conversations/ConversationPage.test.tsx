@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
 import { ConversationPage } from "./ConversationPage.tsx";
@@ -10,6 +10,25 @@ import { ConversationPage } from "./ConversationPage.tsx";
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+let queryClient: QueryClient;
+
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+beforeEach(() => {
+  queryClient = createQueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 const currentUser: AuthUser = {
   id: 1,
@@ -179,7 +198,6 @@ describe("ConversationPage", () => {
   describe("successful rendering", () => {
     it("shows a link back to conversations and navigates home when clicked", async () => {
       arrangeConversationPageRequests();
-      const queryClient = new QueryClient();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
@@ -193,12 +211,10 @@ describe("ConversationPage", () => {
 
       expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("loads the route conversation and shows the other participant", async () => {
       arrangeConversationPageRequests();
-      const queryClient = new QueryClient();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);
@@ -206,21 +222,18 @@ describe("ConversationPage", () => {
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
       expect(screen.getByText("@other-user")).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("renders the message list for the route conversation", async () => {
       arrangeConversationPageRequests({
         messages: [conversationMessage],
       });
-      const queryClient = new QueryClient();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);
 
       expect(await screen.findByText("Hello from the conversation")).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("shows the newly sent message while preserving the existing messages", async () => {
@@ -238,7 +251,6 @@ describe("ConversationPage", () => {
         messages: [conversationMessage],
         createdMessage,
       });
-      const queryClient = new QueryClient();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
@@ -254,7 +266,6 @@ describe("ConversationPage", () => {
         expect(screen.getByText(createdMessage.content)).toBeInTheDocument();
       });
 
-      queryClient.clear();
     });
 
     it("recovers the messages query and pagination after sending a message following an initial load error", async () => {
@@ -264,13 +275,6 @@ describe("ConversationPage", () => {
           recoveredMessage: conversationMessage,
           olderMessage,
         });
-      const queryClient = new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-          },
-        },
-      });
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
@@ -300,7 +304,6 @@ describe("ConversationPage", () => {
       expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
       expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("identifies the other participant by the current user's username", async () => {
@@ -310,7 +313,6 @@ describe("ConversationPage", () => {
           participants: [...defaultConversation.participants].reverse(),
         },
       });
-      const queryClient = new QueryClient();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);
@@ -319,7 +321,6 @@ describe("ConversationPage", () => {
       expect(screen.getByText("@other-user")).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Current User" })).not.toBeInTheDocument();
 
-      queryClient.clear();
     });
   });
 
@@ -327,25 +328,16 @@ describe("ConversationPage", () => {
     it("shows a loading state while the conversation query is pending", () => {
       const pendingConversationResponse = new Promise<Response>(() => undefined);
       vi.mocked(apiFetch).mockReturnValue(pendingConversationResponse);
-      const queryClient = new QueryClient();
 
       renderConversationPage(queryClient);
 
       expect(screen.getByRole("status")).toHaveTextContent("Loading conversation...");
 
-      queryClient.clear();
     });
 
     it("shows the generic fallback when the conversation request rejects", async () => {
       const transportError = new TypeError("Failed to fetch");
       vi.mocked(apiFetch).mockRejectedValue(transportError);
-      const queryClient = new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: false,
-          },
-        },
-      });
 
       renderConversationPage(queryClient);
 
@@ -353,7 +345,6 @@ describe("ConversationPage", () => {
       expect(alert).toHaveTextContent("Failed to load conversation");
       expect(alert).not.toHaveTextContent(transportError.message);
 
-      queryClient.clear();
     });
   });
 
@@ -366,14 +357,11 @@ describe("ConversationPage", () => {
     ])(
       "shows an invalid conversation error without querying when the id is $caseName",
       async ({ conversationId }) => {
-        const queryClient = new QueryClient();
-
         renderConversationPage(queryClient, `/conversations/${conversationId}`);
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Invalid conversation");
         expect(apiFetch).not.toHaveBeenCalled();
 
-        queryClient.clear();
       },
     );
   });

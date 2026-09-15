@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { createConversation } from "@/features/conversations/createConversation.ts";
@@ -15,6 +15,25 @@ vi.mock("@/api/apiFetch.ts", () => ({
 vi.mock("@/features/conversations/createConversation.ts", () => ({
   createConversation: vi.fn(),
 }));
+
+let queryClient: QueryClient;
+
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+beforeEach(() => {
+  queryClient = createQueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 const renderUserSearch = (queryClient: QueryClient) =>
   render(
@@ -49,7 +68,6 @@ describe("UserSearch", () => {
         ),
       ),
     );
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderUserSearch(queryClient);
@@ -70,7 +88,6 @@ describe("UserSearch", () => {
       expect(requestedQueries).toContain("other user");
     });
 
-    queryClient.clear();
   });
 
   it("shows an empty state when the search has no matching users", async () => {
@@ -82,7 +99,6 @@ describe("UserSearch", () => {
         }),
       ),
     );
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderUserSearch(queryClient);
@@ -91,13 +107,11 @@ describe("UserSearch", () => {
 
     expect(await screen.findByText("No users found")).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("shows a loading state while the user search is pending", async () => {
     const pendingSearchResponse = new Promise<Response>(() => undefined);
     vi.mocked(apiFetch).mockReturnValue(pendingSearchResponse);
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderUserSearch(queryClient);
@@ -106,20 +120,12 @@ describe("UserSearch", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Searching users...");
 
-    queryClient.clear();
   });
 
   it("shows the user-facing error from an invalid search response", async () => {
     vi.mocked(apiFetch).mockImplementation(() =>
       Promise.resolve(new Response(null, { status: 400 })),
     );
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
     const user = userEvent.setup();
 
     renderUserSearch(queryClient);
@@ -130,19 +136,11 @@ describe("UserSearch", () => {
     expect(alert).toHaveTextContent("Invalid user search");
     expect(alert).not.toHaveTextContent("Failed to search users");
 
-    queryClient.clear();
   });
 
   it("shows a generic fallback when the user search request rejects", async () => {
     const transportError = new TypeError("Failed to fetch");
     vi.mocked(apiFetch).mockRejectedValue(transportError);
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
     const user = userEvent.setup();
 
     renderUserSearch(queryClient);
@@ -153,7 +151,6 @@ describe("UserSearch", () => {
     expect(alert).toHaveTextContent("Failed to search users");
     expect(alert).not.toHaveTextContent(transportError.message);
 
-    queryClient.clear();
   });
 
   it("opens the conversation returned after selecting a user", async () => {
@@ -191,7 +188,6 @@ describe("UserSearch", () => {
       createdAt: "2026-09-07T01:00:00.000Z",
       lastActivityAt: "2026-09-07T01:00:00.000Z",
     });
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     render(
@@ -212,7 +208,6 @@ describe("UserSearch", () => {
     expect(vi.mocked(createConversation).mock.calls[0]?.[0]).toBe("target-user");
     expect(await screen.findByRole("heading", { name: "Conversation 42" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("disables the selected user while the conversation mutation is pending", async () => {
@@ -235,7 +230,6 @@ describe("UserSearch", () => {
     );
     const pendingConversation = new Promise<never>(() => undefined);
     vi.mocked(createConversation).mockReturnValue(pendingConversation);
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderUserSearch(queryClient);
@@ -251,7 +245,6 @@ describe("UserSearch", () => {
       expect(targetUserButton).toBeDisabled();
     });
 
-    queryClient.clear();
   });
 
   it("shows the mutation error without navigating when opening a conversation fails", async () => {
@@ -274,7 +267,6 @@ describe("UserSearch", () => {
     );
     const mutationError = new Error("Failed to create conversation");
     vi.mocked(createConversation).mockRejectedValue(mutationError);
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     render(
@@ -295,6 +287,5 @@ describe("UserSearch", () => {
     expect(screen.queryByRole("heading", { name: "Conversation" })).not.toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 });

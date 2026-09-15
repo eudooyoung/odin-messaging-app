@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import {
@@ -11,6 +11,8 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
+let queryClient: QueryClient;
+
 const createQueryClient = () =>
   new QueryClient({
     defaultOptions: {
@@ -19,6 +21,14 @@ const createQueryClient = () =>
       },
     },
   });
+
+beforeEach(() => {
+  queryClient = createQueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 describe("conversationsQueryOptions", () => {
   it("fetches consecutive conversation pages using the next cursor", async () => {
@@ -59,8 +69,6 @@ describe("conversationsQueryOptions", () => {
           headers: { "Content-Type": "application/json" },
         }),
       );
-    const queryClient = createQueryClient();
-
     const result = await queryClient.infiniteQuery({
       ...conversationsQueryOptions,
       pages: 2,
@@ -80,30 +88,23 @@ describe("conversationsQueryOptions", () => {
       pageParams: [null, 1],
     });
 
-    queryClient.clear();
   });
 
   it("throws a user-facing error when the conversations response is unsuccessful", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-    const queryClient = createQueryClient();
-
     const result = queryClient.infiniteQuery(conversationsQueryOptions);
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
     await expect(result).rejects.toThrow(CONVERSATIONS_QUERY_ERROR_MESSAGE);
 
-    queryClient.clear();
   });
 
   it("preserves the original error when apiFetch rejects", async () => {
     const networkError = new TypeError("Failed to fetch");
     vi.mocked(apiFetch).mockRejectedValue(networkError);
-    const queryClient = createQueryClient();
-
     const result = queryClient.infiniteQuery(conversationsQueryOptions);
 
     await expect(result).rejects.toBe(networkError);
 
-    queryClient.clear();
   });
 });

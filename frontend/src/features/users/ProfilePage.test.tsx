@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
 import { ProfilePage } from "./ProfilePage.tsx";
@@ -11,6 +11,25 @@ import { userProfileQueryOptions } from "./userProfileQuery.ts";
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
+
+let queryClient: QueryClient;
+
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+beforeEach(() => {
+  queryClient = createQueryClient();
+});
+
+afterEach(() => {
+  queryClient.clear();
+});
 
 const currentUser: AuthUser = {
   id: 1,
@@ -46,7 +65,6 @@ describe("ProfilePage", () => {
   it("loads the current user's profile and shows a loading state while it is pending", async () => {
     const pendingProfileResponse = new Promise<Response>(() => undefined);
     vi.mocked(apiFetch).mockReturnValue(pendingProfileResponse);
-    const queryClient = new QueryClient();
 
     renderProfilePage(queryClient);
 
@@ -57,7 +75,6 @@ describe("ProfilePage", () => {
       });
     });
 
-    queryClient.clear();
   });
 
   it("shows the current profile values as the initial form values", async () => {
@@ -75,8 +92,6 @@ describe("ProfilePage", () => {
         },
       ),
     );
-    const queryClient = new QueryClient();
-
     renderProfilePage(queryClient);
 
     expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
@@ -87,7 +102,6 @@ describe("ProfilePage", () => {
       "https://example.com/current-user.jpg",
     );
 
-    queryClient.clear();
   });
 
   it("shows empty inputs when the profile bio and profile image are null", async () => {
@@ -105,8 +119,6 @@ describe("ProfilePage", () => {
         },
       ),
     );
-    const queryClient = new QueryClient();
-
     renderProfilePage(queryClient);
 
     expect(await screen.findByRole("textbox", { name: "Display name" })).toHaveValue(
@@ -115,7 +127,6 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("textbox", { name: "Bio" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue("");
 
-    queryClient.clear();
   });
 
   it("preserves unsaved form values after a profile refetch updates the query data", async () => {
@@ -143,7 +154,6 @@ describe("ProfilePage", () => {
           headers: { "Content-Type": "application/json" },
         }),
       );
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
     queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
@@ -180,24 +190,15 @@ describe("ProfilePage", () => {
     expect(displayNameInput).toHaveValue("Unsaved User");
     expect(bioInput).toHaveValue("Unsaved bio");
 
-    queryClient.clear();
   });
 
   it("shows the profile query fallback in an alert when the request fails", async () => {
     vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
 
     renderProfilePage(queryClient);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load profile");
 
-    queryClient.clear();
   });
 
   it.each([
@@ -236,7 +237,6 @@ describe("ProfilePage", () => {
           },
         ),
       );
-      const queryClient = new QueryClient();
       const user = userEvent.setup();
 
       renderProfilePage(queryClient);
@@ -253,7 +253,6 @@ describe("ProfilePage", () => {
         expect.objectContaining({ method: "PATCH" }),
       );
 
-      queryClient.clear();
     },
   );
 
@@ -284,7 +283,6 @@ describe("ProfilePage", () => {
           },
         ),
       );
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderProfilePage(queryClient);
@@ -307,7 +305,6 @@ describe("ProfilePage", () => {
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("updates the profile and related caches after a successful submission", async () => {
@@ -336,7 +333,6 @@ describe("ProfilePage", () => {
           headers: { "Content-Type": "application/json" },
         }),
       );
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderProfilePage(queryClient);
@@ -372,7 +368,6 @@ describe("ProfilePage", () => {
       displayName: "Updated User",
     });
 
-    queryClient.clear();
   });
 
   it("shows the saved profile values immediately after a successful submission", async () => {
@@ -400,7 +395,6 @@ describe("ProfilePage", () => {
           headers: { "Content-Type": "application/json" },
         }),
       );
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderProfilePage(queryClient);
@@ -419,7 +413,6 @@ describe("ProfilePage", () => {
     expect(displayNameInput).toHaveValue(updatedProfile.displayName);
     expect(bioInput).toHaveValue(updatedProfile.bio);
 
-    queryClient.clear();
   });
 
   it("keeps the saved profile when an older profile refetch finishes afterward", async () => {
@@ -466,7 +459,6 @@ describe("ProfilePage", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
     queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
@@ -528,7 +520,6 @@ describe("ProfilePage", () => {
     expect(displayNameInput).toHaveValue("Saved User");
     expect(bioInput).toHaveValue("Saved bio");
 
-    queryClient.clear();
   });
 
   it("keeps the saved display name when an older auth refetch finishes afterward", async () => {
@@ -571,7 +562,6 @@ describe("ProfilePage", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
     queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
@@ -636,7 +626,6 @@ describe("ProfilePage", () => {
       expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
     });
 
-    queryClient.clear();
   });
 
   it("disables submission and prevents duplicate updates while the request is pending", async () => {
@@ -655,7 +644,6 @@ describe("ProfilePage", () => {
         }),
       )
       .mockReturnValueOnce(pendingUpdateResponse);
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     renderProfilePage(queryClient);
@@ -678,7 +666,6 @@ describe("ProfilePage", () => {
       .mock.calls.filter(([input, init]) => input === "/users/me" && init?.method === "PATCH");
     expect(updateCalls).toHaveLength(1);
 
-    queryClient.clear();
   });
 
   it.each([
@@ -718,7 +705,6 @@ describe("ProfilePage", () => {
         ),
       );
       arrangeFailure();
-      const queryClient = new QueryClient();
       const user = userEvent.setup();
 
       renderProfilePage(queryClient);
@@ -743,7 +729,6 @@ describe("ProfilePage", () => {
       expect(bioInput).toHaveValue("Unsaved bio");
       expect(profileImageInput).toHaveValue("https://example.com/unsaved.jpg");
 
-      queryClient.clear();
     },
   );
 });

@@ -13,6 +13,8 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
+let queryClient: QueryClient;
+
 class WebSocketStub {
   static instances: WebSocketStub[] = [];
 
@@ -39,9 +41,11 @@ class WebSocketStub {
 
 beforeEach(() => {
   vi.stubGlobal("WebSocket", WebSocketStub);
+  queryClient = new QueryClient();
 });
 
 afterEach(() => {
+  queryClient.clear();
   WebSocketStub.instances = [];
   vi.unstubAllGlobals();
 });
@@ -49,7 +53,6 @@ afterEach(() => {
 describe("router", () => {
   it("renders the login page under the guest-only route for an unauthenticated user", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const queryClient = new QueryClient();
 
     await router.navigate("/login");
     render(
@@ -62,12 +65,10 @@ describe("router", () => {
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("renders the register page under the guest-only route for an unauthenticated user", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const queryClient = new QueryClient();
 
     await router.navigate("/register");
     render(
@@ -81,12 +82,10 @@ describe("router", () => {
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Register" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("redirects an unauthenticated user from the profile route to login", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const queryClient = new QueryClient();
 
     await router.navigate("/profile");
     render(
@@ -99,7 +98,6 @@ describe("router", () => {
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("renders the conversation list and user search at the root route for an authenticated user", async () => {
@@ -137,8 +135,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
-
     await router.navigate("/");
     render(
       <QueryClientProvider client={queryClient}>
@@ -149,7 +145,6 @@ describe("router", () => {
     expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("logs out from the main screen, clears the previous user's cache, and navigates to login", async () => {
@@ -189,7 +184,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
     queryClient.setQueryData(["auth", "me"], {
       id: 1,
       username: "current-user",
@@ -221,7 +215,6 @@ describe("router", () => {
     });
     expect(await screen.findByRole("button", { name: "Log in" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("clears the previous user's cache when auth ends before another user logs in", async () => {
@@ -331,7 +324,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
     const messagesQueryKey = messagesQueryOptions(10).queryKey;
     queryClient.setQueryData(authMeQueryOptions.queryKey, userA);
     queryClient.setQueryData(conversationsQueryOptions.queryKey, userAConversations);
@@ -403,7 +395,6 @@ describe("router", () => {
     );
     expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("disables logout and prevents duplicate requests while the mutation is pending", async () => {
@@ -440,7 +431,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
     queryClient.setQueryData(["auth", "me"], {
       id: 1,
       username: "current-user",
@@ -469,7 +459,6 @@ describe("router", () => {
       .mock.calls.filter(([input, init]) => input === "/auth/logout" && init?.method === "POST");
     expect(logoutCalls).toHaveLength(1);
 
-    queryClient.clear();
   });
 
   it.each([
@@ -518,7 +507,6 @@ describe("router", () => {
 
         return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
       });
-      const queryClient = new QueryClient();
       const previousUserData = { value: "private data" };
       queryClient.setQueryData(["auth", "me"], {
         id: 1,
@@ -557,7 +545,6 @@ describe("router", () => {
         expect(logoutButton).toBeEnabled();
       });
 
-      queryClient.clear();
     },
   );
 
@@ -613,7 +600,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
     const user = userEvent.setup();
 
     await router.navigate("/");
@@ -633,7 +619,6 @@ describe("router", () => {
     );
     expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
 
-    queryClient.clear();
   });
 
   it("renders the profile page under the protected route for an authenticated user", async () => {
@@ -673,8 +658,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
-
     await router.navigate("/profile");
     render(
       <QueryClientProvider client={queryClient}>
@@ -697,7 +680,6 @@ describe("router", () => {
       signal: expect.any(AbortSignal),
     });
 
-    queryClient.clear();
   });
 
   it("renders the conversation page under the protected route", async () => {
@@ -774,8 +756,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
-
     await router.navigate("/conversations/1");
     render(
       <QueryClientProvider client={queryClient}>
@@ -797,7 +777,6 @@ describe("router", () => {
       signal: expect.any(AbortSignal),
     });
 
-    queryClient.clear();
   });
 
   it("shows only messages received for the current conversation", async () => {
@@ -857,8 +836,6 @@ describe("router", () => {
 
       return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
     });
-    const queryClient = new QueryClient();
-
     await router.navigate("/conversations/1");
     render(
       <QueryClientProvider client={queryClient}>
@@ -922,6 +899,5 @@ describe("router", () => {
     expect(await screen.findByText("New message for the current conversation")).toBeInTheDocument();
     expect(screen.queryByText("Message for another conversation")).not.toBeInTheDocument();
 
-    queryClient.clear();
   });
 });
