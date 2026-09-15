@@ -80,7 +80,8 @@
 - 각 테스트가 자신의 고유한 동작과 결과를 검증하도록 구성
 - 필요한 경우 Arrange / Act / Assert 구조 사용
 - 반복 케이스의 parameterized test
-- 관련 테스트 그룹화
+- 관련 테스트가 여러 개이고 상태, lifecycle, 시나리오처럼 의미 있는 공통 맥락이 있으면 `describe`로 그룹화해 테스트 구조가 드러나게 구성
+- `describe` 중첩은 필요한 최소 수준으로 유지하고, 테스트 이름은 상위 `describe`와 중복되는 문맥을 반복하지 않음
 - 최소한의 mocking과 stubbing
 - 기존 helper와 fixture 재사용
 - 반복 boilerplate는 실제 반복이 있을 때 작은 test helper로 추출
@@ -92,6 +93,7 @@
 
 - private 구현 세부사항 검증
 - 다른 테스트가 이미 충분히 보장하는 중복 assertion이나 중복 시나리오
+- 단순히 테스트 수를 나누기 위한 형식적인 `describe` 그룹화나 불필요하게 깊은 중첩
 - 테스트 목적과 관계없는 호출 횟수, 내부 listener 등록 방식, 전달 옵션 등의 검증
 - 불필요한 stubbing
 - 테스트 대상보다 복잡한 test double
