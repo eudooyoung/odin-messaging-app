@@ -66,7 +66,13 @@ const messagesResponse = (page: MessagesPage) =>
   });
 
 beforeEach(() => {
-  queryClient = new QueryClient();
+  queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
 });
 
 afterEach(() => {
@@ -74,117 +80,27 @@ afterEach(() => {
 });
 
 describe("syncMessageToCache", () => {
-  it("creates the messages cache when it does not exist", () => {
-    syncMessageToCache(queryClient, conversationId, createdMessage);
+  describe("basic cache sync", () => {
+    it("creates the cache when it does not exist", () => {
+      syncMessageToCache(queryClient, conversationId, createdMessage);
 
-    expect(getMessagesCache(queryClient)).toEqual({
-      pages: [{ messages: [createdMessage], nextCursor: null }],
-      pageParams: [null],
-    });
-
-  });
-
-  it("adds a new message while preserving the existing cache", () => {
-    queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
-      pages: [
-        { messages: [latestMessage], nextCursor: 10 },
-        { messages: [olderMessage], nextCursor: null },
-      ],
-      pageParams: [null, 10],
-    });
-
-    syncMessageToCache(queryClient, conversationId, createdMessage);
-
-    expect(getMessagesCache(queryClient)).toEqual({
-      pages: [
-        { messages: [createdMessage, latestMessage], nextCursor: 10 },
-        { messages: [olderMessage], nextCursor: null },
-      ],
-      pageParams: [null, 10],
-    });
-
-  });
-
-  it("keeps messages in createdAt descending order when an older message is synced after a newer message", () => {
-    syncMessageToCache(queryClient, conversationId, createdMessage);
-    syncMessageToCache(queryClient, conversationId, latestMessage);
-
-    expect(getMessagesCache(queryClient)).toEqual({
-      pages: [
-        {
-          messages: [createdMessage, latestMessage],
-          nextCursor: null,
-        },
-      ],
-      pageParams: [null],
-    });
-
-  });
-
-  it("keeps messages with the same createdAt in id descending order when a lower-id message is synced last", () => {
-    const higherIdMessage = {
-      ...createdMessage,
-      id: 12,
-      content: "Higher id message",
-    };
-
-    syncMessageToCache(queryClient, conversationId, higherIdMessage);
-    syncMessageToCache(queryClient, conversationId, createdMessage);
-
-    expect(getMessagesCache(queryClient)).toEqual({
-      pages: [
-        {
-          messages: [higherIdMessage, createdMessage],
-          nextCursor: null,
-        },
-      ],
-      pageParams: [null],
-    });
-
-  });
-
-  it("does not add the same message more than once", () => {
-    queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
-      pages: [{ messages: [createdMessage, latestMessage], nextCursor: null }],
-      pageParams: [null],
-    });
-
-    syncMessageToCache(queryClient, conversationId, createdMessage);
-
-    const matchingMessages = getMessagesCache(queryClient)
-      ?.pages.flatMap((page) => page.messages)
-      .filter((message) => message.id === createdMessage.id);
-    expect(matchingMessages).toEqual([createdMessage]);
-
-  });
-
-  it("reapplies the new message after an in-progress messages fetch completes", async () => {
-    const nextPageResponse = deferred<Response>();
-    vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
-    queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
-      pages: [{ messages: [latestMessage], nextCursor: 10 }],
-      pageParams: [null],
-    });
-    const observer = new InfiniteQueryObserver(queryClient, messagesQueryOptions(conversationId));
-
-    const messagesFetch = observer.fetchNextPage();
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?cursor=10&limit=20", {
-        signal: expect.any(AbortSignal),
+      expect(getMessagesCache(queryClient)).toEqual({
+        pages: [{ messages: [createdMessage], nextCursor: null }],
+        pageParams: [null],
       });
     });
 
-    syncMessageToCache(queryClient, conversationId, createdMessage);
+    it("preserves the existing pagination cache when adding a message", () => {
+      queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
+        pages: [
+          { messages: [latestMessage], nextCursor: 10 },
+          { messages: [olderMessage], nextCursor: null },
+        ],
+        pageParams: [null, 10],
+      });
 
-    expect(getMessagesCache(queryClient)?.pages[0]?.messages).toEqual([
-      createdMessage,
-      latestMessage,
-    ]);
+      syncMessageToCache(queryClient, conversationId, createdMessage);
 
-    nextPageResponse.resolve(messagesResponse({ messages: [olderMessage], nextCursor: null }));
-    await messagesFetch;
-
-    await waitFor(() => {
       expect(getMessagesCache(queryClient)).toEqual({
         pages: [
           { messages: [createdMessage, latestMessage], nextCursor: 10 },
@@ -194,36 +110,158 @@ describe("syncMessageToCache", () => {
       });
     });
 
-    observer.destroy();
+    it("does not add the same message more than once", () => {
+      queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
+        pages: [{ messages: [createdMessage, latestMessage], nextCursor: null }],
+        pageParams: [null],
+      });
+
+      syncMessageToCache(queryClient, conversationId, createdMessage);
+
+      const matchingMessages = getMessagesCache(queryClient)
+        ?.pages.flatMap((page) => page.messages)
+        .filter((message) => message.id === createdMessage.id);
+      expect(matchingMessages).toEqual([createdMessage]);
+    });
   });
 
-  it("does not recreate a cleared messages cache when a pending cache sync completes", async () => {
-    const nextPageResponse = deferred<Response>();
-    vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
-    queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
-      pages: [{ messages: [latestMessage], nextCursor: 10 }],
-      pageParams: [null],
-    });
-    const observer = new InfiniteQueryObserver(queryClient, messagesQueryOptions(conversationId));
+  describe("message ordering", () => {
+    it("orders messages by createdAt descending", () => {
+      syncMessageToCache(queryClient, conversationId, createdMessage);
+      syncMessageToCache(queryClient, conversationId, latestMessage);
 
-    const messagesFetch = observer.fetchNextPage();
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages?cursor=10&limit=20", {
-        signal: expect.any(AbortSignal),
+      expect(getMessagesCache(queryClient)).toEqual({
+        pages: [
+          {
+            messages: [createdMessage, latestMessage],
+            nextCursor: null,
+          },
+        ],
+        pageParams: [null],
       });
     });
 
-    syncMessageToCache(queryClient, conversationId, createdMessage);
-    queryClient.clear();
+    it("orders messages with the same createdAt by id descending", () => {
+      const higherIdMessage = {
+        ...createdMessage,
+        id: 12,
+        content: "Higher id message",
+      };
 
-    expect(getMessagesCache(queryClient)).toBeUndefined();
+      syncMessageToCache(queryClient, conversationId, higherIdMessage);
+      syncMessageToCache(queryClient, conversationId, createdMessage);
 
-    nextPageResponse.resolve(messagesResponse({ messages: [olderMessage], nextCursor: null }));
-    await messagesFetch;
-    await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(getMessagesCache(queryClient)).toEqual({
+        pages: [
+          {
+            messages: [higherIdMessage, createdMessage],
+            nextCursor: null,
+          },
+        ],
+        pageParams: [null],
+      });
+    });
+  });
 
-    expect(getMessagesCache(queryClient)).toBeUndefined();
+  describe("fetch and recovery lifecycle", () => {
+    it("reapplies the new message after an in-progress fetch completes", async () => {
+      const nextPageResponse = deferred<Response>();
+      vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
+      queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
+        pages: [{ messages: [latestMessage], nextCursor: 10 }],
+        pageParams: [null],
+      });
+      const observer = new InfiniteQueryObserver(queryClient, messagesQueryOptions(conversationId));
 
-    observer.destroy();
+      const messagesFetch = observer.fetchNextPage();
+      await waitFor(() => {
+        expect(queryClient.isFetching({ queryKey, exact: true })).toBe(1);
+      });
+
+      syncMessageToCache(queryClient, conversationId, createdMessage);
+
+      expect(getMessagesCache(queryClient)!.pages[0]!.messages).toEqual([
+        createdMessage,
+        latestMessage,
+      ]);
+
+      nextPageResponse.resolve(messagesResponse({ messages: [olderMessage], nextCursor: null }));
+      await messagesFetch;
+
+      await waitFor(() => {
+        expect(getMessagesCache(queryClient)).toEqual({
+          pages: [
+            { messages: [createdMessage, latestMessage], nextCursor: 10 },
+            { messages: [olderMessage], nextCursor: null },
+          ],
+          pageParams: [null, 10],
+        });
+      });
+
+      observer.destroy();
+    });
+
+    it("keeps the new message after recovering an initial fetch error", async () => {
+      const recoveryResponse = deferred<Response>();
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockReturnValueOnce(recoveryResponse.promise);
+
+      await expect(
+        queryClient.infiniteQuery(messagesQueryOptions(conversationId)),
+      ).rejects.toThrow();
+      expect(queryClient.getQueryState(queryKey)).toMatchObject({
+        status: "error",
+        data: undefined,
+      });
+
+      syncMessageToCache(queryClient, conversationId, createdMessage);
+
+      await waitFor(() => {
+        expect(queryClient.isFetching({ queryKey, exact: true })).toBe(1);
+      });
+
+      recoveryResponse.resolve(messagesResponse({ messages: [latestMessage], nextCursor: null }));
+
+      await waitFor(() => {
+        expect(getMessagesCache(queryClient)).toEqual({
+          pages: [
+            {
+              messages: [createdMessage, latestMessage],
+              nextCursor: null,
+            },
+          ],
+          pageParams: [null],
+        });
+      });
+    });
+
+    it("does not recreate a cleared cache when a pending sync completes", async () => {
+      const nextPageResponse = deferred<Response>();
+      vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
+      queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
+        pages: [{ messages: [latestMessage], nextCursor: 10 }],
+        pageParams: [null],
+      });
+      const observer = new InfiniteQueryObserver(queryClient, messagesQueryOptions(conversationId));
+
+      const messagesFetch = observer.fetchNextPage();
+      await waitFor(() => {
+        expect(queryClient.isFetching({ queryKey, exact: true })).toBe(1);
+      });
+
+      syncMessageToCache(queryClient, conversationId, createdMessage);
+      queryClient.clear();
+
+      expect(getMessagesCache(queryClient)).toBeUndefined();
+
+      nextPageResponse.resolve(messagesResponse({ messages: [olderMessage], nextCursor: null }));
+      await messagesFetch;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(getMessagesCache(queryClient)).toBeUndefined();
+
+      observer.destroy();
+    });
   });
 });

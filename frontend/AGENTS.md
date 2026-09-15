@@ -98,6 +98,8 @@ Frontend audit에서는 특히 다음을 확인한다.
 
 - fixture와 helper는 반복을 줄이되 테스트에서 중요한 값과 상태 차이를 숨기지 않는다.
 - Response 생성 같은 반복 boilerplate는 작은 test helper로 줄일 수 있다.
+- 테스트 파일에서 대부분의 테스트가 하나의 `QueryClient`를 생성하고 마지막에 `clear()`하는 패턴을 반복하면, 파일 단위 `beforeEach`에서 새 client를 생성하고 `afterEach`에서 `clear()`하는 lifecycle로 통합한다.
+- 여러 `QueryClient`가 필요하거나 특정 옵션/생성 시점/instance identity가 테스트 의미에 중요하거나 `clear()` 자체가 assertion 시나리오의 일부인 경우에는 local lifecycle을 유지한다.
 - WebSocket 등 test stub은 현재 테스트가 사용하는 API만 구현한다.
 - 테스트가 listener 등록 방식 자체를 검증하지 않는다면 stub의 `addEventListener`/`removeEventListener`를 불필요하게 spy로 만들지 않는다.
 - 테스트에서는 가능하면 stub의 `emitOpen`, `emitMessage`, `emitClose`처럼 행동 중심 API를 통해 이벤트를 발생시킨다.
