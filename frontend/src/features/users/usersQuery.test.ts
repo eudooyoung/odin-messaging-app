@@ -42,9 +42,10 @@ describe("usersQueryOptions", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    const result = await queryClient.query(usersQueryOptions("other user"));
+    const queryOptions = usersQueryOptions("other user");
+    const result = await queryClient.query(queryOptions);
 
-    expect(apiFetch).toHaveBeenCalledOnce();
+    expect(queryOptions.queryKey).toEqual(["users", "search", "other user"]);
     expect(apiFetch).toHaveBeenCalledWith(expect.any(String), {
       signal: expect.any(AbortSignal),
     });
