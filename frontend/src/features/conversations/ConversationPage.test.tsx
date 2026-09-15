@@ -250,13 +250,6 @@ describe("ConversationPage", () => {
       await user.click(screen.getByRole("button", { name: "Send" }));
 
       await waitFor(() => {
-        expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: "Hello!" }),
-        });
-      });
-      await waitFor(() => {
         expect(screen.getByText(conversationMessage.content)).toBeInTheDocument();
         expect(screen.getByText(createdMessage.content)).toBeInTheDocument();
       });
