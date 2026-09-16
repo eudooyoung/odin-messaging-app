@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { ProtectedRoute } from "@/routes/ProtectedRoute.tsx";
+import { createDeferred } from "@/tests/createDeferred.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { AuthenticatedWebSocket } from "./AuthenticatedWebSocket.tsx";
 import { handleWebSocketMessage } from "./handleWebSocketMessage.ts";
 import { messagesQueryOptions } from "./messagesQuery.ts";
@@ -57,45 +59,11 @@ class WebSocketStub {
   }
 }
 
-const deferred = <T,>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-
-  return { promise, resolve };
-};
-
-const currentUserSender = {
-  username: "current-user",
-  displayName: "Current User",
-  profileImage: null,
-};
-
 const otherUserSender = {
   username: "other-user",
   displayName: "Other User",
   profileImage: null,
 };
-
-const createMessagesResponse = (messages: unknown[]) =>
-  new Response(JSON.stringify({ messages, nextCursor: null }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
-const createSuccessfulAuthResponse = () =>
-  new Response(
-    JSON.stringify({
-      id: 1,
-      username: "user",
-      displayName: "User",
-    }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    },
-  );
 
 const createFailedAuthResponse = () => new Response(null, { status: 500 });
 
@@ -115,12 +83,6 @@ const createMessageCreatedEvent = () =>
     }),
   });
 
-const MessagesQuerySubscriber = ({ conversationId }: { conversationId: number }) => {
-  useInfiniteQuery(messagesQueryOptions(conversationId));
-
-  return null;
-};
-
 afterEach(() => {
   WebSocketStub.instances = [];
   vi.unstubAllGlobals();
@@ -129,6 +91,9 @@ afterEach(() => {
 
 describe("AuthenticatedWebSocket", () => {
   describe("connection and messages", () => {
+    const createMessagesResponse = (messages: unknown[]) =>
+      jsonResponse({ messages, nextCursor: null });
+
     it("connects and forwards received messages to the WebSocket message handler", () => {
       vi.stubGlobal("WebSocket", WebSocketStub);
       const queryClient = new QueryClient();
@@ -151,6 +116,11 @@ describe("AuthenticatedWebSocket", () => {
     it("refetches cached messages when the connection opens", async () => {
       // Arrange
       vi.stubGlobal("WebSocket", WebSocketStub);
+      const currentUserSender = {
+        username: "current-user",
+        displayName: "Current User",
+        profileImage: null,
+      };
       const cachedMessage = {
         id: 10,
         content: "Message loaded before connecting",
@@ -203,7 +173,12 @@ describe("AuthenticatedWebSocket", () => {
     it("refetches messages after a pending initial fetch completes", async () => {
       // Arrange
       vi.stubGlobal("WebSocket", WebSocketStub);
-      const pendingInitialMessagesResponse = deferred<Response>();
+      const MessagesQuerySubscriber = ({ conversationId }: { conversationId: number }) => {
+        useInfiniteQuery(messagesQueryOptions(conversationId));
+
+        return null;
+      };
+      const pendingInitialMessagesResponse = createDeferred<Response>();
       const initialMessagesResponse = createMessagesResponse([]);
       const recoveryMessagesResponse = createMessagesResponse([]);
       vi.mocked(apiFetch)
@@ -242,10 +217,23 @@ describe("AuthenticatedWebSocket", () => {
   });
 
   describe("auth recovery and reconnect", () => {
+    const createSuccessfulAuthResponse = () =>
+      new Response(
+        JSON.stringify({
+          id: 1,
+          username: "user",
+          displayName: "User",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
     it("waits for auth recovery before reconnecting after an unexpected close", async () => {
       // Arrange
       vi.stubGlobal("WebSocket", WebSocketStub);
-      const authResponse = deferred<Response>();
+      const authResponse = createDeferred<Response>();
       const queryClient = new QueryClient();
       vi.mocked(apiFetch).mockReturnValue(authResponse.promise);
       const { unmount } = render(
@@ -276,7 +264,7 @@ describe("AuthenticatedWebSocket", () => {
     it("does not reconnect when auth recovery returns null", async () => {
       // Arrange
       vi.stubGlobal("WebSocket", WebSocketStub);
-      const authResponse = deferred<Response>();
+      const authResponse = createDeferred<Response>();
       const queryClient = new QueryClient();
       vi.mocked(apiFetch).mockReturnValue(authResponse.promise);
       const { unmount } = render(
@@ -304,7 +292,7 @@ describe("AuthenticatedWebSocket", () => {
       // Arrange
       vi.useFakeTimers();
       vi.stubGlobal("WebSocket", WebSocketStub);
-      const recoveredAuthResponse = deferred<Response>();
+      const recoveredAuthResponse = createDeferred<Response>();
       const queryClient = new QueryClient();
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(createFailedAuthResponse())
@@ -408,7 +396,7 @@ describe("AuthenticatedWebSocket", () => {
       // Arrange
       vi.useFakeTimers();
       vi.stubGlobal("WebSocket", WebSocketStub);
-      const authResponse = deferred<Response>();
+      const authResponse = createDeferred<Response>();
       const queryClient = new QueryClient();
       vi.mocked(apiFetch).mockReturnValueOnce(authResponse.promise);
       const { unmount } = render(

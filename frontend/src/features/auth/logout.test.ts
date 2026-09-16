@@ -8,15 +8,17 @@ vi.mock("@/api/apiFetch.ts", () => ({
 }));
 
 describe("logout", () => {
-  it("completes successfully after POST /auth/logout returns 204", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 204 }));
+  it("returns the successful response from POST /auth/logout", async () => {
+    const response = new Response(null, { status: 204 });
+    vi.mocked(apiFetch).mockResolvedValue(response);
 
-    await logout();
+    const result = await logout();
 
     expect(apiFetch).toHaveBeenCalledOnce();
     expect(apiFetch).toHaveBeenCalledWith("/auth/logout", {
       method: "POST",
     });
+    expect(result).toBe(response);
   });
 
   it.each([200, 500])(

@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { UserFacingError } from "@/api/UserFacingError.ts";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
 
 const LOAD_OLDER_MESSAGES_ERROR_MESSAGE = "Failed to load older messages";
@@ -27,9 +27,7 @@ export function MessageList({ conversationId }: MessageListProps) {
 
   if (isLoadingError) {
     return (
-      <p role="alert">
-        {error instanceof UserFacingError ? error.message : MESSAGES_QUERY_ERROR_MESSAGE}
-      </p>
+      <UserFacingErrorMessage error={error} fallbackMessage={MESSAGES_QUERY_ERROR_MESSAGE} />
     );
   }
 

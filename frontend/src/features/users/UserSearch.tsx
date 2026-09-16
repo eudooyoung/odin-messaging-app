@@ -1,12 +1,14 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { UserFacingError } from "@/api/UserFacingError.ts";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { createConversation } from "@/features/conversations/createConversation.ts";
 import { USERS_QUERY_ERROR_MESSAGE, usersQueryOptions } from "./usersQuery.ts";
 
 export function UserSearch() {
   const [query, setQuery] = useState("");
+  const searchQuery = query.trim();
+  const hasQuery = searchQuery.length > 0;
   const navigate = useNavigate();
   const createConversationMutation = useMutation({
     mutationFn: createConversation,
@@ -20,9 +22,12 @@ export function UserSearch() {
     isError,
     error,
   } = useQuery({
-    ...usersQueryOptions(query),
-    enabled: query.length > 0,
+    ...usersQueryOptions(searchQuery),
+    enabled: hasQuery,
   });
+  const hasUsers = !isPending && !isError && Boolean(users?.length);
+  const showEmptyState = !isPending && !isError && users?.length === 0;
+  const isCreatingConversation = createConversationMutation.isPending;
 
   return (
     <>
@@ -34,30 +39,25 @@ export function UserSearch() {
         onChange={(event) => setQuery(event.target.value)}
       />
 
-      {query.length > 0 && isPending && <p role="status">Searching users...</p>}
+      {hasQuery && isPending && <p role="status">Searching users...</p>}
 
       {isError && (
-        <p role="alert">
-          {error instanceof UserFacingError ? error.message : USERS_QUERY_ERROR_MESSAGE}
-        </p>
+        <UserFacingErrorMessage error={error} fallbackMessage={USERS_QUERY_ERROR_MESSAGE} />
       )}
 
       {createConversationMutation.isError && (
         <p role="alert">{createConversationMutation.error.message}</p>
       )}
 
-      {!isPending && !isError && users?.length === 0 && <p>No users found</p>}
+      {showEmptyState && <p>No users found</p>}
 
-      {!isPending && !isError && users && users.length > 0 && (
+      {hasUsers && (
         <ul>
-          {users.map((user) => (
+          {users?.map((user) => (
             <li key={user.username}>
               <button
                 type="button"
-                disabled={
-                  createConversationMutation.isPending &&
-                  createConversationMutation.variables === user.username
-                }
+                disabled={isCreatingConversation}
                 onClick={() => createConversationMutation.mutate(user.username)}
               >
                 <span>{user.displayName}</span> <span>@{user.username}</span>

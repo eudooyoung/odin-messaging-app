@@ -3,7 +3,7 @@ import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
 
 type Message = MessagesPage["messages"][number];
 
-const getPendingMessagesFetch = (queryClient: QueryClient, queryKey: QueryKey) => {
+const prepareMessagesFetchRecovery = (queryClient: QueryClient, queryKey: QueryKey) => {
   const isCurrentMessagesFetching = queryClient.isFetching({ queryKey, exact: true }) > 0;
   const messagesQueryState = queryClient.getQueryState(queryKey);
   const shouldRecoverInitialFetchError =
@@ -23,15 +23,10 @@ export const syncMessageToCache = (
 ) => {
   const queryKey = messagesQueryOptions(conversationId).queryKey;
   const currentMessagesQuery = queryClient.getQueryCache().find({ queryKey, exact: true });
-  const pendingMessagesQueryFetch = getPendingMessagesFetch(queryClient, queryKey);
-  const addMessageToCache = () => {
+  const pendingMessagesQueryFetch = prepareMessagesFetchRecovery(queryClient, queryKey);
+  const mergeMessageIntoCache = () => {
     queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, (currentData) => {
       const hasNoCachedPages = !currentData || currentData.pages.length === 0;
-      const isMessageAlreadyCached =
-        currentData?.pages.some((page) =>
-          page.messages.some((cachedMessage) => cachedMessage.id === message.id),
-        ) ?? false;
-
       if (hasNoCachedPages) {
         return {
           pages: [{ messages: [message], nextCursor: null }],
@@ -39,6 +34,10 @@ export const syncMessageToCache = (
         };
       }
 
+      const isMessageAlreadyCached =
+        currentData?.pages.some((page) =>
+          page.messages.some((cachedMessage) => cachedMessage.id === message.id),
+        ) ?? false;
       if (isMessageAlreadyCached) {
         return currentData;
       }
@@ -61,13 +60,14 @@ export const syncMessageToCache = (
     });
   };
 
-  addMessageToCache();
+  mergeMessageIntoCache();
+
   void pendingMessagesQueryFetch?.then(() => {
     const latestMessageQuery = queryClient.getQueryCache().find({ queryKey, exact: true });
     if (latestMessageQuery !== currentMessagesQuery) {
       return;
     }
 
-    addMessageToCache();
+    mergeMessageIntoCache();
   });
 };
