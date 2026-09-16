@@ -11,12 +11,7 @@ export function FormField({ label, error, id, ...inputProps }: FormFieldProps) {
   return (
     <>
       <label htmlFor={id}>{label}</label>
-      <input
-        {...inputProps}
-        id={id}
-        aria-invalid={Boolean(error)}
-        aria-describedby={errorId}
-      />
+      <input {...inputProps} id={id} aria-invalid={Boolean(error)} aria-describedby={errorId} />
       {error && (
         <p id={errorId} role="alert">
           {error}

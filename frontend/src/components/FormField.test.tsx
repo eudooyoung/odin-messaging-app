@@ -15,12 +15,7 @@ describe("FormField", () => {
 
   it("connects the invalid input to its validation error", () => {
     render(
-      <FormField
-        id="username"
-        label="Username"
-        name="username"
-        error="Username is required"
-      />,
+      <FormField id="username" label="Username" name="username" error="Username is required" />,
     );
 
     const input = screen.getByRole("textbox", { name: "Username" });

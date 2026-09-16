@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-import {
-  UPDATE_USER_PROFILE_ERROR_MESSAGE,
-  updateUserProfile,
-} from "./updateUserProfile.ts";
+import { UPDATE_USER_PROFILE_ERROR_MESSAGE, updateUserProfile } from "./updateUserProfile.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),

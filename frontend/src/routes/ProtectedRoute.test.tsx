@@ -76,7 +76,6 @@ describe("ProtectedRoute", () => {
       );
 
       expect(screen.getByRole("heading", { name: "Protected content" })).toBeInTheDocument();
-
     });
 
     it("redirects to login when the user becomes unauthenticated", async () => {
@@ -108,7 +107,6 @@ describe("ProtectedRoute", () => {
       rerender(renderRoutes());
 
       expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument();
-
     });
 
     it("keeps the same connection while navigating between protected routes", async () => {
@@ -146,7 +144,6 @@ describe("ProtectedRoute", () => {
 
       expect(screen.getByRole("heading", { name: "Second protected route" })).toBeInTheDocument();
       expect(WebSocketStub.instances).toEqual([webSocket]);
-
     });
   });
 

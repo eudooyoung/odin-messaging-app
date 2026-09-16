@@ -64,10 +64,9 @@ describe("userProfileQueryOptions", () => {
       vi.mocked(apiFetch).mockResolvedValue(profileResponse(profile));
       await queryClient.query(userProfileQueryOptions(username));
 
-      expect(apiFetch).toHaveBeenCalledWith(
-        `/users/${encodeURIComponent(username)}`,
-        { signal: expect.any(AbortSignal) },
-      );
+      expect(apiFetch).toHaveBeenCalledWith(`/users/${encodeURIComponent(username)}`, {
+        signal: expect.any(AbortSignal),
+      });
     },
   );
 

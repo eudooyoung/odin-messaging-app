@@ -38,7 +38,6 @@ describe("authMeQueryOptions", () => {
       signal: expect.any(AbortSignal),
     });
     expect(result).toEqual(currentUser);
-
   });
 
   it("returns null when GET /auth/me ultimately returns 401", async () => {
@@ -46,7 +45,6 @@ describe("authMeQueryOptions", () => {
     const result = await queryClient.query(authMeQueryOptions);
 
     expect(result).toBeNull();
-
   });
 
   it("throws an error state when GET /auth/me returns a non-401 failure", async () => {

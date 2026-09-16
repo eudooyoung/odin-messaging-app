@@ -1,4 +1,4 @@
-export const createDeferred = <T,>() => {
+export const createDeferred = <T>() => {
   let resolve!: (value: T | PromiseLike<T>) => void;
   const promise = new Promise<T>((resolvePromise) => {
     resolve = resolvePromise;

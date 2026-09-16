@@ -49,7 +49,6 @@ describe("conversationQueryOptions", () => {
       signal: expect.any(AbortSignal),
     });
     expect(result).toEqual(conversation);
-
   });
 
   it.each([
@@ -69,7 +68,6 @@ describe("conversationQueryOptions", () => {
 
       await expect(result).rejects.toBeInstanceOf(UserFacingError);
       await expect(result).rejects.toThrow(expectedMessage);
-
     },
   );
 
@@ -79,7 +77,6 @@ describe("conversationQueryOptions", () => {
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
     await expect(result).rejects.toThrow("Failed to load conversation");
-
   });
 
   it("preserves the original error when apiFetch rejects", async () => {
@@ -88,6 +85,5 @@ describe("conversationQueryOptions", () => {
     const result = queryClient.query(conversationQueryOptions(42));
 
     await expect(result).rejects.toBe(networkError);
-
   });
 });

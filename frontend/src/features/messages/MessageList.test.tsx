@@ -37,10 +37,8 @@ describe("MessageList", () => {
     createdAt: "2026-09-07T01:00:00.000Z",
   };
 
-  const messagesResponse = (
-    messages: (typeof latestMessage)[],
-    nextCursor: number | null,
-  ) => jsonResponse({ messages, nextCursor });
+  const messagesResponse = (messages: (typeof latestMessage)[], nextCursor: number | null) =>
+    jsonResponse({ messages, nextCursor });
 
   beforeEach(() => {
     queryClient = createTestQueryClient();
@@ -68,9 +66,7 @@ describe("MessageList", () => {
     });
 
     it("renders messages and their senders from the conversation messages query", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        messagesResponse([latestMessage, olderMessage], null),
-      );
+      vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestMessage, olderMessage], null));
 
       renderMessageList(queryClient);
 
@@ -83,17 +79,13 @@ describe("MessageList", () => {
     });
 
     it("renders messages from oldest to latest when the query data is newest first", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        messagesResponse([latestMessage, olderMessage], null),
-      );
+      vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestMessage, olderMessage], null));
 
       renderMessageList(queryClient);
 
       await screen.findByText(latestMessage.content);
 
-      expect(
-        screen.getAllByRole("listitem").map((listItem) => listItem.textContent),
-      ).toEqual([
+      expect(screen.getAllByRole("listitem").map((listItem) => listItem.textContent)).toEqual([
         expect.stringContaining(olderMessage.content),
         expect.stringContaining(latestMessage.content),
       ]);
@@ -108,9 +100,7 @@ describe("MessageList", () => {
     });
 
     it("shows the user-facing error from the messages query", async () => {
-      const queryError = new UserFacingError(
-        "You do not have access to this conversation",
-      );
+      const queryError = new UserFacingError("You do not have access to this conversation");
       vi.mocked(apiFetch).mockRejectedValue(queryError);
 
       renderMessageList(queryClient);
@@ -153,10 +143,9 @@ describe("MessageList", () => {
 
       await waitFor(() => {
         expect(apiFetch).toHaveBeenCalledTimes(2);
-        expect(
-          queryClient.getQueryState(["conversations", 42, "messages"])
-            ?.fetchStatus,
-        ).toBe("fetching");
+        expect(queryClient.getQueryState(["conversations", 42, "messages"])?.fetchStatus).toBe(
+          "fetching",
+        );
       });
 
       await act(async () => {
@@ -165,9 +154,7 @@ describe("MessageList", () => {
       });
 
       await waitFor(() => {
-        expect(
-          queryClient.getQueryState(["conversations", 42, "messages"]),
-        ).toMatchObject({
+        expect(queryClient.getQueryState(["conversations", 42, "messages"])).toMatchObject({
           status: "error",
           fetchStatus: "idle",
         });
@@ -247,13 +234,9 @@ describe("MessageList", () => {
 
       expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
 
-      await user.click(
-        screen.getByRole("button", { name: "Load older messages" }),
-      );
+      await user.click(screen.getByRole("button", { name: "Load older messages" }));
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Failed to load older messages",
-      );
+      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load older messages");
       expect(screen.getByText(latestMessage.content)).toBeInTheDocument();
       const retryButton = screen.getByRole("button", {
         name: "Load older messages",
@@ -268,16 +251,12 @@ describe("MessageList", () => {
     });
 
     it("does not show the load-older UI on the last page", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(
-        messagesResponse([latestMessage], null),
-      );
+      vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestMessage], null));
 
       renderMessageList(queryClient);
 
       expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Load older messages" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Load older messages" })).not.toBeInTheDocument();
     });
   });
 });

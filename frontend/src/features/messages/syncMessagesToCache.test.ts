@@ -1,8 +1,4 @@
-import {
-  type InfiniteData,
-  InfiniteQueryObserver,
-  type QueryClient,
-} from "@tanstack/react-query";
+import { type InfiniteData, InfiniteQueryObserver, type QueryClient } from "@tanstack/react-query";
 import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";

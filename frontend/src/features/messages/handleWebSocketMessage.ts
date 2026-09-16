@@ -19,10 +19,7 @@ const messageCreatedEventSchema = z.object({
   }),
 });
 
-export const handleWebSocketMessage = (
-  queryClient: QueryClient,
-  event: MessageEvent<string>,
-) => {
+export const handleWebSocketMessage = (queryClient: QueryClient, event: MessageEvent<string>) => {
   let receivedEvent: unknown;
 
   try {
@@ -37,9 +34,5 @@ export const handleWebSocketMessage = (
     return;
   }
 
-  syncMessageToCache(
-    queryClient,
-    result.data.payload.conversationId,
-    result.data.payload.message,
-  );
+  syncMessageToCache(queryClient, result.data.payload.conversationId, result.data.payload.message);
 };

@@ -26,8 +26,7 @@ const receivedMessage = {
 };
 
 const conversationId = 42;
-const conversationMessagesQueryKey =
-  messagesQueryOptions(conversationId).queryKey;
+const conversationMessagesQueryKey = messagesQueryOptions(conversationId).queryKey;
 const existingMessagesData: InfiniteData<MessagesPage, number | null> = {
   pages: [{ messages: [existingMessage], nextCursor: null }],
   pageParams: [null],
@@ -51,24 +50,16 @@ afterEach(() => {
 });
 
 const getConversationMessagesCache = (queryClient: QueryClient) =>
-  queryClient.getQueryData<InfiniteData<MessagesPage, number | null>>(
-    conversationMessagesQueryKey,
-  );
+  queryClient.getQueryData<InfiniteData<MessagesPage, number | null>>(conversationMessagesQueryKey);
 
 describe("handleWebSocketMessage", () => {
   it("adds a received message.created message to its conversation messages cache", () => {
     const otherConversationMessagesQueryKey = messagesQueryOptions(7).queryKey;
-    const otherConversationMessagesData: InfiniteData<
-      MessagesPage,
-      number | null
-    > = {
+    const otherConversationMessagesData: InfiniteData<MessagesPage, number | null> = {
       pages: [{ messages: [existingMessage], nextCursor: null }],
       pageParams: [null],
     };
-    queryClient.setQueryData(
-      otherConversationMessagesQueryKey,
-      otherConversationMessagesData,
-    );
+    queryClient.setQueryData(otherConversationMessagesQueryKey, otherConversationMessagesData);
     const event = new MessageEvent("message", {
       data: JSON.stringify({
         type: "message.created",
@@ -93,7 +84,6 @@ describe("handleWebSocketMessage", () => {
     expect(queryClient.getQueryData(otherConversationMessagesQueryKey)).toEqual(
       otherConversationMessagesData,
     );
-
   });
 
   it("ignores events other than message.created without changing the cache", () => {
@@ -106,20 +96,14 @@ describe("handleWebSocketMessage", () => {
 
     handleWebSocketMessage(queryClient, event);
 
-    expect(getConversationMessagesCache(queryClient)).toEqual(
-      existingMessagesData,
-    );
-
+    expect(getConversationMessagesCache(queryClient)).toEqual(existingMessagesData);
   });
 
   it("ignores malformed messages without throwing or changing the cache", () => {
     const event = new MessageEvent("message", { data: "not valid JSON" });
 
     expect(() => handleWebSocketMessage(queryClient, event)).not.toThrow();
-    expect(getConversationMessagesCache(queryClient)).toEqual(
-      existingMessagesData,
-    );
-
+    expect(getConversationMessagesCache(queryClient)).toEqual(existingMessagesData);
   });
 
   const invalidMessageCreatedEvents: {
@@ -189,24 +173,22 @@ describe("handleWebSocketMessage", () => {
         },
       },
     },
-    ...(["username", "displayName", "profileImage"] as const).map(
-      (missingSenderField) => ({
-        caseName: `the sender ${missingSenderField} is missing`,
-        receivedEvent: {
-          type: "message.created",
-          payload: {
-            conversationId,
-            message: {
-              ...receivedMessage,
-              sender: {
-                ...receivedMessage.sender,
-                [missingSenderField]: undefined,
-              },
+    ...(["username", "displayName", "profileImage"] as const).map((missingSenderField) => ({
+      caseName: `the sender ${missingSenderField} is missing`,
+      receivedEvent: {
+        type: "message.created",
+        payload: {
+          conversationId,
+          message: {
+            ...receivedMessage,
+            sender: {
+              ...receivedMessage.sender,
+              [missingSenderField]: undefined,
             },
           },
         },
-      }),
-    ),
+      },
+    })),
     {
       caseName: "the message creation timestamp is not an ISO datetime",
       receivedEvent: {
@@ -223,10 +205,13 @@ describe("handleWebSocketMessage", () => {
     "ignores an invalid message.created event when $caseName",
     ({ receivedEvent }) => {
       const getQueryCacheSnapshot = (queryClient: QueryClient) =>
-        queryClient.getQueryCache().getAll().map((query) => ({
-          queryKey: query.queryKey,
-          data: query.state.data,
-        }));
+        queryClient
+          .getQueryCache()
+          .getAll()
+          .map((query) => ({
+            queryKey: query.queryKey,
+            data: query.state.data,
+          }));
       const createMessageEvent = (receivedEvent: unknown) => {
         const data = JSON.stringify(receivedEvent);
 
@@ -241,7 +226,6 @@ describe("handleWebSocketMessage", () => {
 
       expect(() => handleWebSocketMessage(queryClient, event)).not.toThrow();
       expect(getQueryCacheSnapshot(queryClient)).toEqual(cacheBeforeHandling);
-
     },
   );
 });

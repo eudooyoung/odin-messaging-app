@@ -44,7 +44,6 @@ describe("usersQueryOptions", () => {
     expect(requestUrl.pathname).toBe("/users");
     expect(requestUrl.searchParams.get("query")).toBe("other user");
     expect(result).toEqual(users);
-
   });
 
   it("throws a user-facing error when the user search request is invalid", async () => {
@@ -53,7 +52,6 @@ describe("usersQueryOptions", () => {
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
     await expect(result).rejects.toThrow("Invalid user search");
-
   });
 
   it("throws a generic user-facing error for other unsuccessful responses", async () => {
@@ -62,7 +60,6 @@ describe("usersQueryOptions", () => {
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
     await expect(result).rejects.toThrow("Failed to search users");
-
   });
 
   it("preserves the original error when apiFetch rejects", async () => {
@@ -71,6 +68,5 @@ describe("usersQueryOptions", () => {
     const result = queryClient.query(usersQueryOptions("other user"));
 
     await expect(result).rejects.toBe(networkError);
-
   });
 });

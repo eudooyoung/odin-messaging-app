@@ -430,7 +430,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] `main.tsx` — `QueryClientProvider` / `RouterProvider` 관계 확인
   - [x] router — protected / guest-only route와 `Outlet` 흐름 확인
   - [x] `ProtectedRoute` — `auth/me`의 `undefined` / `null` / `AuthUser` 상태 의미 확인
-  - [x] query error UI 공통 `QueryErrorMessage`로 정리
+  - [x] query / mutation error UI 공통 `UserFacingErrorMessage`로 정리
   - [x] `UserFacingError`와 generic fallback message의 책임 분리
   - [x] `authMeQuery`의 내부 error message와 사용자 fallback message 분리
   - [x] `ClearSessionCacheOnAuthEnd` — logout/unmount 시 non-auth query cache cleanup 확인
@@ -500,6 +500,21 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] profile loading/form state / validation / successful update / update lifecycle 기준 semantic test 구획
   - [x] profile/auth 이전 refetch와 PATCH 성공 cache race 방어 테스트 유지
   - [x] 반복 fixture, query key, render wrapper, form interaction helper 정리
+- [x] Auth form / mutation manual audit
+  - [x] `login.ts` / test — POST 계약, 401 user-facing error, generic HTTP error, transport passthrough, 성공 Response 반환 계약 분리
+  - [x] `LoginPage.tsx` / test — validation / pending / mutation error / navigation 책임을 component observable behavior 중심으로 정리
+  - [x] 로그인 성공 시 기존 pending `auth/me`를 cancel한 뒤 fresh `auth/me` 요청을 시작하도록 보완하고 race 회귀 테스트 추가
+  - [x] `registerUser.ts` / test — 201 성공, 409 username conflict, generic HTTP error, transport passthrough 계약 분리
+  - [x] `RegisterPage.tsx` / test — validation / pending / 성공 navigation / user-facing fallback 책임 정리
+  - [x] `logout.ts` / test — 정확한 204 성공 계약, 실패 error 변환, transport passthrough, 성공 Response 반환 검증
+  - [x] `LogoutButton.tsx` / test — pending / logout 실행 / cache clear + navigation / user-facing error / generic fallback 책임 보완
+  - [x] 기존 `QueryErrorMessage`를 query/mutation 공통 `UserFacingErrorMessage`로 일반화하고 동일 error rendering 패턴에 적용
+- [x] Frontend test structure 최종 wrap-up
+  - [x] `router.test.tsx`를 guest routes / protected routes / session lifecycle / app integration 기준으로 정리하고 하위 query/mutation transport 중복 assertion 제거
+  - [x] router의 logout pending/error 등 하위 component와 중복되는 테스트를 제거하고 route 연결 / session isolation / app integration 계약만 유지
+  - [x] 테스트 fixture / helper / lifecycle을 실제 사용 범위에 맞춰 `it` / nested `describe` / 최상위 suite scope로 재배치
+  - [x] 반복 test utility 중 동일 책임만 `createTestQueryClient`, `createDeferred`, `jsonResponse`로 공통화
+  - [x] WebSocket stub, render helper, interaction helper 등 의미가 다른 테스트 도구는 억지로 공통화하지 않음
 
 #### Backend refactor TODO
 
@@ -519,7 +534,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 
 - [x] refresh 일시 장애(non-401 failure, 예: 5xx)를 인증 만료(`401`)와 구분
 - [ ] 이전 session에서 시작한 pending mutation / refresh가 session 전환 이후 cache, navigation, cookie 상태에 영향을 주지 않도록 방어
-- [ ] 로그인 성공 후 auth/me 확인이 반드시 로그인 이후 시작된 fresh 요청임을 보장
+- [x] 로그인 성공 후 auth/me 확인이 반드시 로그인 이후 시작된 fresh 요청임을 보장
 
 ### 작업 방식
 
@@ -531,35 +546,22 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 
 ### 다음 시작점
 
-- Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했다.
-- 실제 브라우저 사용자 흐름 audit과 필수 navigation 보완도 완료했다.
-- UI audit에서 발견한 메시지 표시 순서, older-message navigation, profile 즉시 반영 문제를 보완했다.
+- Backend / Frontend 핵심 기능 구현, 기능 단위 audit, 실제 브라우저 사용자 흐름 audit, 필수 navigation 보완을 완료했다.
+- **Frontend manual audit / code walkthrough도 완료했다.**
+  - app/router/auth lifecycle, `apiFetch`, REST query/cache, WebSocket, Conversation/Message, User Search, Profile, Auth form/mutation까지 전체 흐름을 재검토했다.
+  - query/mutation/component/router 테스트의 책임 중복을 줄이고 semantic `describe`, fixture/helper scope, 공통 test utility를 정리했다.
+  - 로그인 성공 후에는 기존 pending `auth/me`를 cancel하고 fresh 요청을 시작하도록 보완했다.
 - 사용자 검색에서 본인 제외는 frontend 필터링 대신 Backend refactor TODO로 유지한다.
-- 현재는 CSS 작업을 잠시 보류하고 **Frontend manual audit / code walkthrough**를 진행 중이다.
-  1. `main.tsx → router → ProtectedRoute` 흐름은 확인 완료
-  2. query error 표현과 auth error/fallback 책임을 정리 완료
-  3. `ClearSessionCacheOnAuthEnd`와 `AuthenticatedWebSocket` lifecycle을 확인 완료
-  4. router 인증 테스트의 불필요한 `apiFetch` 구현 세부 검증을 제거
-  5. `apiFetch` manual audit 완료 — 실제 사용 범위에 맞게 상대경로 string 전용 계약으로 축소하고 불필요한 Request/URL 지원 제거
-  6. refresh `401`과 non-401 실패를 구분하고, refresh endpoint 재귀 방지 / 1회 retry / concurrent refresh 공유 정책 확인
-  7. `apiFetch.test.ts` 리팩토링 완료 — 중복 assertion 정리, non-401 회귀 테스트 추가, concurrent 테스트 `vi.waitFor` 개선, refresh 요청 옵션 검증 통합
-  8. `authMeQuery.test.ts` 재검토 완료 — signal 검증을 성공 케이스에 통합하고 중복 호출 검증 제거, 401/null·non-401 error·transport error 계약을 간결하게 정리
-  9. `ProtectedRoute.test.tsx` / `AuthenticatedWebSocket.test.tsx` 테스트 구조 재검토 완료 — 상태/lifecycle 기준 semantic `describe`로 정리
-  10. Conversation / Message query 및 component 테스트 audit 진행 — query/mutation 단위 계약과 상위 UI 테스트의 중복 transport assertion 분리
-  11. `FormField` 공통 컴포넌트 추출 및 Login/Register/MessageComposer 적용 완료
-  12. `MessageComposer` 메시지 최대 길이를 backend 계약과 동일한 1000자로 수정하고 validation 테스트 갱신
-  13. `MessageList` ordering/pagination/refetch 테스트 정리 완료 — 오래된 메시지 위 / 최신 메시지 아래 표시 계약 유지
-  14. 반복 `QueryClient` 생성/`clear()`를 안전한 frontend 테스트 16개 파일에서 `beforeEach`/`afterEach` lifecycle로 공통화했고 전체 테스트 GREEN 확인
-  15. `createMessage.ts` / test audit 완료
-  16. `syncMessagesToCache.ts` / test audit 완료 — fetch/recovery/cache clear race까지 정리
-  17. User Search 흐름 audit 완료 — 검색값 trim, whitespace 비활성화, conversation mutation 중복 방지 및 테스트 구조 정리
-  18. `createConversation.ts` / test audit 완료
-  19. Profile query / mutation / page audit 완료 — path encoding, cache sync, form reset/dirty lifecycle, stale refetch race와 테스트 중복 정리
-  20. **다음 세션은 남은 Auth form/mutation manual audit부터 시작 (`LoginPage.tsx` / test 우선 확인)**
-- 프론트 흐름이 충분히 정리되면 MVP 기본 CSS / 2-column layout / responsive UI 작업으로 복귀한다.
-- 그 뒤 frontend + backend 전체 smoke test를 진행한다.
+- **다음 작업은 MVP 기본 UI / CSS로 복귀한다.**
+  1. Login / Register 기본 폼 스타일
+  2. 데스크톱 메시징 2-column layout
+  3. ConversationList / ConversationPage / MessageList / MessageComposer 스타일
+  4. User Search / Profile / loading / empty / error 상태 스타일
+  5. 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
+- 최근 test scope / utility 구조 리팩토링 이후 전체 frontend 테스트 재실행 여부는 별도로 확인한다.
+- CSS/UI 완료 후 frontend + backend 실제 브라우저 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
-- Auth의 남은 race / 장애 semantics는 post-MVP hardening으로 유지한다.
+- Auth의 남은 `이전 session pending mutation / refresh` race 방어는 Post-MVP hardening으로 유지한다.
 
 
 ## 6. 배포 / 인증 쿠키 정책
