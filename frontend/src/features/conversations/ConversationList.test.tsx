@@ -71,7 +71,6 @@ describe("ConversationList", () => {
       renderConversationList(queryClient);
 
       expect(screen.getByRole("status")).toHaveTextContent("Loading conversations...");
-
     });
 
     it("shows the query error when the request fails", async () => {
@@ -80,7 +79,6 @@ describe("ConversationList", () => {
       renderConversationList(queryClient);
 
       expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversations");
-
     });
 
     it("shows an empty state when there are no conversations", async () => {
@@ -89,7 +87,6 @@ describe("ConversationList", () => {
       renderConversationList(queryClient);
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-
     });
 
     it("renders conversation details and links", async () => {
@@ -116,7 +113,6 @@ describe("ConversationList", () => {
         "datetime",
         secondConversation.lastActivityAt,
       );
-
     });
   });
 
@@ -136,7 +132,6 @@ describe("ConversationList", () => {
       await waitFor(() => {
         expect(loadMoreButton).toBeDisabled();
       });
-
     });
 
     it("appends the next page while keeping existing conversations", async () => {
@@ -151,7 +146,6 @@ describe("ConversationList", () => {
 
       expect(await screen.findByText("Second User")).toBeInTheDocument();
       expect(screen.getByText("First User")).toBeInTheDocument();
-
     });
 
     it("keeps existing conversations and shows an error when the next page fails", async () => {
@@ -168,7 +162,6 @@ describe("ConversationList", () => {
         "Failed to load more conversations",
       );
       expect(screen.getByText("First User")).toBeInTheDocument();
-
     });
   });
 });

@@ -52,7 +52,6 @@ describe("messagesQueryOptions", () => {
       pages: [firstPage],
       pageParams: [null],
     });
-
   });
 
   it("fetches consecutive message pages with the same limit and the next cursor", async () => {
@@ -105,7 +104,6 @@ describe("messagesQueryOptions", () => {
       pages: [firstPage, secondPage],
       pageParams: [null, 10],
     });
-
   });
 
   it.each([
@@ -125,7 +123,6 @@ describe("messagesQueryOptions", () => {
 
       await expect(result).rejects.toBeInstanceOf(UserFacingError);
       await expect(result).rejects.toThrow(expectedMessage);
-
     },
   );
 
@@ -135,7 +132,6 @@ describe("messagesQueryOptions", () => {
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
     await expect(result).rejects.toThrow(MESSAGES_QUERY_ERROR_MESSAGE);
-
   });
 
   it("preserves the original error when apiFetch rejects", async () => {
@@ -144,6 +140,5 @@ describe("messagesQueryOptions", () => {
     const result = queryClient.infiniteQuery(messagesQueryOptions(42));
 
     await expect(result).rejects.toBe(transportError);
-
   });
 });

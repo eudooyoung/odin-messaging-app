@@ -266,12 +266,11 @@ describe("ProfilePage", () => {
 
       renderProfilePage(queryClient);
 
-      const { displayNameInput, bioInput, profileImageInput } =
-        await submitProfileChanges(user, {
-          displayName: " Updated User ",
-          bio: "",
-          profileImage: "",
-        });
+      const { displayNameInput, bioInput, profileImageInput } = await submitProfileChanges(user, {
+        displayName: " Updated User ",
+        bio: "",
+        profileImage: "",
+      });
 
       expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
       expect(updateUserProfile).toHaveBeenCalledWith({
@@ -460,16 +459,13 @@ describe("ProfilePage", () => {
 
       renderProfilePage(queryClient);
 
-      const { displayNameInput, bioInput, profileImageInput } =
-        await submitProfileChanges(user, {
-          displayName: "Unsaved User",
-          bio: "Unsaved bio",
-          profileImage: "https://example.com/unsaved.jpg",
-        });
+      const { displayNameInput, bioInput, profileImageInput } = await submitProfileChanges(user, {
+        displayName: "Unsaved User",
+        bio: "Unsaved bio",
+        profileImage: "https://example.com/unsaved.jpg",
+      });
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        mutationError.message,
-      );
+      expect(await screen.findByRole("alert")).toHaveTextContent(mutationError.message);
       expect(displayNameInput).toHaveValue("Unsaved User");
       expect(bioInput).toHaveValue("Unsaved bio");
       expect(profileImageInput).toHaveValue("https://example.com/unsaved.jpg");

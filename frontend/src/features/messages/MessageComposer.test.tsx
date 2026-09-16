@@ -51,7 +51,6 @@ describe("MessageComposer", () => {
       await user.click(sendButton);
 
       expect(createMessage).toHaveBeenCalledOnce();
-
     });
 
     it("sends the message and clears the input after success", async () => {
@@ -77,7 +76,6 @@ describe("MessageComposer", () => {
       await waitFor(() => {
         expect(messageInput).toHaveValue("");
       });
-
     });
 
     it("shows the UserFacingError message and preserves the input value", async () => {
@@ -91,12 +89,9 @@ describe("MessageComposer", () => {
       await user.type(messageInput, "Hello!");
       await user.click(screen.getByRole("button", { name: "Send" }));
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        mutationError.message,
-      );
+      expect(await screen.findByRole("alert")).toHaveTextContent(mutationError.message);
       expect(messageInput).toHaveValue("Hello!");
       expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
-
     });
 
     it("shows a fallback error and preserves the input for unexpected errors", async () => {
@@ -115,7 +110,6 @@ describe("MessageComposer", () => {
       expect(alert).not.toHaveTextContent(transportError.message);
       expect(messageInput).toHaveValue("Hello!");
       expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
-
     });
   });
 
@@ -139,17 +133,11 @@ describe("MessageComposer", () => {
 
         renderMessageComposer(queryClient);
 
-        await user.type(
-          screen.getByRole("textbox", { name: "Message" }),
-          content,
-        );
+        await user.type(screen.getByRole("textbox", { name: "Message" }), content);
         await user.click(screen.getByRole("button", { name: "Send" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-          expectedMessage,
-        );
+        expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
         expect(createMessage).not.toHaveBeenCalled();
-
       },
     );
   });

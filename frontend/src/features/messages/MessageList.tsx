@@ -26,9 +26,7 @@ export function MessageList({ conversationId }: MessageListProps) {
   }
 
   if (isLoadingError) {
-    return (
-      <UserFacingErrorMessage error={error} fallbackMessage={MESSAGES_QUERY_ERROR_MESSAGE} />
-    );
+    return <UserFacingErrorMessage error={error} fallbackMessage={MESSAGES_QUERY_ERROR_MESSAGE} />;
   }
 
   if (!messages) {
@@ -42,11 +40,7 @@ export function MessageList({ conversationId }: MessageListProps) {
   return (
     <>
       {hasNextPage && (
-        <button
-          type="button"
-          disabled={isFetchingNextPage}
-          onClick={() => void fetchNextPage()}
-        >
+        <button type="button" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>
           Load older messages
         </button>
       )}
@@ -59,9 +53,7 @@ export function MessageList({ conversationId }: MessageListProps) {
           </li>
         ))}
       </ul>
-      {isFetchNextPageError && (
-        <p role="alert">{LOAD_OLDER_MESSAGES_ERROR_MESSAGE}</p>
-      )}
+      {isFetchNextPageError && <p role="alert">{LOAD_OLDER_MESSAGES_ERROR_MESSAGE}</p>}
     </>
   );
 }

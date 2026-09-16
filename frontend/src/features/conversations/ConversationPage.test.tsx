@@ -113,7 +113,6 @@ describe("ConversationPage", () => {
       await user.click(backLink);
 
       expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
-
     });
 
     it("loads the route conversation and shows the other participant", async () => {
@@ -124,7 +123,6 @@ describe("ConversationPage", () => {
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
       expect(screen.getByText("@other-user")).toBeInTheDocument();
-
     });
 
     it("renders the message list for the route conversation", async () => {
@@ -136,7 +134,6 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(await screen.findByText("Hello from the conversation")).toBeInTheDocument();
-
     });
 
     it("shows the newly sent message while preserving the existing messages", async () => {
@@ -168,7 +165,6 @@ describe("ConversationPage", () => {
         expect(screen.getByText(conversationMessage.content)).toBeInTheDocument();
         expect(screen.getByText(createdMessage.content)).toBeInTheDocument();
       });
-
     });
 
     it("recovers the messages query and pagination after sending a message following an initial load error", async () => {
@@ -279,7 +275,6 @@ describe("ConversationPage", () => {
 
       expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
       expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
-
     });
 
     it("identifies the other participant by the current user's username", async () => {
@@ -296,7 +291,6 @@ describe("ConversationPage", () => {
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
       expect(screen.getByText("@other-user")).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Current User" })).not.toBeInTheDocument();
-
     });
   });
 
@@ -308,7 +302,6 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(screen.getByRole("status")).toHaveTextContent("Loading conversation...");
-
     });
 
     it("shows the generic fallback when the conversation request rejects", async () => {
@@ -320,7 +313,6 @@ describe("ConversationPage", () => {
       const alert = await screen.findByRole("alert");
       expect(alert).toHaveTextContent("Failed to load conversation");
       expect(alert).not.toHaveTextContent(transportError.message);
-
     });
   });
 
@@ -337,7 +329,6 @@ describe("ConversationPage", () => {
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Invalid conversation");
         expect(apiFetch).not.toHaveBeenCalled();
-
       },
     );
   });

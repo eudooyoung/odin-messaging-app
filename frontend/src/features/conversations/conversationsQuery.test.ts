@@ -70,7 +70,6 @@ describe("conversationsQueryOptions", () => {
       pages: [firstPage, secondPage],
       pageParams: [null, 1],
     });
-
   });
 
   it("throws a user-facing error when the conversations response is unsuccessful", async () => {
@@ -79,7 +78,6 @@ describe("conversationsQueryOptions", () => {
 
     await expect(result).rejects.toBeInstanceOf(UserFacingError);
     await expect(result).rejects.toThrow(CONVERSATIONS_QUERY_ERROR_MESSAGE);
-
   });
 
   it("preserves the original error when apiFetch rejects", async () => {
@@ -88,6 +86,5 @@ describe("conversationsQueryOptions", () => {
     const result = queryClient.infiniteQuery(conversationsQueryOptions);
 
     await expect(result).rejects.toBe(networkError);
-
   });
 });
