@@ -55,119 +55,6 @@ const getConversationMessagesCache = (queryClient: QueryClient) =>
     conversationMessagesQueryKey,
   );
 
-const getQueryCacheSnapshot = (queryClient: QueryClient) =>
-  queryClient.getQueryCache().getAll().map((query) => ({
-    queryKey: query.queryKey,
-    data: query.state.data,
-  }));
-
-const createMessageEvent = (receivedEvent: unknown) => {
-  const data = JSON.stringify(receivedEvent);
-
-  if (data === undefined) {
-    throw new Error("Expected serializable WebSocket event data");
-  }
-
-  return new MessageEvent("message", { data });
-};
-
-const invalidMessageCreatedEvents: {
-  caseName: string;
-  receivedEvent: unknown;
-}[] = [
-  {
-    caseName: "the event is null",
-    receivedEvent: null,
-  },
-  {
-    caseName: "the event is an array",
-    receivedEvent: [],
-  },
-  {
-    caseName: "the payload is missing",
-    receivedEvent: { type: "message.created" },
-  },
-  {
-    caseName: "the payload is null",
-    receivedEvent: { type: "message.created", payload: null },
-  },
-  ...[undefined, "42", 0, -1, 1.5].map((invalidConversationId) => ({
-    caseName: `the conversation id is ${String(invalidConversationId)}`,
-    receivedEvent: {
-      type: "message.created",
-      payload: {
-        conversationId: invalidConversationId,
-        message: receivedMessage,
-      },
-    },
-  })),
-  {
-    caseName: "the message is missing",
-    receivedEvent: {
-      type: "message.created",
-      payload: { conversationId },
-    },
-  },
-  {
-    caseName: "the message id is not a positive integer",
-    receivedEvent: {
-      type: "message.created",
-      payload: {
-        conversationId,
-        message: { ...receivedMessage, id: 0 },
-      },
-    },
-  },
-  {
-    caseName: "the message content is missing",
-    receivedEvent: {
-      type: "message.created",
-      payload: {
-        conversationId,
-        message: { ...receivedMessage, content: undefined },
-      },
-    },
-  },
-  {
-    caseName: "the message sender is missing",
-    receivedEvent: {
-      type: "message.created",
-      payload: {
-        conversationId,
-        message: { ...receivedMessage, sender: undefined },
-      },
-    },
-  },
-  ...(["username", "displayName", "profileImage"] as const).map(
-    (missingSenderField) => ({
-      caseName: `the sender ${missingSenderField} is missing`,
-      receivedEvent: {
-        type: "message.created",
-        payload: {
-          conversationId,
-          message: {
-            ...receivedMessage,
-            sender: {
-              ...receivedMessage.sender,
-              [missingSenderField]: undefined,
-            },
-          },
-        },
-      },
-    }),
-  ),
-  {
-    caseName: "the message creation timestamp is not an ISO datetime",
-    receivedEvent: {
-      type: "message.created",
-      payload: {
-        conversationId,
-        message: { ...receivedMessage, createdAt: "not a datetime" },
-      },
-    },
-  },
-];
-
 describe("handleWebSocketMessage", () => {
   it("adds a received message.created message to its conversation messages cache", () => {
     const otherConversationMessagesQueryKey = messagesQueryOptions(7).queryKey;
@@ -235,9 +122,120 @@ describe("handleWebSocketMessage", () => {
 
   });
 
+  const invalidMessageCreatedEvents: {
+    caseName: string;
+    receivedEvent: unknown;
+  }[] = [
+    {
+      caseName: "the event is null",
+      receivedEvent: null,
+    },
+    {
+      caseName: "the event is an array",
+      receivedEvent: [],
+    },
+    {
+      caseName: "the payload is missing",
+      receivedEvent: { type: "message.created" },
+    },
+    {
+      caseName: "the payload is null",
+      receivedEvent: { type: "message.created", payload: null },
+    },
+    ...[undefined, "42", 0, -1, 1.5].map((invalidConversationId) => ({
+      caseName: `the conversation id is ${String(invalidConversationId)}`,
+      receivedEvent: {
+        type: "message.created",
+        payload: {
+          conversationId: invalidConversationId,
+          message: receivedMessage,
+        },
+      },
+    })),
+    {
+      caseName: "the message is missing",
+      receivedEvent: {
+        type: "message.created",
+        payload: { conversationId },
+      },
+    },
+    {
+      caseName: "the message id is not a positive integer",
+      receivedEvent: {
+        type: "message.created",
+        payload: {
+          conversationId,
+          message: { ...receivedMessage, id: 0 },
+        },
+      },
+    },
+    {
+      caseName: "the message content is missing",
+      receivedEvent: {
+        type: "message.created",
+        payload: {
+          conversationId,
+          message: { ...receivedMessage, content: undefined },
+        },
+      },
+    },
+    {
+      caseName: "the message sender is missing",
+      receivedEvent: {
+        type: "message.created",
+        payload: {
+          conversationId,
+          message: { ...receivedMessage, sender: undefined },
+        },
+      },
+    },
+    ...(["username", "displayName", "profileImage"] as const).map(
+      (missingSenderField) => ({
+        caseName: `the sender ${missingSenderField} is missing`,
+        receivedEvent: {
+          type: "message.created",
+          payload: {
+            conversationId,
+            message: {
+              ...receivedMessage,
+              sender: {
+                ...receivedMessage.sender,
+                [missingSenderField]: undefined,
+              },
+            },
+          },
+        },
+      }),
+    ),
+    {
+      caseName: "the message creation timestamp is not an ISO datetime",
+      receivedEvent: {
+        type: "message.created",
+        payload: {
+          conversationId,
+          message: { ...receivedMessage, createdAt: "not a datetime" },
+        },
+      },
+    },
+  ];
+
   it.each(invalidMessageCreatedEvents)(
     "ignores an invalid message.created event when $caseName",
     ({ receivedEvent }) => {
+      const getQueryCacheSnapshot = (queryClient: QueryClient) =>
+        queryClient.getQueryCache().getAll().map((query) => ({
+          queryKey: query.queryKey,
+          data: query.state.data,
+        }));
+      const createMessageEvent = (receivedEvent: unknown) => {
+        const data = JSON.stringify(receivedEvent);
+
+        if (data === undefined) {
+          throw new Error("Expected serializable WebSocket event data");
+        }
+
+        return new MessageEvent("message", { data });
+      };
       const cacheBeforeHandling = getQueryCacheSnapshot(queryClient);
       const event = createMessageEvent(receivedEvent);
 

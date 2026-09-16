@@ -16,29 +16,29 @@ vi.mock("./logout.ts", async (importOriginal) => {
   };
 });
 
-let queryClient: QueryClient;
-
-beforeEach(() => {
-  queryClient = new QueryClient();
-});
-
-afterEach(() => {
-  queryClient.clear();
-});
-
-const renderLogoutButton = (queryClient: QueryClient) =>
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<LogoutButton />} />
-          <Route path="/login" element={<h1>Login</h1>} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-
 describe("LogoutButton", () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    queryClient = new QueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const renderLogoutButton = (queryClient: QueryClient) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<LogoutButton />} />
+            <Route path="/login" element={<h1>Login</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
   describe("logout lifecycle", () => {
     it("runs the logout mutation when clicked", async () => {
       vi.mocked(logout).mockResolvedValue(new Response(null, { status: 204 }));

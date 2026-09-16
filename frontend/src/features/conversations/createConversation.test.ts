@@ -7,25 +7,25 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-const conversation = {
-  id: 42,
-  participants: [
-    {
-      username: "current-user",
-      displayName: "Current User",
-      profileImage: null,
-    },
-    {
-      username: "target-user",
-      displayName: "Target User",
-      profileImage: "https://example.com/target-user.jpg",
-    },
-  ],
-  createdAt: "2026-09-07T01:00:00.000Z",
-  lastActivityAt: "2026-09-07T01:00:00.000Z",
-};
-
 describe("createConversation", () => {
+  const conversation = {
+    id: 42,
+    participants: [
+      {
+        username: "current-user",
+        displayName: "Current User",
+        profileImage: null,
+      },
+      {
+        username: "target-user",
+        displayName: "Target User",
+        profileImage: "https://example.com/target-user.jpg",
+      },
+    ],
+    createdAt: "2026-09-07T01:00:00.000Z",
+    lastActivityAt: "2026-09-07T01:00:00.000Z",
+  };
+
   it("creates and returns a conversation for the target user", async () => {
     vi.mocked(apiFetch).mockResolvedValue(
       new Response(JSON.stringify(conversation), {

@@ -1,73 +1,62 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { MessageList } from "./MessageList.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
-
-const latestMessage = {
-  id: 10,
-  content: "Latest message",
-  sender: {
-    username: "other-user",
-    displayName: "Other User",
-    profileImage: null,
-  },
-  createdAt: "2026-09-07T02:00:00.000Z",
-};
-
-const olderMessage = {
-  id: 9,
-  content: "Older message",
-  sender: {
-    username: "current-user",
-    displayName: "Current User",
-    profileImage: null,
-  },
-  createdAt: "2026-09-07T01:00:00.000Z",
-};
-
-const messagesResponse = (
-  messages: (typeof latestMessage)[],
-  nextCursor: number | null,
-) =>
-  new Response(JSON.stringify({ messages, nextCursor }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
-
-afterEach(() => {
-  queryClient.clear();
-});
-
-const renderMessageList = (queryClient: QueryClient, conversationId = 42) =>
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MessageList conversationId={conversationId} />
-    </QueryClientProvider>,
-  );
-
 describe("MessageList", () => {
+  let queryClient: QueryClient;
+
+  const latestMessage = {
+    id: 10,
+    content: "Latest message",
+    sender: {
+      username: "other-user",
+      displayName: "Other User",
+      profileImage: null,
+    },
+    createdAt: "2026-09-07T02:00:00.000Z",
+  };
+
+  const olderMessage = {
+    id: 9,
+    content: "Older message",
+    sender: {
+      username: "current-user",
+      displayName: "Current User",
+      profileImage: null,
+    },
+    createdAt: "2026-09-07T01:00:00.000Z",
+  };
+
+  const messagesResponse = (
+    messages: (typeof latestMessage)[],
+    nextCursor: number | null,
+  ) => jsonResponse({ messages, nextCursor });
+
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const renderMessageList = (queryClient: QueryClient, conversationId = 42) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MessageList conversationId={conversationId} />
+      </QueryClientProvider>,
+    );
+
   describe("initial page", () => {
     it("shows a loading state while the messages query is pending", () => {
       const pendingMessagesResponse = new Promise<Response>(() => undefined);

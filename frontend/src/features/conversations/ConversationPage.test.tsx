@@ -1,10 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
+import { createDeferred } from "@/tests/createDeferred.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { ConversationPage } from "./ConversationPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -13,28 +16,13 @@ vi.mock("@/api/apiFetch.ts", () => ({
 
 let queryClient: QueryClient;
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
 beforeEach(() => {
-  queryClient = createQueryClient();
+  queryClient = createTestQueryClient();
 });
 
 afterEach(() => {
   queryClient.clear();
 });
-
-const currentUser: AuthUser = {
-  id: 1,
-  username: "current-user",
-  displayName: "Current User",
-};
 
 const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conversations/42") =>
   render(
@@ -48,154 +36,69 @@ const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conve
     </QueryClientProvider>,
   );
 
-const defaultConversation = {
-  id: 42,
-  participants: [
-    {
-      username: "current-user",
-      displayName: "Current User",
-      profileImage: null,
-    },
-    {
-      username: "other-user",
-      displayName: "Other User",
-      profileImage: null,
-    },
-  ],
-  createdAt: "2026-09-01T00:00:00.000Z",
-  lastActivityAt: "2026-09-04T01:00:00.000Z",
-};
-
-const conversationMessage = {
-  id: 10,
-  content: "Hello from the conversation",
-  sender: {
-    username: "other-user",
-    displayName: "Other User",
-    profileImage: null,
-  },
-  createdAt: "2026-09-04T01:00:00.000Z",
-};
-
-const createdAfterErrorMessage = {
-  id: 11,
-  content: "New message after the load error",
-  sender: {
-    username: "current-user",
-    displayName: "Current User",
-    profileImage: null,
-  },
-  createdAt: "2026-09-08T01:00:00.000Z",
-};
-
-const olderMessage = {
-  id: 9,
-  content: "An older conversation message",
-  sender: {
-    username: "other-user",
-    displayName: "Other User",
-    profileImage: null,
-  },
-  createdAt: "2026-09-03T01:00:00.000Z",
-};
-
-const jsonResponse = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-
-const arrangeConversationPageRequests = ({
-  conversation = defaultConversation,
-  messages = [] as (typeof conversationMessage)[],
-  createdMessage,
-}: {
-  conversation?: typeof defaultConversation;
-  messages?: (typeof conversationMessage)[];
-  createdMessage?: typeof conversationMessage;
-} = {}) => {
-  vi.mocked(apiFetch).mockImplementation((input, init) => {
-    if (input === "/conversations/42") {
-      return Promise.resolve(jsonResponse(conversation));
-    }
-
-    if (input === "/conversations/42/messages?limit=20") {
-      return Promise.resolve(jsonResponse({ messages, nextCursor: null }));
-    }
-
-    if (input === "/conversations/42/messages" && init?.method === "POST" && createdMessage) {
-      return Promise.resolve(jsonResponse(createdMessage, 201));
-    }
-
-    return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
-  });
-};
-
-const deferred = <T,>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-
-  return { promise, resolve };
-};
-
-const arrangeMessagesRecoveryRequests = ({
-  createdMessage,
-  recoveredMessage,
-  olderMessage,
-}: {
-  createdMessage: typeof conversationMessage;
-  recoveredMessage: typeof conversationMessage;
-  olderMessage: typeof conversationMessage;
-}) => {
-  let isInitialMessagesRequest = true;
-  const recoveredMessagesResponse = deferred<Response>();
-
-  vi.mocked(apiFetch).mockImplementation((input, init) => {
-    if (input === "/conversations/42") {
-      return Promise.resolve(jsonResponse(defaultConversation));
-    }
-
-    if (input === "/conversations/42/messages?limit=20") {
-      if (isInitialMessagesRequest) {
-        isInitialMessagesRequest = false;
-        return Promise.resolve(new Response(null, { status: 500 }));
-      }
-
-      return recoveredMessagesResponse.promise;
-    }
-
-    if (input === "/conversations/42/messages" && init?.method === "POST") {
-      return Promise.resolve(jsonResponse(createdMessage, 201));
-    }
-
-    if (input === "/conversations/42/messages?cursor=10&limit=20") {
-      return Promise.resolve(jsonResponse({ messages: [olderMessage], nextCursor: null }));
-    }
-
-    return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
-  });
-
-  return {
-    getFirstPageRequestCount: () =>
-      vi
-        .mocked(apiFetch)
-        .mock.calls.filter(
-          ([requestInput]) => requestInput === "/conversations/42/messages?limit=20",
-        ).length,
-    resolveRecoveredMessages: () =>
-      recoveredMessagesResponse.resolve(
-        jsonResponse({
-          messages: [createdMessage, recoveredMessage],
-          nextCursor: 10,
-        }),
-      ),
-  };
-};
-
 describe("ConversationPage", () => {
   describe("successful rendering", () => {
+    const currentUser: AuthUser = {
+      id: 1,
+      username: "current-user",
+      displayName: "Current User",
+    };
+
+    const defaultConversation = {
+      id: 42,
+      participants: [
+        {
+          username: "current-user",
+          displayName: "Current User",
+          profileImage: null,
+        },
+        {
+          username: "other-user",
+          displayName: "Other User",
+          profileImage: null,
+        },
+      ],
+      createdAt: "2026-09-01T00:00:00.000Z",
+      lastActivityAt: "2026-09-04T01:00:00.000Z",
+    };
+
+    const conversationMessage = {
+      id: 10,
+      content: "Hello from the conversation",
+      sender: {
+        username: "other-user",
+        displayName: "Other User",
+        profileImage: null,
+      },
+      createdAt: "2026-09-04T01:00:00.000Z",
+    };
+
+    const arrangeConversationPageRequests = ({
+      conversation = defaultConversation,
+      messages = [] as (typeof conversationMessage)[],
+      createdMessage,
+    }: {
+      conversation?: typeof defaultConversation;
+      messages?: (typeof conversationMessage)[];
+      createdMessage?: typeof conversationMessage;
+    } = {}) => {
+      vi.mocked(apiFetch).mockImplementation((input, init) => {
+        if (input === "/conversations/42") {
+          return Promise.resolve(jsonResponse(conversation));
+        }
+
+        if (input === "/conversations/42/messages?limit=20") {
+          return Promise.resolve(jsonResponse({ messages, nextCursor: null }));
+        }
+
+        if (input === "/conversations/42/messages" && init?.method === "POST" && createdMessage) {
+          return Promise.resolve(jsonResponse(createdMessage, 201));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+    };
+
     it("shows a link back to conversations and navigates home when clicked", async () => {
       arrangeConversationPageRequests();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
@@ -269,6 +172,79 @@ describe("ConversationPage", () => {
     });
 
     it("recovers the messages query and pagination after sending a message following an initial load error", async () => {
+      const createdAfterErrorMessage = {
+        id: 11,
+        content: "New message after the load error",
+        sender: {
+          username: "current-user",
+          displayName: "Current User",
+          profileImage: null,
+        },
+        createdAt: "2026-09-08T01:00:00.000Z",
+      };
+      const olderMessage = {
+        id: 9,
+        content: "An older conversation message",
+        sender: {
+          username: "other-user",
+          displayName: "Other User",
+          profileImage: null,
+        },
+        createdAt: "2026-09-03T01:00:00.000Z",
+      };
+      const arrangeMessagesRecoveryRequests = ({
+        createdMessage,
+        recoveredMessage,
+        olderMessage,
+      }: {
+        createdMessage: typeof conversationMessage;
+        recoveredMessage: typeof conversationMessage;
+        olderMessage: typeof conversationMessage;
+      }) => {
+        let isInitialMessagesRequest = true;
+        const recoveredMessagesResponse = createDeferred<Response>();
+
+        vi.mocked(apiFetch).mockImplementation((input, init) => {
+          if (input === "/conversations/42") {
+            return Promise.resolve(jsonResponse(defaultConversation));
+          }
+
+          if (input === "/conversations/42/messages?limit=20") {
+            if (isInitialMessagesRequest) {
+              isInitialMessagesRequest = false;
+              return Promise.resolve(new Response(null, { status: 500 }));
+            }
+
+            return recoveredMessagesResponse.promise;
+          }
+
+          if (input === "/conversations/42/messages" && init?.method === "POST") {
+            return Promise.resolve(jsonResponse(createdMessage, 201));
+          }
+
+          if (input === "/conversations/42/messages?cursor=10&limit=20") {
+            return Promise.resolve(jsonResponse({ messages: [olderMessage], nextCursor: null }));
+          }
+
+          return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+        });
+
+        return {
+          getFirstPageRequestCount: () =>
+            vi
+              .mocked(apiFetch)
+              .mock.calls.filter(
+                ([requestInput]) => requestInput === "/conversations/42/messages?limit=20",
+              ).length,
+          resolveRecoveredMessages: () =>
+            recoveredMessagesResponse.resolve(
+              jsonResponse({
+                messages: [createdMessage, recoveredMessage],
+                nextCursor: 10,
+              }),
+            ),
+        };
+      };
       const { getFirstPageRequestCount, resolveRecoveredMessages } =
         arrangeMessagesRecoveryRequests({
           createdMessage: createdAfterErrorMessage,

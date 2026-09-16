@@ -1,32 +1,24 @@
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { authMeQueryOptions } from "./authMeQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
+describe("authMeQueryOptions", () => {
+  let queryClient: QueryClient;
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
   });
 
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
+  afterEach(() => {
+    queryClient.clear();
+  });
 
-afterEach(() => {
-  queryClient.clear();
-});
-
-describe("authMeQueryOptions", () => {
   it("returns the current user from GET /auth/me", async () => {
     const currentUser = {
       id: 1,

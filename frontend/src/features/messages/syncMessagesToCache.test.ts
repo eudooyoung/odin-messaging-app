@@ -1,7 +1,14 @@
-import { type InfiniteData, InfiniteQueryObserver, QueryClient } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  InfiniteQueryObserver,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { createDeferred } from "@/tests/createDeferred.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
 import { syncMessageToCache } from "./syncMessagesToCache.ts";
 
@@ -50,29 +57,8 @@ const createdMessage = {
 const getMessagesCache = (queryClient: QueryClient) =>
   queryClient.getQueryData<InfiniteData<MessagesPage, number | null>>(queryKey);
 
-const deferred = <T>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-
-  return { promise, resolve };
-};
-
-const messagesResponse = (page: MessagesPage) =>
-  new Response(JSON.stringify(page), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
 beforeEach(() => {
-  queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
+  queryClient = createTestQueryClient();
 });
 
 afterEach(() => {
@@ -164,8 +150,10 @@ describe("syncMessageToCache", () => {
   });
 
   describe("fetch and recovery lifecycle", () => {
+    const messagesResponse = (page: MessagesPage) => jsonResponse(page);
+
     it("reapplies the new message after an in-progress fetch completes", async () => {
-      const nextPageResponse = deferred<Response>();
+      const nextPageResponse = createDeferred<Response>();
       vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
       queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
         pages: [{ messages: [latestMessage], nextCursor: 10 }],
@@ -202,7 +190,7 @@ describe("syncMessageToCache", () => {
     });
 
     it("keeps the new message after recovering an initial fetch error", async () => {
-      const recoveryResponse = deferred<Response>();
+      const recoveryResponse = createDeferred<Response>();
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(new Response(null, { status: 500 }))
         .mockReturnValueOnce(recoveryResponse.promise);
@@ -237,7 +225,7 @@ describe("syncMessageToCache", () => {
     });
 
     it("does not recreate a cleared cache when a pending sync completes", async () => {
-      const nextPageResponse = deferred<Response>();
+      const nextPageResponse = createDeferred<Response>();
       vi.mocked(apiFetch).mockReturnValue(nextPageResponse.promise);
       queryClient.setQueryData<InfiniteData<MessagesPage, number | null>>(queryKey, {
         pages: [{ messages: [latestMessage], nextCursor: 10 }],

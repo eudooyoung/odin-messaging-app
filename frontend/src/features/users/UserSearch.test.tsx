@@ -1,10 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { createConversation } from "@/features/conversations/createConversation.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { UserSearch } from "./UserSearch.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -15,47 +17,28 @@ vi.mock("@/features/conversations/createConversation.ts", () => ({
   createConversation: vi.fn(),
 }));
 
-let queryClient: QueryClient;
-
-const targetUser = {
-  username: "target-user",
-  displayName: "Target User",
-  profileImage: null,
-};
-
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
-
-afterEach(() => {
-  queryClient.clear();
-});
-
-const usersResponse = (users: unknown[]) =>
-  new Response(JSON.stringify(users), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
-const renderUserSearch = (queryClient: QueryClient) =>
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <UserSearch />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-
 describe("UserSearch", () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const usersResponse = (users: unknown[]) => jsonResponse(users);
+
+  const renderUserSearch = (queryClient: QueryClient) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <UserSearch />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
   describe("user search", () => {
     it("searches with the trimmed query while preserving the entered value", async () => {
       vi.mocked(apiFetch).mockImplementation(() =>
@@ -161,6 +144,12 @@ describe("UserSearch", () => {
   });
 
   describe("conversation creation", () => {
+    const targetUser = {
+      username: "target-user",
+      displayName: "Target User",
+      profileImage: null,
+    };
+
     it("opens the conversation returned after selecting a user", async () => {
       vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
       vi.mocked(createConversation).mockResolvedValue({

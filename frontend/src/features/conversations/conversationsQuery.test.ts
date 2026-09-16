@@ -1,7 +1,9 @@
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import {
   CONVERSATIONS_QUERY_ERROR_MESSAGE,
   conversationsQueryOptions,
@@ -11,26 +13,17 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
+describe("conversationsQueryOptions", () => {
+  let queryClient: QueryClient;
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
   });
 
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
+  afterEach(() => {
+    queryClient.clear();
+  });
 
-afterEach(() => {
-  queryClient.clear();
-});
-
-describe("conversationsQueryOptions", () => {
   it("fetches consecutive conversation pages using the next cursor", async () => {
     const firstPage = {
       conversations: [
@@ -57,18 +50,8 @@ describe("conversationsQueryOptions", () => {
       nextCursor: null,
     };
     vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(firstPage), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(secondPage), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+      .mockResolvedValueOnce(jsonResponse(firstPage))
+      .mockResolvedValueOnce(jsonResponse(secondPage));
     const result = await queryClient.infiniteQuery({
       ...conversationsQueryOptions,
       pages: 2,

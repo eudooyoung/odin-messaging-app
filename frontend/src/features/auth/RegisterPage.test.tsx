@@ -16,48 +16,48 @@ vi.mock("./registerUser.ts", async (importOriginal) => {
   };
 });
 
-let queryClient: QueryClient;
-
-beforeEach(() => {
-  queryClient = new QueryClient();
-});
-
-afterEach(() => {
-  queryClient.clear();
-});
-
-const renderRegisterPage = (queryClient: QueryClient) =>
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/register"]}>
-        <Routes>
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<h1>Login</h1>} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-
-const validRegistrationInput = {
-  username: "new-user",
-  displayName: "New User",
-  password: "secure-password",
-};
-
-const submitRegistration = async (
-  queryClient: QueryClient,
-  input: typeof validRegistrationInput,
-) => {
-  const user = userEvent.setup();
-  renderRegisterPage(queryClient);
-
-  await user.type(screen.getByRole("textbox", { name: "Username" }), input.username);
-  await user.type(screen.getByRole("textbox", { name: "Display name" }), input.displayName);
-  await user.type(screen.getByLabelText("Password"), input.password);
-  await user.click(screen.getByRole("button", { name: "Register" }));
-};
-
 describe("RegisterPage", () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    queryClient = new QueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const renderRegisterPage = (queryClient: QueryClient) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/register"]}>
+          <Routes>
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<h1>Login</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+  const validRegistrationInput = {
+    username: "new-user",
+    displayName: "New User",
+    password: "secure-password",
+  };
+
+  const submitRegistration = async (
+    queryClient: QueryClient,
+    input: typeof validRegistrationInput,
+  ) => {
+    const user = userEvent.setup();
+    renderRegisterPage(queryClient);
+
+    await user.type(screen.getByRole("textbox", { name: "Username" }), input.username);
+    await user.type(screen.getByRole("textbox", { name: "Display name" }), input.displayName);
+    await user.type(screen.getByLabelText("Password"), input.password);
+    await user.click(screen.getByRole("button", { name: "Register" }));
+  };
+
   it("shows a login link and navigates to login when clicked", async () => {
     const user = userEvent.setup();
 

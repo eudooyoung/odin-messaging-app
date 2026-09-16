@@ -1,33 +1,26 @@
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
+describe("messagesQueryOptions", () => {
+  let queryClient: QueryClient;
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
   });
 
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
+  afterEach(() => {
+    queryClient.clear();
+  });
 
-afterEach(() => {
-  queryClient.clear();
-});
-
-describe("messagesQueryOptions", () => {
   it("fetches and returns the first page of messages without a cursor", async () => {
     const firstPage = {
       messages: [
@@ -44,12 +37,7 @@ describe("messagesQueryOptions", () => {
       ],
       nextCursor: 10,
     };
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(JSON.stringify(firstPage), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(firstPage));
     const queryOptions = messagesQueryOptions(42);
 
     const result = await queryClient.infiniteQuery(queryOptions);
@@ -99,18 +87,8 @@ describe("messagesQueryOptions", () => {
       nextCursor: null,
     };
     vi.mocked(apiFetch)
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(firstPage), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(secondPage), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+      .mockResolvedValueOnce(jsonResponse(firstPage))
+      .mockResolvedValueOnce(jsonResponse(secondPage));
     const result = await queryClient.infiniteQuery({
       ...messagesQueryOptions(42),
       pages: 2,

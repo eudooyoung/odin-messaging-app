@@ -1,33 +1,26 @@
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { usersQueryOptions } from "./usersQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
+describe("usersQueryOptions", () => {
+  let queryClient: QueryClient;
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
   });
 
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
+  afterEach(() => {
+    queryClient.clear();
+  });
 
-afterEach(() => {
-  queryClient.clear();
-});
-
-describe("usersQueryOptions", () => {
   it("searches users with the given query and returns the results", async () => {
     const users = [
       {
@@ -36,12 +29,7 @@ describe("usersQueryOptions", () => {
         profileImage: null,
       },
     ];
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(JSON.stringify(users), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(users));
     const queryOptions = usersQueryOptions("other user");
     const result = await queryClient.query(queryOptions);
 

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProtectedRoute } from "./ProtectedRoute.tsx";
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
@@ -13,12 +13,6 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     useQuery: vi.fn(),
   };
 });
-
-const authenticatedUser = {
-  id: 1,
-  username: "current-user",
-  displayName: "Current User",
-};
 
 class WebSocketStub {
   static instances: WebSocketStub[] = [];
@@ -47,14 +41,28 @@ afterEach(() => {
 
 describe("ProtectedRoute", () => {
   describe("when authenticated", () => {
+    let queryClient: QueryClient;
+
+    const authenticatedUser = {
+      id: 1,
+      username: "current-user",
+      displayName: "Current User",
+    };
+
+    beforeEach(() => {
+      queryClient = new QueryClient();
+    });
+
+    afterEach(() => {
+      queryClient.clear();
+    });
+
     it("renders the protected child route", () => {
       vi.stubGlobal("WebSocket", WebSocketStub);
       vi.mocked(useQuery).mockReturnValue({
         data: authenticatedUser,
         isPending: false,
       } as ReturnType<typeof useQuery>);
-      const queryClient = new QueryClient();
-
       render(
         <QueryClientProvider client={queryClient}>
           <MemoryRouter initialEntries={["/protected"]}>
@@ -69,7 +77,6 @@ describe("ProtectedRoute", () => {
 
       expect(screen.getByRole("heading", { name: "Protected content" })).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("redirects to login when the user becomes unauthenticated", async () => {
@@ -78,7 +85,6 @@ describe("ProtectedRoute", () => {
         data: authenticatedUser,
         isPending: false,
       } as ReturnType<typeof useQuery>);
-      const queryClient = new QueryClient();
       const renderRoutes = () => (
         <QueryClientProvider client={queryClient}>
           <MemoryRouter initialEntries={["/protected"]}>
@@ -103,7 +109,6 @@ describe("ProtectedRoute", () => {
 
       expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument();
 
-      queryClient.clear();
     });
 
     it("keeps the same connection while navigating between protected routes", async () => {
@@ -112,7 +117,6 @@ describe("ProtectedRoute", () => {
         data: authenticatedUser,
         isPending: false,
       } as ReturnType<typeof useQuery>);
-      const queryClient = new QueryClient();
       const user = userEvent.setup();
 
       render(
@@ -143,7 +147,6 @@ describe("ProtectedRoute", () => {
       expect(screen.getByRole("heading", { name: "Second protected route" })).toBeInTheDocument();
       expect(WebSocketStub.instances).toEqual([webSocket]);
 
-      queryClient.clear();
     });
   });
 

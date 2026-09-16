@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
+import { createDeferred } from "@/tests/createDeferred.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { ProfilePage } from "./ProfilePage.tsx";
 import { type UserProfile, userProfileQueryOptions } from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
@@ -21,17 +24,8 @@ vi.mock("./updateUserProfile.ts", () => ({
 
 let queryClient: QueryClient;
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
 beforeEach(() => {
-  queryClient = createQueryClient();
+  queryClient = createTestQueryClient();
 });
 
 afterEach(() => {
@@ -53,20 +47,7 @@ const baseProfile: UserProfile = {
 
 const profileQueryKey = userProfileQueryOptions(currentUser.username).queryKey;
 
-const profileResponse = (profile: UserProfile) =>
-  new Response(JSON.stringify(profile), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
-const deferred = <T,>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-
-  return { promise, resolve };
-};
+const profileResponse = (profile: UserProfile) => jsonResponse(profile);
 
 const renderProfilePage = (queryClient: QueryClient, observer?: ReactNode) => {
   queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
@@ -127,12 +108,6 @@ const ProfileQueryObserver = () => {
   const { data: profile } = useQuery(userProfileQueryOptions(currentUser.username));
 
   return <output data-testid="profile-query-display-name">{profile?.displayName}</output>;
-};
-
-const AuthQueryObserver = () => {
-  const { data: user } = useQuery(authMeQueryOptions);
-
-  return <output data-testid="auth-me-display-name">{user?.displayName}</output>;
 };
 
 describe("ProfilePage", () => {
@@ -323,7 +298,7 @@ describe("ProfilePage", () => {
         bio: "Saved bio",
       };
       let profileGetCount = 0;
-      const pendingProfileRefetch = deferred<Response>();
+      const pendingProfileRefetch = createDeferred<Response>();
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/users/current-user") {
           profileGetCount += 1;
@@ -381,6 +356,11 @@ describe("ProfilePage", () => {
     });
 
     it("keeps the saved display name when an older auth refetch finishes afterward", async () => {
+      const AuthQueryObserver = () => {
+        const { data: user } = useQuery(authMeQueryOptions);
+
+        return <output data-testid="auth-me-display-name">{user?.displayName}</output>;
+      };
       const profile = {
         ...baseProfile,
         bio: null,
@@ -389,7 +369,7 @@ describe("ProfilePage", () => {
         ...profile,
         displayName: "Saved User",
       };
-      const pendingAuthRefetch = deferred<Response>();
+      const pendingAuthRefetch = createDeferred<Response>();
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return pendingAuthRefetch.promise;

@@ -7,121 +7,79 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
 import { messagesQueryOptions } from "@/features/messages/messagesQuery.ts";
+import { createDeferred } from "@/tests/createDeferred.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { router } from "./router.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
+describe("router", () => {
+  let queryClient: QueryClient;
 
-const currentUser = {
-  id: 1,
-  username: "current-user",
-  displayName: "Current User",
-};
+  const currentUser = {
+    id: 1,
+    username: "current-user",
+    displayName: "Current User",
+  };
 
-const emptyConversationsPage = {
-  conversations: [],
-  nextCursor: null,
-};
+  const emptyConversationsPage = {
+    conversations: [],
+    nextCursor: null,
+  };
 
-const conversation = {
-  id: 1,
-  participants: [
-    {
-      username: "current-user",
-      displayName: "Current User",
-      profileImage: null,
-    },
-    {
-      username: "other-user",
-      displayName: "Other User",
-      profileImage: null,
-    },
-  ],
-  createdAt: "2026-09-01T00:00:00.000Z",
-  lastActivityAt: "2026-09-04T01:00:00.000Z",
-};
+  class WebSocketStub {
+    static instances: WebSocketStub[] = [];
 
-const existingMessage = {
-  id: 10,
-  content: "Hello from the protected route",
-  sender: {
-    username: "other-user",
-    displayName: "Other User",
-    profileImage: null,
-  },
-  createdAt: "2026-09-04T01:00:00.000Z",
-};
+    addEventListener = vi.fn();
+    removeEventListener = vi.fn();
+    close = vi.fn();
 
-const jsonResponse = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-
-const deferred = <T,>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-
-  return { promise, resolve };
-};
-
-class WebSocketStub {
-  static instances: WebSocketStub[] = [];
-
-  addEventListener = vi.fn();
-  removeEventListener = vi.fn();
-  close = vi.fn();
-
-  constructor() {
-    WebSocketStub.instances.push(this);
-  }
-
-  emitMessage(data: string) {
-    const messageListener = this.addEventListener.mock.calls.find(
-      ([eventType]) => eventType === "message",
-    )?.[1];
-
-    if (typeof messageListener !== "function") {
-      throw new Error("Expected a WebSocket message listener");
+    constructor() {
+      WebSocketStub.instances.push(this);
     }
 
-    messageListener(new MessageEvent("message", { data }));
+    emitMessage(data: string) {
+      const messageListener = this.addEventListener.mock.calls.find(
+        ([eventType]) => eventType === "message",
+      )?.[1];
+
+      if (typeof messageListener !== "function") {
+        throw new Error("Expected a WebSocket message listener");
+      }
+
+      messageListener(new MessageEvent("message", { data }));
+    }
   }
-}
 
-beforeEach(() => {
-  vi.stubGlobal("WebSocket", WebSocketStub);
-  queryClient = new QueryClient();
-});
+  beforeEach(() => {
+    vi.stubGlobal("WebSocket", WebSocketStub);
+    queryClient = new QueryClient();
+  });
 
-afterEach(() => {
-  queryClient.clear();
-  WebSocketStub.instances = [];
-  vi.unstubAllGlobals();
-});
+  afterEach(() => {
+    queryClient.clear();
+    WebSocketStub.instances = [];
+    vi.unstubAllGlobals();
+  });
 
-const renderRouterAt = async (path: string) => {
-  await router.navigate(path);
+  const renderRouterAt = async (path: string) => {
+    await router.navigate(path);
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
-};
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+  };
 
-const expectLoginPage = async () => {
-  expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
-  expect(screen.getByLabelText("Password")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
-};
+  const expectLoginPage = async () => {
+    expect(await screen.findByRole("textbox", { name: "Username" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log in" })).toBeInTheDocument();
+  };
 
-describe("router", () => {
   describe("guest routes", () => {
     it("renders the login page under the guest-only route for an unauthenticated user", async () => {
       vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
@@ -260,8 +218,8 @@ describe("router", () => {
         pageParams: [null],
       };
       let authState: "user-a" | "unauthenticated" | "user-b-pending" | "user-b" = "user-a";
-      const pendingUserB = deferred<Response>();
-      const pendingUserBConversations = deferred<Response>();
+      const pendingUserB = createDeferred<Response>();
+      const pendingUserBConversations = createDeferred<Response>();
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           if (authState === "user-a") {
@@ -346,6 +304,24 @@ describe("router", () => {
   });
 
   describe("app integration", () => {
+    const conversation = {
+      id: 1,
+      participants: [
+        {
+          username: "current-user",
+          displayName: "Current User",
+          profileImage: null,
+        },
+        {
+          username: "other-user",
+          displayName: "Other User",
+          profileImage: null,
+        },
+      ],
+      createdAt: "2026-09-01T00:00:00.000Z",
+      lastActivityAt: "2026-09-04T01:00:00.000Z",
+    };
+
     it("navigates from the main screen to the current user's profile", async () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
@@ -385,6 +361,16 @@ describe("router", () => {
     });
 
     it("renders the conversation page under the protected route", async () => {
+      const existingMessage = {
+        id: 10,
+        content: "Hello from the protected route",
+        sender: {
+          username: "other-user",
+          displayName: "Other User",
+          profileImage: null,
+        },
+        createdAt: "2026-09-04T01:00:00.000Z",
+      };
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));

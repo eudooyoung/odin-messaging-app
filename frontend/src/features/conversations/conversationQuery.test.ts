@@ -1,33 +1,26 @@
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { conversationQueryOptions } from "./conversationQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
+describe("conversationQueryOptions", () => {
+  let queryClient: QueryClient;
 
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
   });
 
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
+  afterEach(() => {
+    queryClient.clear();
+  });
 
-afterEach(() => {
-  queryClient.clear();
-});
-
-describe("conversationQueryOptions", () => {
   it("fetches and returns the conversation for the given id", async () => {
     const conversation = {
       id: 42,
@@ -46,12 +39,7 @@ describe("conversationQueryOptions", () => {
       createdAt: "2026-09-01T00:00:00.000Z",
       lastActivityAt: "2026-09-04T01:00:00.000Z",
     };
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(JSON.stringify(conversation), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(conversation));
     const queryOptions = conversationQueryOptions(42);
 
     const result = await queryClient.query(queryOptions);

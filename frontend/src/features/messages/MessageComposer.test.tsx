@@ -10,26 +10,26 @@ vi.mock("./createMessage.ts", () => ({
   createMessage: vi.fn(),
 }));
 
-let queryClient: QueryClient;
-
-const createQueryClient = () => new QueryClient();
-
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
-
-afterEach(() => {
-  queryClient.clear();
-});
-
-const renderMessageComposer = (queryClient: QueryClient, conversationId = 42) =>
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MessageComposer conversationId={conversationId} />
-    </QueryClientProvider>,
-  );
-
 describe("MessageComposer", () => {
+  let queryClient: QueryClient;
+
+  const createQueryClient = () => new QueryClient();
+
+  beforeEach(() => {
+    queryClient = createQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const renderMessageComposer = (queryClient: QueryClient, conversationId = 42) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MessageComposer conversationId={conversationId} />
+      </QueryClientProvider>,
+    );
+
   describe("sending", () => {
     it("disables the input and prevents duplicate sends while the mutation is pending", async () => {
       const pendingMessage = new Promise<never>(() => undefined);

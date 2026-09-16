@@ -1,7 +1,9 @@
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import {
   USER_PROFILE_QUERY_ERROR_MESSAGE,
   type UserProfile,
@@ -12,32 +14,19 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
-
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
-const profileResponse = (profile: UserProfile) =>
-  new Response(JSON.stringify(profile), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
-
-afterEach(() => {
-  queryClient.clear();
-});
-
 describe("userProfileQueryOptions", () => {
+  let queryClient: QueryClient;
+
+  const profileResponse = (profile: UserProfile) => jsonResponse(profile);
+
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
   it("gets and returns the requested user's profile", async () => {
     const username = "profile-user";
     const profile = {

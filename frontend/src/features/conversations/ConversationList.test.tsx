@@ -1,89 +1,71 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { createDeferred } from "@/tests/createDeferred.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { ConversationList } from "./ConversationList.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-let queryClient: QueryClient;
-
-const firstConversation = {
-  id: 1,
-  otherUser: {
-    username: "first-user",
-    displayName: "First User",
-    profileImage: null,
-  },
-  lastMessage: {
-    id: 10,
-    content: "Latest message",
-    senderId: 2,
-    createdAt: "2026-09-04T01:00:00.000Z",
-  },
-  lastActivityAt: "2026-09-04T01:00:00.000Z",
-};
-
-const secondConversation = {
-  id: 2,
-  otherUser: {
-    username: "second-user",
-    displayName: "Second User",
-    profileImage: null,
-  },
-  lastMessage: null,
-  lastActivityAt: "2026-09-03T02:30:00.000Z",
-};
-
-const createQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
-beforeEach(() => {
-  queryClient = createQueryClient();
-});
-
-afterEach(() => {
-  queryClient.clear();
-});
-
-const createConversationsResponse = (conversations: unknown[], nextCursor: number | null) =>
-  new Response(JSON.stringify({ conversations, nextCursor }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-
-const deferred = <T,>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void;
-  const promise = new Promise<T>((resolvePromise) => {
-    resolve = resolvePromise;
-  });
-
-  return { promise, resolve };
-};
-
-const renderConversationList = (queryClient: QueryClient) =>
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <ConversationList />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-
 describe("ConversationList", () => {
+  let queryClient: QueryClient;
+
+  const firstConversation = {
+    id: 1,
+    otherUser: {
+      username: "first-user",
+      displayName: "First User",
+      profileImage: null,
+    },
+    lastMessage: {
+      id: 10,
+      content: "Latest message",
+      senderId: 2,
+      createdAt: "2026-09-04T01:00:00.000Z",
+    },
+    lastActivityAt: "2026-09-04T01:00:00.000Z",
+  };
+
+  const secondConversation = {
+    id: 2,
+    otherUser: {
+      username: "second-user",
+      displayName: "Second User",
+      profileImage: null,
+    },
+    lastMessage: null,
+    lastActivityAt: "2026-09-03T02:30:00.000Z",
+  };
+
+  beforeEach(() => {
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const createConversationsResponse = (conversations: unknown[], nextCursor: number | null) =>
+    jsonResponse({ conversations, nextCursor });
+
+  const renderConversationList = (queryClient: QueryClient) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ConversationList />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
   describe("initial load", () => {
     it("shows a loading status while the request is pending", () => {
-      const pendingResponse = deferred<Response>();
+      const pendingResponse = createDeferred<Response>();
       vi.mocked(apiFetch).mockReturnValue(pendingResponse.promise);
 
       renderConversationList(queryClient);
@@ -140,7 +122,7 @@ describe("ConversationList", () => {
 
   describe("pagination", () => {
     it("shows Load more and disables it while the next page is pending", async () => {
-      const nextPageResponse = deferred<Response>();
+      const nextPageResponse = createDeferred<Response>();
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(createConversationsResponse([firstConversation], 10))
         .mockReturnValueOnce(nextPageResponse.promise);

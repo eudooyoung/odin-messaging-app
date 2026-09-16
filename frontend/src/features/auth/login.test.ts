@@ -7,12 +7,12 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-const validLoginInput = {
-  username: "test-user",
-  password: "password123",
-};
-
 describe("login", () => {
+  const validLoginInput = {
+    username: "test-user",
+    password: "password123",
+  };
+
   it("posts the credentials and returns the successful response", async () => {
     const response = new Response(null, { status: 204 });
     vi.mocked(apiFetch).mockResolvedValue(response);

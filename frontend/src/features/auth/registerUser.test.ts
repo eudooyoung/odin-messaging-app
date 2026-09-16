@@ -7,13 +7,13 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-const validRegistrationInput = {
-  username: "test-user",
-  displayName: "Test User",
-  password: "password123",
-};
-
 describe("registerUser", () => {
+  const validRegistrationInput = {
+    username: "test-user",
+    displayName: "Test User",
+    password: "password123",
+  };
+
   it("posts the registration input and returns the successful response", async () => {
     const response = new Response(null, { status: 201 });
     vi.mocked(apiFetch).mockResolvedValue(response);

@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { authMeQueryOptions, type AuthUser } from "./authMeQuery.ts";
 import { login } from "./login.ts";
@@ -22,54 +23,42 @@ vi.mock("./login.ts", async (importOriginal) => {
   };
 });
 
-let queryClient: QueryClient;
+describe("LoginPage", () => {
+  let queryClient: QueryClient;
 
-const currentUser: AuthUser = {
-  id: 1,
-  username: "existing-user",
-  displayName: "Existing User",
-};
-
-const createAuthMeResponse = (user: AuthUser) =>
-  new Response(JSON.stringify(user), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
+  beforeEach(() => {
+    queryClient = new QueryClient();
   });
 
-beforeEach(() => {
-  queryClient = new QueryClient();
-});
+  afterEach(() => {
+    queryClient.clear();
+  });
 
-afterEach(() => {
-  queryClient.clear();
-});
+  const renderLoginPage = (queryClient: QueryClient) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/login"]}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<h1>Register</h1>} />
+            <Route path="/" element={<h1>Home</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
 
-const renderLoginPage = (queryClient: QueryClient) =>
-  render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/login"]}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<h1>Register</h1>} />
-          <Route path="/" element={<h1>Home</h1>} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  const submitLogin = async (
+    queryClient: QueryClient,
+    input: { username: string; password: string },
+  ) => {
+    const user = userEvent.setup();
+    renderLoginPage(queryClient);
 
-const submitLogin = async (
-  queryClient: QueryClient,
-  input: { username: string; password: string },
-) => {
-  const user = userEvent.setup();
-  renderLoginPage(queryClient);
+    await user.type(screen.getByRole("textbox", { name: "Username" }), input.username);
+    await user.type(screen.getByLabelText("Password"), input.password);
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+  };
 
-  await user.type(screen.getByRole("textbox", { name: "Username" }), input.username);
-  await user.type(screen.getByLabelText("Password"), input.password);
-  await user.click(screen.getByRole("button", { name: "Log in" }));
-};
-
-describe("LoginPage", () => {
   it("shows a registration link and navigates to register when clicked", async () => {
     const user = userEvent.setup();
     renderLoginPage(queryClient);
@@ -111,6 +100,14 @@ describe("LoginPage", () => {
   });
 
   describe("login lifecycle", () => {
+    const currentUser: AuthUser = {
+      id: 1,
+      username: "existing-user",
+      displayName: "Existing User",
+    };
+
+    const createAuthMeResponse = (user: AuthUser) => jsonResponse(user);
+
     it("disables the button and shows a pending label while pending", async () => {
       const pendingLoginResponse = new Promise<Response>(() => undefined);
       vi.mocked(login).mockReturnValue(pendingLoginResponse);
