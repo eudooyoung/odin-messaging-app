@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { logout } from "./logout.ts";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
+import { GENERAL_LOGOUT_ERROR_MESSAGE, logout } from "./logout.ts";
 
 export function LogoutButton() {
   const queryClient = useQueryClient();
@@ -22,7 +23,12 @@ export function LogoutButton() {
       >
         Log out
       </button>
-      {logoutMutation.isError && <p role="alert">{logoutMutation.error.message}</p>}
+      {logoutMutation.isError && (
+        <UserFacingErrorMessage
+          error={logoutMutation.error}
+          fallbackMessage={GENERAL_LOGOUT_ERROR_MESSAGE}
+        />
+      )}
     </>
   );
 }
