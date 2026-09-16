@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { UserFacingError } from "@/api/UserFacingError.ts";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { createConversation } from "@/features/conversations/createConversation.ts";
 import { USERS_QUERY_ERROR_MESSAGE, usersQueryOptions } from "./usersQuery.ts";
 
@@ -42,9 +42,7 @@ export function UserSearch() {
       {hasQuery && isPending && <p role="status">Searching users...</p>}
 
       {isError && (
-        <p role="alert">
-          {error instanceof UserFacingError ? error.message : USERS_QUERY_ERROR_MESSAGE}
-        </p>
+        <UserFacingErrorMessage error={error} fallbackMessage={USERS_QUERY_ERROR_MESSAGE} />
       )}
 
       {createConversationMutation.isError && (

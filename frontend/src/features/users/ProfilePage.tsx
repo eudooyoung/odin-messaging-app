@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { z } from "zod";
 import { FormField } from "@/components/FormField.tsx";
-import { QueryErrorMessage } from "@/components/QueryErrorMessage.tsx";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
 import {
   USER_PROFILE_QUERY_ERROR_MESSAGE,
@@ -102,7 +102,9 @@ export function ProfilePage() {
   }
 
   if (isError) {
-    return <QueryErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />;
+    return (
+      <UserFacingErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />
+    );
   }
 
   if (!profile) {

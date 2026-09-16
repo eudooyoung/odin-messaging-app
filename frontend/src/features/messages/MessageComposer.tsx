@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { UserFacingError } from "@/api/UserFacingError.ts";
 import { FormField } from "@/components/FormField.tsx";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { createMessage } from "./createMessage.ts";
 import { syncMessageToCache } from "./syncMessagesToCache.ts";
 
@@ -57,11 +57,10 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
         </button>
       </form>
       {createMessageMutation.isError && (
-        <p role="alert">
-          {createMessageMutation.error instanceof UserFacingError
-            ? createMessageMutation.error.message
-            : SEND_MESSAGE_ERROR_MESSAGE}
-        </p>
+        <UserFacingErrorMessage
+          error={createMessageMutation.error}
+          fallbackMessage={SEND_MESSAGE_ERROR_MESSAGE}
+        />
       )}
     </>
   );

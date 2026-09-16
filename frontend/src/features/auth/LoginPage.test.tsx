@@ -4,13 +4,37 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import { UserFacingError } from "@/api/UserFacingError.ts";
+import { authMeQueryOptions, type AuthUser } from "./authMeQuery.ts";
+import { login } from "./login.ts";
 import { LoginPage } from "./LoginPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
+vi.mock("./login.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./login.ts")>();
+
+  return {
+    ...actual,
+    login: vi.fn(),
+  };
+});
+
 let queryClient: QueryClient;
+
+const currentUser: AuthUser = {
+  id: 1,
+  username: "existing-user",
+  displayName: "Existing User",
+};
+
+const createAuthMeResponse = (user: AuthUser) =>
+  new Response(JSON.stringify(user), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 
 beforeEach(() => {
   queryClient = new QueryClient();
@@ -33,180 +57,149 @@ const renderLoginPage = (queryClient: QueryClient) =>
     </QueryClientProvider>,
   );
 
+const submitLogin = async (
+  queryClient: QueryClient,
+  input: { username: string; password: string },
+) => {
+  const user = userEvent.setup();
+  renderLoginPage(queryClient);
+
+  await user.type(screen.getByRole("textbox", { name: "Username" }), input.username);
+  await user.type(screen.getByLabelText("Password"), input.password);
+  await user.click(screen.getByRole("button", { name: "Log in" }));
+};
+
 describe("LoginPage", () => {
   it("shows a registration link and navigates to register when clicked", async () => {
     const user = userEvent.setup();
-
     renderLoginPage(queryClient);
 
     const registerLink = screen.getByRole("link", { name: "Register" });
-
     expect(registerLink).toBeInTheDocument();
-
     await user.click(registerLink);
 
     expect(await screen.findByRole("heading", { name: "Register" })).toBeInTheDocument();
-
   });
 
-  it("submits the username and password to POST /auth/login", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 204 }));
-    const user = userEvent.setup();
+  describe("validation", () => {
+    it("shows an error and does not submit when username is empty", async () => {
+      const user = userEvent.setup();
 
-    renderLoginPage(queryClient);
+      renderLoginPage(queryClient);
 
-    const usernameInput = screen.getByRole("textbox", { name: "Username" });
-    const passwordInput = screen.getByLabelText("Password");
-    const submitButton = screen.getByRole("button", { name: "Log in" });
+      await user.type(screen.getByLabelText("Password"), "secure-password");
+      await user.click(screen.getByRole("button", { name: "Log in" }));
 
-    expect(usernameInput).toBeInTheDocument();
-    expect(passwordInput).toBeInTheDocument();
-    expect(submitButton).toBeInTheDocument();
+      expect(await screen.findByRole("alert")).toHaveTextContent("Username is required");
+      expect(login).not.toHaveBeenCalled();
+    });
 
-    await user.type(usernameInput, "existing-user");
-    await user.type(passwordInput, "secure-password");
-    await user.click(submitButton);
+    it("shows an error and does not submit when password is shorter than 12 characters", async () => {
+      const user = userEvent.setup();
 
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenCalledWith("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: "existing-user",
-          password: "secure-password",
-        }),
+      renderLoginPage(queryClient);
+
+      await user.type(screen.getByRole("textbox", { name: "Username" }), "existing-user");
+      await user.type(screen.getByLabelText("Password"), "a".repeat(11));
+      await user.click(screen.getByRole("button", { name: "Log in" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Password must be at least 12 characters",
+      );
+      expect(login).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("login lifecycle", () => {
+    it("disables the button and shows a pending label while pending", async () => {
+      const pendingLoginResponse = new Promise<Response>(() => undefined);
+      vi.mocked(login).mockReturnValue(pendingLoginResponse);
+
+      await submitLogin(queryClient, {
+        username: "existing-user",
+        password: "secure-password",
       });
+
+      expect(await screen.findByRole("button", { name: "Logging in..." })).toBeDisabled();
     });
 
-  });
-
-  it("shows a validation message and does not submit when username is empty", async () => {
-    const user = userEvent.setup();
-
-    renderLoginPage(queryClient);
-
-    await user.type(screen.getByLabelText("Password"), "secure-password");
-    await user.click(screen.getByRole("button", { name: "Log in" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Username is required");
-    expect(apiFetch).not.toHaveBeenCalled();
-
-  });
-
-  it("shows a validation message and does not submit when password is shorter than 12 characters", async () => {
-    const user = userEvent.setup();
-
-    renderLoginPage(queryClient);
-
-    await user.type(screen.getByRole("textbox", { name: "Username" }), "existing-user");
-    await user.type(screen.getByLabelText("Password"), "a".repeat(11));
-    await user.click(screen.getByRole("button", { name: "Log in" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Password must be at least 12 characters",
-    );
-    expect(apiFetch).not.toHaveBeenCalled();
-
-  });
-
-  it("disables the login button and shows a pending label while login is in progress", async () => {
-    const pendingLoginResponse = new Promise<Response>(() => undefined);
-    vi.mocked(apiFetch).mockReturnValue(pendingLoginResponse);
-    const user = userEvent.setup();
-
-    renderLoginPage(queryClient);
-
-    await user.type(screen.getByRole("textbox", { name: "Username" }), "existing-user");
-    await user.type(screen.getByLabelText("Password"), "secure-password");
-    await user.click(screen.getByRole("button", { name: "Log in" }));
-
-    expect(await screen.findByRole("button", { name: "Logging in..." })).toBeDisabled();
-    expect(apiFetch).toHaveBeenCalledOnce();
-
-  });
-
-  it("refetches the current user before navigating home after login succeeds", async () => {
-    const currentUser = {
-      id: 1,
-      username: "existing-user",
-      displayName: "Existing User",
-    };
-    let resolveAuthMe: (response: Response) => void = () => undefined;
-    const authMeResponse = new Promise<Response>((resolve) => {
-      resolveAuthMe = resolve;
-    });
-    vi.mocked(apiFetch)
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
-      .mockReturnValueOnce(authMeResponse);
-    const user = userEvent.setup();
-
-    renderLoginPage(queryClient);
-
-    await user.type(screen.getByRole("textbox", { name: "Username" }), "existing-user");
-    await user.type(screen.getByLabelText("Password"), "secure-password");
-    await user.click(screen.getByRole("button", { name: "Log in" }));
-
-    await waitFor(() => {
-      expect(apiFetch).toHaveBeenNthCalledWith(2, "/auth/me", {
-        signal: expect.any(AbortSignal),
+    it("waits for the current user before navigating home after success", async () => {
+      let resolveAuthMe: (response: Response) => void = () => undefined;
+      const authMeResponse = new Promise<Response>((resolve) => {
+        resolveAuthMe = resolve;
       });
+      vi.mocked(login).mockResolvedValue(new Response(null, { status: 204 }));
+      vi.mocked(apiFetch).mockReturnValue(authMeResponse);
+
+      await submitLogin(queryClient, {
+        username: "existing-user",
+        password: "secure-password",
+      });
+
+      await waitFor(() => {
+        expect(queryClient.getQueryState(authMeQueryOptions.queryKey)!.fetchStatus).toBe(
+          "fetching",
+        );
+      });
+      expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
+
+      resolveAuthMe(createAuthMeResponse(currentUser));
+
+      expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
+      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual(currentUser);
     });
-    expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
 
-    resolveAuthMe(
-      new Response(JSON.stringify(currentUser), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    it("starts a fresh auth request after login when an earlier request is pending", async () => {
+      const pendingAuthMeResponse = new Promise<Response>(() => undefined);
+      vi.mocked(apiFetch)
+        .mockReturnValueOnce(pendingAuthMeResponse)
+        .mockResolvedValueOnce(createAuthMeResponse(currentUser));
+      vi.mocked(login).mockResolvedValue(new Response(null, { status: 204 }));
 
-    expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
-    expect(queryClient.getQueryData(["auth", "me"])).toEqual(currentUser);
+      void queryClient.query(authMeQueryOptions).catch(() => undefined);
 
+      await waitFor(() => {
+        expect(apiFetch).toHaveBeenCalledOnce();
+      });
+
+      await submitLogin(queryClient, {
+        username: "existing-user",
+        password: "secure-password",
+      });
+
+      await waitFor(() => {
+        expect(apiFetch).toHaveBeenCalledTimes(2);
+      });
+      expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
+      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual(currentUser);
+    });
   });
 
-  it("shows a login failure without refetching auth or navigating when login returns 401", async () => {
-    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const user = userEvent.setup();
+  describe("login errors", () => {
+    it("shows the user-facing message and stays on the login page", async () => {
+      vi.mocked(login).mockRejectedValue(new UserFacingError("Login failed"));
 
-    renderLoginPage(queryClient);
+      await submitLogin(queryClient, {
+        username: "existing-user",
+        password: "wrong-password",
+      });
 
-    await user.type(screen.getByRole("textbox", { name: "Username" }), "existing-user");
-    await user.type(screen.getByLabelText("Password"), "wrong-password");
-    await user.click(screen.getByRole("button", { name: "Log in" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Login failed");
+      expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
+    });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Login failed");
-    expect(apiFetch).toHaveBeenCalledOnce();
-    expect(apiFetch).toHaveBeenCalledWith("/auth/login", expect.any(Object));
-    expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
+    it("shows a generic fallback and re-enables the button after an unexpected error", async () => {
+      vi.mocked(login).mockRejectedValue(new Error("Unexpected login failure"));
 
-  });
+      await submitLogin(queryClient, {
+        username: "existing-user",
+        password: "secure-password",
+      });
 
-  it.each([
-    {
-      caseName: "login returns 500",
-      arrangeFailure: () =>
-        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 })),
-    },
-    {
-      caseName: "the network request fails",
-      arrangeFailure: () => vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch")),
-    },
-  ])("shows an unexpected error message when $caseName", async ({ arrangeFailure }) => {
-    arrangeFailure();
-    const user = userEvent.setup();
-
-    renderLoginPage(queryClient);
-
-    await user.type(screen.getByRole("textbox", { name: "Username" }), "existing-user");
-    await user.type(screen.getByLabelText("Password"), "secure-password");
-    await user.click(screen.getByRole("button", { name: "Log in" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Something went wrong. Please try again.",
-    );
-    expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
-    expect(apiFetch).toHaveBeenCalledOnce();
-
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Something went wrong. Please try again.",
+      );
+      expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
+    });
   });
 });

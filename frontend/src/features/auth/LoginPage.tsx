@@ -1,10 +1,10 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 import { z } from "zod";
-import { UserFacingError } from "@/api/UserFacingError.ts";
 import { FormField } from "@/components/FormField.tsx";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { authMeQueryOptions } from "./authMeQuery.ts";
 import { GENERAL_LOGIN_ERROR_MESSAGE, login } from "./login.ts";
 
@@ -14,6 +14,14 @@ const loginSchema = z.object({
 });
 
 type LoginInput = z.infer<typeof loginSchema>;
+
+async function syncAuthAfterLogin(queryClient: QueryClient) {
+  await queryClient.cancelQueries(
+    { queryKey: authMeQueryOptions.queryKey, exact: true },
+    { silent: true },
+  );
+  await queryClient.query(authMeQueryOptions);
+}
 
 export function LoginPage() {
   const {
@@ -28,7 +36,7 @@ export function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: async () => {
-      await queryClient.query(authMeQueryOptions);
+      await syncAuthAfterLogin(queryClient);
       navigate("/");
     },
   });
@@ -58,11 +66,10 @@ export function LoginPage() {
       <Link to="/register">Register</Link>
 
       {loginMutation.isError && (
-        <p role="alert">
-          {loginMutation.error instanceof UserFacingError
-            ? loginMutation.error.message
-            : GENERAL_LOGIN_ERROR_MESSAGE}
-        </p>
+        <UserFacingErrorMessage
+          error={loginMutation.error}
+          fallbackMessage={GENERAL_LOGIN_ERROR_MESSAGE}
+        />
       )}
     </form>
   );

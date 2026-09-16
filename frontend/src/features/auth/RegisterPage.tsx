@@ -3,8 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 import { z } from "zod";
-import { UserFacingError } from "@/api/UserFacingError.ts";
 import { FormField } from "@/components/FormField.tsx";
+import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { GENERAL_REGISTER_ERROR_MESSAGE, registerUser } from "./registerUser.ts";
 
 const registerSchema = z.object({
@@ -64,11 +64,10 @@ export function RegisterPage() {
       <Link to="/login">Log in</Link>
 
       {registerMutation.isError && (
-        <p role="alert">
-          {registerMutation.error instanceof UserFacingError
-            ? registerMutation.error.message
-            : GENERAL_REGISTER_ERROR_MESSAGE}
-        </p>
+        <UserFacingErrorMessage
+          error={registerMutation.error}
+          fallbackMessage={GENERAL_REGISTER_ERROR_MESSAGE}
+        />
       )}
     </form>
   );
