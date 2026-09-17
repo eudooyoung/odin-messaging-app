@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 import { FormField } from "@/components/FormField.tsx";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
+import { authFormFieldWrapperClassName, authFormInputClassName } from "./authFormStyles.ts";
 import { authMeQueryOptions } from "./authMeQuery.ts";
 import { GENERAL_LOGIN_ERROR_MESSAGE, login } from "./login.ts";
 
@@ -58,23 +59,23 @@ export function LoginPage() {
         </h1>
 
         <div className="mt-8 flex flex-col gap-5">
-          <div className="flex flex-col gap-2 [&>label]:text-sm [&>label]:font-medium [&>label]:text-neutral-700 [&>p]:text-sm [&>p]:text-danger-600">
+          <div className={authFormFieldWrapperClassName}>
             <FormField
               id="username"
               label="Username"
               type="text"
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 aria-invalid:border-danger-500 aria-invalid:focus:border-danger-500 aria-invalid:focus:ring-danger-100"
+              className={authFormInputClassName}
               error={errors.username?.message}
               {...register("username")}
             />
           </div>
 
-          <div className="flex flex-col gap-2 [&>label]:text-sm [&>label]:font-medium [&>label]:text-neutral-700 [&>p]:text-sm [&>p]:text-danger-600">
+          <div className={authFormFieldWrapperClassName}>
             <FormField
               id="password"
               label="Password"
               type="password"
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 aria-invalid:border-danger-500 aria-invalid:focus:border-danger-500 aria-invalid:focus:ring-danger-100"
+              className={authFormInputClassName}
               error={errors.password?.message}
               {...register("password")}
             />
