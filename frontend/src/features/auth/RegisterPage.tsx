@@ -7,22 +7,28 @@ import { FormField } from "@/components/FormField.tsx";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { GENERAL_REGISTER_ERROR_MESSAGE, registerUser } from "./registerUser.ts";
 
-const registerSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .min(1, "Username is required")
-    .max(30, "Username must be at most 30 characters"),
-  displayName: z
-    .string()
-    .trim()
-    .min(1, "Display name is required")
-    .max(50, "Display name must be at most 50 characters"),
-  password: z
-    .string()
-    .min(12, "Password must be at least 12 characters")
-    .max(128, "Password must be at most 128 characters"),
-});
+const registerSchema = z
+  .object({
+    username: z
+      .string()
+      .trim()
+      .min(1, "Username is required")
+      .max(30, "Username must be at most 30 characters"),
+    displayName: z
+      .string()
+      .trim()
+      .min(1, "Display name is required")
+      .max(50, "Display name must be at most 50 characters"),
+    password: z
+      .string()
+      .min(12, "Password must be at least 12 characters")
+      .max(128, "Password must be at most 128 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine(({ password, confirmPassword }) => password === confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -46,7 +52,13 @@ export function RegisterPage() {
     <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 py-12 font-body text-neutral-900">
       <form
         className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
-        onSubmit={handleSubmit((input) => registerMutation.mutate(input))}
+        onSubmit={handleSubmit((input) =>
+          registerMutation.mutate({
+            username: input.username,
+            displayName: input.displayName,
+            password: input.password,
+          }),
+        )}
       >
         <h1 className="font-heading text-2xl font-semibold tracking-tight text-neutral-900">
           Register
@@ -83,6 +95,17 @@ export function RegisterPage() {
               className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 aria-invalid:border-danger-500 aria-invalid:focus:border-danger-500 aria-invalid:focus:ring-danger-100"
               error={errors.password?.message}
               {...register("password")}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2 [&>label]:text-sm [&>label]:font-medium [&>label]:text-neutral-700 [&>p]:text-sm [&>p]:text-danger-600">
+            <FormField
+              id="confirm-password"
+              label="Confirm password"
+              type="password"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 aria-invalid:border-danger-500 aria-invalid:focus:border-danger-500 aria-invalid:focus:ring-danger-100"
+              error={errors.confirmPassword?.message}
+              {...register("confirmPassword")}
             />
           </div>
         </div>
