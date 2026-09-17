@@ -1,3 +1,9 @@
 {
-  "eslint.workingDirectories": ["./backend", "./frontend"]
+  "eslint.workingDirectories": ["./backend", "./frontend"],
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "editor.quickSuggestions": {
+    "strings": "on"
+  }
 }

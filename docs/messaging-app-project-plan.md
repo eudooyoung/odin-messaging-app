@@ -412,6 +412,15 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
   - [x] Conversation → 대화 목록/홈 복귀 경로
   - [x] Profile → 대화 목록/홈 복귀 경로
 - [ ] MVP 기본 UI / CSS
+  - [x] 스타일 기초 토큰 합의
+    - Tailwind CSS v4 + `@tailwindcss/vite` 유지
+    - 전역 `index.css`에서 `@theme` / `@theme inline`으로 디자인 토큰 정의
+    - primary palette: Forest Green (`primary-500 = #2e7d5a`)
+    - neutral palette: 거의 중성에 가까운 warm/green-gray scale
+    - semantic palette: `success → teal`, `danger → red`, `warning → amber`, `info → blue`
+    - typography: heading `Pretendard Variable`, body `SUIT Variable`
+    - 폰트 로딩: npm 패키지 설치 후 전역 CSS `@import`
+    - spacing / font-size / radius / shadow / breakpoint는 Tailwind 기본 scale 사용
   - Login / Register 폼
   - 데스크톱 메시징 2-column layout
   - ConversationList / ConversationPage / MessageList / MessageComposer
@@ -552,7 +561,13 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - query/mutation/component/router 테스트의 책임 중복을 줄이고 semantic `describe`, fixture/helper scope, 공통 test utility를 정리했다.
   - 로그인 성공 후에는 기존 pending `auth/me`를 cancel하고 fresh 요청을 시작하도록 보완했다.
 - 사용자 검색에서 본인 제외는 frontend 필터링 대신 Backend refactor TODO로 유지한다.
-- **다음 작업은 MVP 기본 UI / CSS로 복귀한다.**
+- MVP 기본 UI / CSS에 앞서 스타일 기초 토큰을 합의했다.
+  - Tailwind v4 `@theme` / `@theme inline`
+  - Forest Green primary + near-neutral warm/green-gray neutral
+  - semantic color alias: teal / red / amber / blue
+  - heading `Pretendard Variable`, body `SUIT Variable`
+  - spacing 등 나머지 scale은 Tailwind 기본값 사용
+- **다음 작업은 MVP 기본 UI / CSS 구현이다.**
   1. Login / Register 기본 폼 스타일
   2. 데스크톱 메시징 2-column layout
   3. ConversationList / ConversationPage / MessageList / MessageComposer 스타일
