@@ -83,6 +83,21 @@ describe("LoginPage", () => {
       expect(login).not.toHaveBeenCalled();
     });
 
+    it("shows an error and does not submit when username is longer than 30 characters", async () => {
+      const user = userEvent.setup();
+
+      renderLoginPage(queryClient);
+
+      await user.type(screen.getByRole("textbox", { name: "Username" }), "a".repeat(31));
+      await user.type(screen.getByLabelText("Password"), "secure-password");
+      await user.click(screen.getByRole("button", { name: "Log in" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Username must be at most 30 characters",
+      );
+      expect(login).not.toHaveBeenCalled();
+    });
+
     it("shows an error and does not submit when password is shorter than 12 characters", async () => {
       const user = userEvent.setup();
 
@@ -94,6 +109,21 @@ describe("LoginPage", () => {
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
         "Password must be at least 12 characters",
+      );
+      expect(login).not.toHaveBeenCalled();
+    });
+
+    it("shows an error and does not submit when password is longer than 128 characters", async () => {
+      const user = userEvent.setup();
+
+      renderLoginPage(queryClient);
+
+      await user.type(screen.getByRole("textbox", { name: "Username" }), "existing-user");
+      await user.type(screen.getByLabelText("Password"), "a".repeat(129));
+      await user.click(screen.getByRole("button", { name: "Log in" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Password must be at most 128 characters",
       );
       expect(login).not.toHaveBeenCalled();
     });
