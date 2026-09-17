@@ -1,7 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
+import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
 import { createConversation } from "@/features/conversations/createConversation.ts";
 import { USERS_QUERY_ERROR_MESSAGE, usersQueryOptions } from "./usersQuery.ts";
 
@@ -10,9 +11,14 @@ export function UserSearch() {
   const searchQuery = query.trim();
   const hasQuery = searchQuery.length > 0;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const createConversationMutation = useMutation({
     mutationFn: createConversation,
-    onSuccess: (conversation) => {
+    onSuccess: async (conversation) => {
+      await queryClient.invalidateQueries({
+        queryKey: conversationsQueryOptions.queryKey,
+        exact: true,
+      });
       navigate(`/conversations/${conversation.id}`);
     },
   });
