@@ -54,10 +54,10 @@ describe("ConversationList", () => {
   const createConversationsResponse = (conversations: unknown[], nextCursor: number | null) =>
     jsonResponse({ conversations, nextCursor });
 
-  const renderConversationList = (queryClient: QueryClient) =>
+  const renderConversationList = (queryClient: QueryClient, initialEntry = "/") =>
     render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[initialEntry]}>
           <ConversationList />
         </MemoryRouter>
       </QueryClientProvider>,
@@ -112,6 +112,34 @@ describe("ConversationList", () => {
       expect(secondConversationLink.querySelector("time")).toHaveAttribute(
         "datetime",
         secondConversation.lastActivityAt,
+      );
+    });
+
+    it("shows a placeholder when a conversation has no last message", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(
+        createConversationsResponse([secondConversation], null),
+      );
+
+      renderConversationList(queryClient);
+
+      expect(await screen.findByRole("link", { name: /Second User/ })).toHaveTextContent(
+        "No messages yet",
+      );
+    });
+
+    it("identifies the conversation matching the current URL as the current page", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(
+        createConversationsResponse([firstConversation, secondConversation], null),
+      );
+
+      renderConversationList(queryClient, "/conversations/2");
+
+      expect(await screen.findByRole("link", { name: /Second User/ })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      expect(screen.getByRole("link", { name: /First User/ })).not.toHaveAttribute(
+        "aria-current",
       );
     });
   });

@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { NavLink } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import {
   CONVERSATIONS_QUERY_ERROR_MESSAGE,
@@ -51,26 +51,39 @@ export function ConversationList() {
     <>
       <ul className="flex flex-col divide-y divide-neutral-200 overflow-hidden rounded-lg border border-neutral-200 bg-white">
         {conversations.map((conversation) => (
-          <li key={conversation.id}>
-            <Link
-              className="group flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-primary-50 focus-visible:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none focus-visible:ring-inset"
+          <li
+            className="[&:first-child>a]:rounded-t-lg [&:last-child>a]:rounded-b-lg"
+            key={conversation.id}
+          >
+            <NavLink
+              className={({ isActive }) =>
+                `group grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 px-4 py-3 transition-colors hover:bg-primary-50 focus-visible:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none focus-visible:ring-inset ${isActive ? "bg-primary-50" : ""}`
+              }
+              end
               to={`/conversations/${conversation.id}`}
             >
-              <h2 className="truncate font-heading text-sm font-semibold text-neutral-900 group-hover:text-primary-700">
+              <h2 className="min-w-0 truncate font-heading text-sm font-semibold text-neutral-900 group-hover:text-primary-700">
                 {conversation.otherUser.displayName}
               </h2>
-              <p className="truncate text-xs text-neutral-500">
-                @{conversation.otherUser.username}
-              </p>
-              {conversation.lastMessage && (
-                <p className="truncate text-sm text-neutral-600">
-                  {conversation.lastMessage.content}
-                </p>
-              )}
-              <time className="text-xs text-neutral-400" dateTime={conversation.lastActivityAt}>
+              <time
+                className="text-xs whitespace-nowrap text-neutral-400"
+                dateTime={conversation.lastActivityAt}
+              >
                 {new Date(conversation.lastActivityAt).toLocaleString()}
               </time>
-            </Link>
+              <p className="col-span-2 min-w-0 truncate text-xs text-neutral-500">
+                @{conversation.otherUser.username}
+              </p>
+              {conversation.lastMessage ? (
+                <p className="col-span-2 min-w-0 truncate text-sm text-neutral-600">
+                  {conversation.lastMessage.content}
+                </p>
+              ) : (
+                <p className="col-span-2 min-w-0 truncate text-sm text-neutral-400">
+                  No messages yet
+                </p>
+              )}
+            </NavLink>
           </li>
         ))}
       </ul>
