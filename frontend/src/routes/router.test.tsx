@@ -110,7 +110,7 @@ describe("router", () => {
       await expectLoginPage();
     });
 
-    it("renders the conversation list and user search at the root route for an authenticated user", async () => {
+    it("renders the messaging sidebar and empty selection state at the root route", async () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
@@ -126,6 +126,9 @@ describe("router", () => {
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
       expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+      expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
     });
   });
 
@@ -322,7 +325,7 @@ describe("router", () => {
       lastActivityAt: "2026-09-04T01:00:00.000Z",
     };
 
-    it("navigates from the main screen to the current user's profile", async () => {
+    it("renders the profile page outside the messaging layout", async () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
@@ -358,9 +361,13 @@ describe("router", () => {
         "Current User",
       );
       expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
+      expect(screen.queryByRole("searchbox", { name: "Search users" })).not.toBeInTheDocument();
+      expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "My profile" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
     });
 
-    it("renders the conversation page under the protected route", async () => {
+    it("renders the messaging sidebar alongside the conversation page", async () => {
       const existingMessage = {
         id: 10,
         content: "Hello from the protected route",
@@ -374,6 +381,10 @@ describe("router", () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
         }
 
         if (input === "/conversations/1") {
@@ -394,6 +405,10 @@ describe("router", () => {
       await renderRouterAt("/conversations/1");
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
       expect(await screen.findByText("Hello from the protected route")).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
@@ -403,6 +418,10 @@ describe("router", () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
         }
 
         if (input === "/conversations/1") {
