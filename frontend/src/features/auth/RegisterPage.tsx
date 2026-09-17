@@ -8,9 +8,20 @@ import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx"
 import { GENERAL_REGISTER_ERROR_MESSAGE, registerUser } from "./registerUser.ts";
 
 const registerSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  displayName: z.string().min(1, "Display name is required"),
-  password: z.string().min(12, "Password must be at least 12 characters"),
+  username: z
+    .string()
+    .trim()
+    .min(1, "Username is required")
+    .max(30, "Username must be at most 30 characters"),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, "Display name is required")
+    .max(50, "Display name must be at most 50 characters"),
+  password: z
+    .string()
+    .min(12, "Password must be at least 12 characters")
+    .max(128, "Password must be at most 128 characters"),
 });
 
 type RegisterInput = z.infer<typeof registerSchema>;

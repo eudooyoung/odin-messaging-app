@@ -75,18 +75,32 @@ describe("RegisterPage", () => {
   describe("validation", () => {
     it.each([
       {
-        caseName: "username is empty",
-        username: "",
+        caseName: "username contains only whitespace",
+        username: "   ",
         displayName: "New User",
         password: "secure-password",
         expectedMessage: "Username is required",
       },
       {
-        caseName: "display name is empty",
+        caseName: "username is longer than 30 characters",
+        username: "a".repeat(31),
+        displayName: "New User",
+        password: "secure-password",
+        expectedMessage: "Username must be at most 30 characters",
+      },
+      {
+        caseName: "display name contains only whitespace",
         username: "new-user",
-        displayName: "",
+        displayName: "   ",
         password: "secure-password",
         expectedMessage: "Display name is required",
+      },
+      {
+        caseName: "display name is longer than 50 characters",
+        username: "new-user",
+        displayName: "a".repeat(51),
+        password: "secure-password",
+        expectedMessage: "Display name must be at most 50 characters",
       },
       {
         caseName: "password is shorter than 12 characters",
@@ -95,6 +109,13 @@ describe("RegisterPage", () => {
         password: "a".repeat(11),
         expectedMessage: "Password must be at least 12 characters",
       },
+      {
+        caseName: "password is longer than 128 characters",
+        username: "new-user",
+        displayName: "New User",
+        password: "a".repeat(129),
+        expectedMessage: "Password must be at most 128 characters",
+      },
     ])(
       "shows an error and does not submit when $caseName",
       async ({ username, displayName, password, expectedMessage }) => {
@@ -102,12 +123,8 @@ describe("RegisterPage", () => {
 
         renderRegisterPage(queryClient);
 
-        if (username) {
-          await user.type(screen.getByRole("textbox", { name: "Username" }), username);
-        }
-        if (displayName) {
-          await user.type(screen.getByRole("textbox", { name: "Display name" }), displayName);
-        }
+        await user.type(screen.getByRole("textbox", { name: "Username" }), username);
+        await user.type(screen.getByRole("textbox", { name: "Display name" }), displayName);
         await user.type(screen.getByLabelText("Password"), password);
         await user.click(screen.getByRole("button", { name: "Register" }));
 
