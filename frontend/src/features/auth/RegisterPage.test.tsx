@@ -55,6 +55,7 @@ describe("RegisterPage", () => {
     await user.type(screen.getByRole("textbox", { name: "Username" }), input.username);
     await user.type(screen.getByRole("textbox", { name: "Display name" }), input.displayName);
     await user.type(screen.getByLabelText("Password"), input.password);
+    await user.type(screen.getByLabelText("Confirm password"), input.password);
     await user.click(screen.getByRole("button", { name: "Register" }));
   };
 
@@ -75,18 +76,32 @@ describe("RegisterPage", () => {
   describe("validation", () => {
     it.each([
       {
-        caseName: "username is empty",
-        username: "",
+        caseName: "username contains only whitespace",
+        username: "   ",
         displayName: "New User",
         password: "secure-password",
         expectedMessage: "Username is required",
       },
       {
-        caseName: "display name is empty",
+        caseName: "username is longer than 30 characters",
+        username: "a".repeat(31),
+        displayName: "New User",
+        password: "secure-password",
+        expectedMessage: "Username must be at most 30 characters",
+      },
+      {
+        caseName: "display name contains only whitespace",
         username: "new-user",
-        displayName: "",
+        displayName: "   ",
         password: "secure-password",
         expectedMessage: "Display name is required",
+      },
+      {
+        caseName: "display name is longer than 50 characters",
+        username: "new-user",
+        displayName: "a".repeat(51),
+        password: "secure-password",
+        expectedMessage: "Display name must be at most 50 characters",
       },
       {
         caseName: "password is shorter than 12 characters",
@@ -95,6 +110,13 @@ describe("RegisterPage", () => {
         password: "a".repeat(11),
         expectedMessage: "Password must be at least 12 characters",
       },
+      {
+        caseName: "password is longer than 128 characters",
+        username: "new-user",
+        displayName: "New User",
+        password: "a".repeat(129),
+        expectedMessage: "Password must be at most 128 characters",
+      },
     ])(
       "shows an error and does not submit when $caseName",
       async ({ username, displayName, password, expectedMessage }) => {
@@ -102,28 +124,55 @@ describe("RegisterPage", () => {
 
         renderRegisterPage(queryClient);
 
-        if (username) {
-          await user.type(screen.getByRole("textbox", { name: "Username" }), username);
-        }
-        if (displayName) {
-          await user.type(screen.getByRole("textbox", { name: "Display name" }), displayName);
-        }
+        await user.type(screen.getByRole("textbox", { name: "Username" }), username);
+        await user.type(screen.getByRole("textbox", { name: "Display name" }), displayName);
         await user.type(screen.getByLabelText("Password"), password);
+        await user.type(screen.getByLabelText("Confirm password"), password);
         await user.click(screen.getByRole("button", { name: "Register" }));
 
         expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
         expect(registerUser).not.toHaveBeenCalled();
       },
     );
+
+    it("shows an error and does not submit when passwords do not match", async () => {
+      const user = userEvent.setup();
+
+      renderRegisterPage(queryClient);
+
+      await user.type(screen.getByRole("textbox", { name: "Username" }), "new-user");
+      await user.type(screen.getByRole("textbox", { name: "Display name" }), "New User");
+      await user.type(screen.getByLabelText("Password"), "secure-password");
+      await user.type(screen.getByLabelText("Confirm password"), "different-password");
+      await user.click(screen.getByRole("button", { name: "Register" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Passwords do not match");
+      expect(registerUser).not.toHaveBeenCalled();
+    });
   });
 
   describe("registration lifecycle", () => {
     it("submits valid details and navigates to login after success", async () => {
+      const user = userEvent.setup();
       vi.mocked(registerUser).mockResolvedValue(new Response(null, { status: 201 }));
 
-      await submitRegistration(queryClient, validRegistrationInput);
+      renderRegisterPage(queryClient);
 
-      expect(vi.mocked(registerUser).mock.calls[0]?.[0]).toEqual(validRegistrationInput);
+      await user.type(
+        screen.getByRole("textbox", { name: "Username" }),
+        validRegistrationInput.username,
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: "Display name" }),
+        validRegistrationInput.displayName,
+      );
+      await user.type(screen.getByLabelText("Password"), validRegistrationInput.password);
+      await user.type(screen.getByLabelText("Confirm password"), validRegistrationInput.password);
+      await user.click(screen.getByRole("button", { name: "Register" }));
+
+      expect(registerUser).toHaveBeenCalledOnce();
+      const [registerPayload] = vi.mocked(registerUser).mock.calls[0];
+      expect(registerPayload).toEqual(validRegistrationInput);
       expect(await screen.findByRole("heading", { name: "Login" })).toBeInTheDocument();
     });
 

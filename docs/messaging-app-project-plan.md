@@ -412,11 +412,34 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
   - [x] Conversation → 대화 목록/홈 복귀 경로
   - [x] Profile → 대화 목록/홈 복귀 경로
 - [ ] MVP 기본 UI / CSS
-  - Login / Register 폼
-  - 데스크톱 메시징 2-column layout
-  - ConversationList / ConversationPage / MessageList / MessageComposer
-  - User Search / Profile / loading / empty / error 상태
-  - 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
+  - [x] 스타일 기초 토큰 합의
+    - Tailwind CSS v4 + `@tailwindcss/vite` 유지
+    - 전역 `index.css`에서 `@theme` / `@theme inline`으로 디자인 토큰 정의
+    - primary palette: Forest Green (`primary-500 = #2e7d5a`)
+    - neutral palette: 거의 중성에 가까운 warm/green-gray scale
+    - semantic palette: `success → teal`, `danger → red`, `warning → amber`, `info → blue`
+    - typography: heading `Pretendard Variable`, body `SUIT Variable`
+    - 폰트 로딩: npm 패키지 설치 후 전역 CSS `@import`
+    - spacing / font-size / radius / shadow / breakpoint는 Tailwind 기본 scale 사용
+    - `prettier-plugin-tailwindcss` + `tailwindStylesheet: "./src/index.css"`로 Tailwind v4 custom theme class 정렬 지원
+  - [x] Login / Register 폼
+    - full-page `neutral-50` + centered weak card auth layout
+    - Login / Register heading, field, primary submit button, secondary link, danger error box 스타일 적용
+    - Login frontend validation을 backend 계약과 일치: `username 1~30`, `password 12~128`
+    - Register frontend validation을 backend 계약과 일치: `username trim 1~30`, `displayName trim 1~50`, `password 12~128`
+    - Register에 frontend-only `Confirm password` 추가, password mismatch validation 적용
+    - `confirmPassword`는 `registerUser` API payload에서 제외하고 기존 backend request 계약 유지
+    - Confirm password 추가로 깨진 기존 success / validation / API error test fixture와 helper 보완
+    - Login/Register에서 반복되는 긴 FormField wrapper/input Tailwind class는 auth 범위에서 상수로 정리하고, 별도 wrapper component 추출은 보류
+  - [ ] 데스크톱 메시징 2-column layout
+  - [ ] ConversationList / ConversationPage / MessageList / MessageComposer
+  - [ ] User Search / Profile / loading / empty / error 상태
+  - [ ] 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
+  - 스타일 작성 규칙
+    - 동일 목적이면 `space-x-*` / `space-y-*`보다 일반 CSS `gap`과 직접 대응되는 `flex/grid + gap-*`를 우선
+    - 한두 곳에서만 쓰는 class는 component에 직접 두고, 길고 반복되는 className부터 상수화
+    - 스타일 중복만을 이유로 React wrapper component를 성급하게 추가하지 않고, 사용 범위가 넓어질 때 다시 공통화 검토
+    - CSS/Tailwind 스타일 자체는 TDD 대상으로 보지 않고, validation / submit payload 같은 동작 계약 변경만 TDD로 처리
 - [ ] frontend + backend 실제 브라우저 smoke test
   - mock 없이 핵심 흐름을 처음부터 끝까지 실행
   - 테스트에서 드러나지 않는 CORS / cookie / routing / WebSocket integration 문제 확인
@@ -504,8 +527,12 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] `login.ts` / test — POST 계약, 401 user-facing error, generic HTTP error, transport passthrough, 성공 Response 반환 계약 분리
   - [x] `LoginPage.tsx` / test — validation / pending / mutation error / navigation 책임을 component observable behavior 중심으로 정리
   - [x] 로그인 성공 시 기존 pending `auth/me`를 cancel한 뒤 fresh `auth/me` 요청을 시작하도록 보완하고 race 회귀 테스트 추가
+  - [x] Login frontend validation을 backend 입력 제한과 일치시켜 과도한 username/password가 서버 400까지 가지 않도록 보완
   - [x] `registerUser.ts` / test — 201 성공, 409 username conflict, generic HTTP error, transport passthrough 계약 분리
   - [x] `RegisterPage.tsx` / test — validation / pending / 성공 navigation / user-facing fallback 책임 정리
+  - [x] Register frontend validation을 backend 입력 제한과 일치시키고 username/displayName trim 반영
+  - [x] Register `Confirm password` 추가 — mismatch validation은 frontend에서 처리하고 API payload에는 포함하지 않음
+  - [x] Confirm password 도입으로 영향을 받은 기존 registration test input/helper를 현재 form 계약에 맞게 보완
   - [x] `logout.ts` / test — 정확한 204 성공 계약, 실패 error 변환, transport passthrough, 성공 Response 반환 검증
   - [x] `LogoutButton.tsx` / test — pending / logout 실행 / cache clear + navigation / user-facing error / generic fallback 책임 보완
   - [x] 기존 `QueryErrorMessage`를 query/mutation 공통 `UserFacingErrorMessage`로 일반화하고 동일 error rendering 패턴에 적용
@@ -515,6 +542,14 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] 테스트 fixture / helper / lifecycle을 실제 사용 범위에 맞춰 `it` / nested `describe` / 최상위 suite scope로 재배치
   - [x] 반복 test utility 중 동일 책임만 `createTestQueryClient`, `createDeferred`, `jsonResponse`로 공통화
   - [x] WebSocket stub, render helper, interaction helper 등 의미가 다른 테스트 도구는 억지로 공통화하지 않음
+
+#### Frontend test cleanup TODO
+
+- [ ] 테스트 전반의 불필요한 optional chaining / `mock.calls` 직접 접근 정리
+  - 호출 자체가 계약이고 전체 인자 shape를 검증할 수 있으면 `toHaveBeenCalledWith` 등 의도가 직접 드러나는 matcher 우선 검토
+  - TanStack Query `mutationFn`처럼 라이브러리가 추가 context 인자를 전달하는 경우에는 `toHaveBeenCalledTimes(1)`로 호출을 먼저 보장한 뒤 `mock.calls[0]`의 필요한 인자만 구조분해해 검증하는 패턴을 허용
+  - `mock.calls[0]?.[0]`처럼 호출되지 않은 상태를 optional chaining으로 숨기는 표현은 점검하되, optional chaining이 실제 nullable/optional 상태를 표현하는 경우는 유지
+  - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
 
 #### Backend refactor TODO
 
@@ -552,13 +587,20 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - query/mutation/component/router 테스트의 책임 중복을 줄이고 semantic `describe`, fixture/helper scope, 공통 test utility를 정리했다.
   - 로그인 성공 후에는 기존 pending `auth/me`를 cancel하고 fresh 요청을 시작하도록 보완했다.
 - 사용자 검색에서 본인 제외는 frontend 필터링 대신 Backend refactor TODO로 유지한다.
-- **다음 작업은 MVP 기본 UI / CSS로 복귀한다.**
-  1. Login / Register 기본 폼 스타일
-  2. 데스크톱 메시징 2-column layout
-  3. ConversationList / ConversationPage / MessageList / MessageComposer 스타일
-  4. User Search / Profile / loading / empty / error 상태 스타일
-  5. 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
-- 최근 test scope / utility 구조 리팩토링 이후 전체 frontend 테스트 재실행 여부는 별도로 확인한다.
+- 스타일 기초 토큰과 Tailwind 작성 규칙을 합의했고 **Login / Register 기본 폼 UI를 완료했다.**
+  - weak card auth layout + Forest Green primary / custom neutral / semantic danger 적용
+  - Login/Register frontend validation을 backend 입력 계약과 맞춤
+  - Register에 frontend-only `Confirm password`와 mismatch validation 추가
+  - `confirmPassword`는 backend payload에 포함하지 않음
+  - 반복되는 auth FormField wrapper/input className은 상수화하고, 나머지는 과도한 공통화를 보류
+  - 동일 목적이면 `space-*`보다 `flex/grid + gap-*`를 우선
+- **다음 작업은 데스크톱 메시징 2-column layout이다.**
+  1. 대화 목록 영역과 채팅 상세 영역의 desktop shell / width / border / overflow 구조 결정
+  2. ConversationList / ConversationPage / MessageList / MessageComposer 스타일
+  3. User Search / Profile / loading / empty / error 상태 스타일
+  4. 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
+- Auth/Confirm password 변경 이후 전체 frontend 테스트 재실행 여부는 별도로 확인한다.
+- Frontend test cleanup TODO에서 불필요한 optional chaining / `mock.calls` 직접 접근 패턴을 추후 전체 점검한다.
 - CSS/UI 완료 후 frontend + backend 실제 브라우저 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 `이전 session pending mutation / refresh` race 방어는 Post-MVP hardening으로 유지한다.
