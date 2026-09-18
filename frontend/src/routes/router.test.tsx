@@ -130,6 +130,42 @@ describe("router", () => {
       expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
       expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
     });
+
+    it("renders a read-only user profile inside the protected messaging layout", async () => {
+      const targetProfile = {
+        username: "target-user",
+        displayName: "Target User",
+        bio: "Hello from the target profile.",
+        profileImage: null,
+      };
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
+        }
+
+        if (input === `/users/${targetProfile.username}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+
+      await renderRouterAt(`/users/${targetProfile.username}`);
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(`@${targetProfile.username}`)).toBeInTheDocument();
+      expect(screen.getByText(targetProfile.bio)).toBeInTheDocument();
+    });
   });
 
   describe("session lifecycle", () => {

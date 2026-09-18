@@ -7,6 +7,7 @@ import { jsonResponse } from "@/tests/jsonResponse.ts";
 import {
   USER_PROFILE_QUERY_ERROR_MESSAGE,
   type UserProfile,
+  UserProfileNotFoundError,
   userProfileQueryOptions,
 } from "./userProfileQuery.ts";
 
@@ -71,11 +72,11 @@ describe("userProfileQueryOptions", () => {
   );
 
   describe("errors", () => {
-    it("throws a user-facing error when the requested profile does not exist", async () => {
+    it("throws a profile-not-found error when the requested profile does not exist", async () => {
       vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 404 }));
       const result = queryClient.query(userProfileQueryOptions("missing-user"));
 
-      await expect(result).rejects.toBeInstanceOf(UserFacingError);
+      await expect(result).rejects.toBeInstanceOf(UserProfileNotFoundError);
       await expect(result).rejects.toThrow("Profile not found");
     });
 
