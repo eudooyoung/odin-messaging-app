@@ -1,16 +1,18 @@
 import type { CreateUserData, UpdateUserProfileInput } from "@/types/api.types";
 import { prisma } from "@/lib/prisma.js";
 
-export const createUser = ({ username, passwordHash, displayName }: CreateUserData) =>
+export const createUser = ({ username, handle, passwordHash, displayName }: CreateUserData) =>
   prisma.user.create({
     data: {
       username,
+      handle,
       passwordHash,
       displayName,
     },
     select: {
       id: true,
       username: true,
+      handle: true,
       displayName: true,
     },
   });

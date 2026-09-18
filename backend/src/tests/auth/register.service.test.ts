@@ -23,7 +23,7 @@ describe("registerService", () => {
     vi.resetAllMocks();
   });
 
-  it("hashes the password and creates a user", async () => {
+  it("generates an initial handle, hashes the password, and creates a user", async () => {
     const input = {
       username: "new-user",
       password: "secure-password",
@@ -32,6 +32,7 @@ describe("registerService", () => {
     const createdUser = {
       id: 1,
       username: input.username,
+      handle: "user_a1b2c3d4",
       displayName: input.displayName,
     };
 
@@ -39,6 +40,7 @@ describe("registerService", () => {
     vi.mocked(createUser).mockResolvedValue(createdUser);
 
     const result = await registerService(input);
+    const initialHandleMatcher: unknown = expect.stringMatching(/^user_[a-z0-9]{8}$/);
 
     expect(argon2.hash).toHaveBeenCalledWith(input.password, {
       type: argon2.argon2id,
@@ -46,6 +48,7 @@ describe("registerService", () => {
     expect(createUser).toHaveBeenCalledWith({
       username: input.username,
       passwordHash: "hashed-password",
+      handle: initialHandleMatcher,
       displayName: input.displayName,
     });
     expect(result).toBe(createdUser);

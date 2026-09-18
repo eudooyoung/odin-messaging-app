@@ -1,5 +1,5 @@
 import * as argon2 from "argon2";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { createUser, findUserById, findUserByUsername } from "@/repositories/user.repository.js";
 import type { LoginInput, RegisterInput } from "@/types/api.types";
@@ -27,10 +27,12 @@ export const registerService = async ({ username, password, displayName }: Regis
   const passwordHash = await argon2.hash(password, {
     type: argon2.argon2id,
   });
+  const handle = `user_${randomBytes(4).toString("hex")}`;
 
   try {
     return await createUser({
       username,
+      handle,
       passwordHash,
       displayName,
     });

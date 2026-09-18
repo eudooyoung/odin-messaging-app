@@ -1,6 +1,7 @@
 import request, { type Response } from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
+import { prisma } from "@/lib/prisma.js";
 import "@/tests/integration.setup.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import type { RegisterResponseBody } from "@/types/api.types.js";
@@ -8,7 +9,7 @@ import type { RegisterResponseBody } from "@/types/api.types.js";
 const getBody = <T>(res: Response) => res.body as T;
 
 describe("POST /auth/register", () => {
-  it("creates a user and returns the public user fields", async () => {
+  it("generates and persists an initial handle, then returns the public user fields", async () => {
     const registration = {
       username: "new-user",
       password: "secure-password",
@@ -21,14 +22,25 @@ describe("POST /auth/register", () => {
 
     const body = getBody<RegisterResponseBody>(res);
     expect(body.id).toBeTypeOf("number");
-    expect(body).toEqual(
-      expect.objectContaining({
-        username: registration.username,
-        displayName: registration.displayName,
-      }),
-    );
-    expect(body).not.toHaveProperty("password");
-    expect(body).not.toHaveProperty("passwordHash");
+    const initialHandleMatcher: unknown = expect.stringMatching(/^user_[a-z0-9]{8}$/);
+    expect(body).toEqual({
+      id: body.id,
+      username: registration.username,
+      handle: initialHandleMatcher,
+      displayName: registration.displayName,
+    });
+
+    const persistedUser = await prisma.user.findUnique({
+      where: { id: body.id },
+      select: {
+        id: true,
+        username: true,
+        handle: true,
+        displayName: true,
+      },
+    });
+
+    expect(body).toEqual(persistedUser);
   });
 
   it("returns 400 when the password is shorter than 12 characters", async () => {

@@ -7,11 +7,13 @@ export type RegisterInput = {
 export type RegisterResponseBody = {
   id: number;
   username: string;
+  handle: string;
   displayName: string;
 };
 
 export type CreateUserData = {
   username: string;
+  handle: string;
   passwordHash: string;
   displayName: string;
 };

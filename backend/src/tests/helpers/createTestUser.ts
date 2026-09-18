@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma.js";
 
 type CreateTestUserOverrides = Partial<{
   username: string;
+  handle: string;
   password: string;
   displayName: string;
   bio: string | null;
@@ -18,6 +19,9 @@ const defaultUser = {
 };
 
 let defaultPasswordHash: Promise<string> | undefined;
+let nextHandleId = 0;
+
+const createTestHandle = () => `user_${String(nextHandleId++).padStart(8, "0")}`;
 
 const hashPassword = (password: string) => {
   if (password !== defaultUser.password) {
@@ -30,7 +34,7 @@ const hashPassword = (password: string) => {
 };
 
 export const createTestUser = async (overrides: CreateTestUserOverrides = {}) => {
-  const { password, ...userData } = {
+  const { password, handle, ...userData } = {
     ...defaultUser,
     ...overrides,
   };
@@ -39,6 +43,7 @@ export const createTestUser = async (overrides: CreateTestUserOverrides = {}) =>
   return prisma.user.create({
     data: {
       ...userData,
+      handle: handle ?? createTestHandle(),
       passwordHash,
     },
   });
