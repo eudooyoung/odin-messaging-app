@@ -130,6 +130,42 @@ describe("router", () => {
       expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
       expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
     });
+
+    it("renders a read-only user profile inside the protected messaging layout", async () => {
+      const targetProfile = {
+        username: "target-user",
+        displayName: "Target User",
+        bio: "Hello from the target profile.",
+        profileImage: null,
+      };
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
+        }
+
+        if (input === `/users/${targetProfile.username}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+
+      await renderRouterAt(`/users/${targetProfile.username}`);
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(`@${targetProfile.username}`)).toBeInTheDocument();
+      expect(screen.getByText(targetProfile.bio)).toBeInTheDocument();
+    });
   });
 
   describe("session lifecycle", () => {
@@ -373,6 +409,10 @@ describe("router", () => {
         displayName: "Target User",
         profileImage: null,
       };
+      const targetProfile = {
+        ...targetUser,
+        bio: "Target user bio",
+      };
       const createdConversation = {
         id: 42,
         participants: [
@@ -418,6 +458,10 @@ describe("router", () => {
           return Promise.resolve(jsonResponse([targetUser]));
         }
 
+        if (input === `/users/${targetUser.username}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
         if (input === "/conversations") {
           return Promise.resolve(jsonResponse(createdConversation, 201));
         }
@@ -440,9 +484,107 @@ describe("router", () => {
       await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
       await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
 
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Message" }));
+
       expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
       expect(screen.getByText("No messages yet")).toBeInTheDocument();
+    });
+
+    it("navigates before the persistent conversation list refetch finishes and later refreshes the sidebar", async () => {
+      const targetUser = {
+        username: "target-user",
+        displayName: "Target User",
+        profileImage: null,
+      };
+      const targetProfile = {
+        ...targetUser,
+        bio: "Target user bio",
+      };
+      const createdConversation = {
+        id: 42,
+        participants: [
+          {
+            username: currentUser.username,
+            displayName: currentUser.displayName,
+            profileImage: null,
+          },
+          targetUser,
+        ],
+        createdAt: "2026-09-17T01:00:00.000Z",
+        lastActivityAt: "2026-09-17T01:00:00.000Z",
+      };
+      const refreshedConversationsPage = {
+        conversations: [
+          {
+            id: createdConversation.id,
+            otherUser: targetUser,
+            lastMessage: null,
+            lastActivityAt: createdConversation.lastActivityAt,
+          },
+        ],
+        nextCursor: null,
+      };
+      const pendingConversationListRefetch = createDeferred<Response>();
+      let conversationListRequestCount = 0;
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          conversationListRequestCount += 1;
+
+          return conversationListRequestCount === 1
+            ? Promise.resolve(jsonResponse(emptyConversationsPage))
+            : pendingConversationListRefetch.promise;
+        }
+
+        if (input === `/users/${targetUser.username}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
+        if (input === "/conversations") {
+          return Promise.resolve(jsonResponse(createdConversation, 201));
+        }
+
+        if (input === `/conversations/${createdConversation.id}`) {
+          return Promise.resolve(jsonResponse(createdConversation));
+        }
+
+        if (input === `/conversations/${createdConversation.id}/messages?limit=20`) {
+          return Promise.resolve(jsonResponse({ messages: [], nextCursor: null }));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt(`/users/${targetUser.username}`);
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Message" }));
+
+      await waitFor(() => {
+        expect(conversationListRequestCount).toBe(2);
+      });
+      expect(screen.getByText("No conversations yet")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(`/conversations/${createdConversation.id}`);
+      });
+      expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
+
+      act(() => {
+        pendingConversationListRefetch.resolve(jsonResponse(refreshedConversationsPage));
+      });
+
+      expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
     });
 
     it("updates and reorders the persistent conversation list after sending a message", async () => {

@@ -1,9 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
-import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
-import { createConversation } from "@/features/conversations/createConversation.ts";
 import { USERS_QUERY_ERROR_MESSAGE, usersQueryOptions } from "./usersQuery.ts";
 
 const USER_SEARCH_LISTBOX_ID = "user-search-results";
@@ -18,17 +16,6 @@ export function UserSearch() {
   const searchQuery = query.trim();
   const hasQuery = searchQuery.length > 0;
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const createConversationMutation = useMutation({
-    mutationFn: createConversation,
-    onSuccess: async (conversation) => {
-      await queryClient.invalidateQueries({
-        queryKey: conversationsQueryOptions.queryKey,
-        exact: true,
-      });
-      navigate(`/conversations/${conversation.id}`);
-    },
-  });
   const {
     data: users,
     isPending,
@@ -40,7 +27,6 @@ export function UserSearch() {
   });
   const hasUsers = !isPending && !isError && Boolean(users?.length);
   const showEmptyState = !isPending && !isError && users?.length === 0;
-  const isCreatingConversation = createConversationMutation.isPending;
   const activeOption = users?.[activeOptionIndex];
   const isListboxOpen = isDropdownOpen && hasUsers;
   const isSearchPanelOpen =
@@ -70,9 +56,9 @@ export function UserSearch() {
   }, [isDropdownOpen]);
 
   const selectUser = (username: string) => {
-    if (!isCreatingConversation) {
-      createConversationMutation.mutate(username);
-    }
+    setIsDropdownOpen(false);
+    setActiveOptionIndex(-1);
+    navigate(`/users/${encodeURIComponent(username)}`);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -155,8 +141,7 @@ export function UserSearch() {
                     <button
                       aria-label={`${user.displayName} @${user.username}`}
                       aria-selected={activeOptionIndex === index}
-                      className={`flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none focus-visible:ring-inset disabled:cursor-not-allowed disabled:text-neutral-400 ${activeOptionIndex === index ? "bg-neutral-100" : ""}`}
-                      disabled={isCreatingConversation}
+                      className={`flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none focus-visible:ring-inset ${activeOptionIndex === index ? "bg-neutral-100" : ""}`}
                       id={getUserSearchOptionId(index)}
                       ref={(option) => {
                         optionRefs.current[index] = option;
@@ -182,15 +167,6 @@ export function UserSearch() {
           </div>
         )}
       </div>
-
-      {createConversationMutation.isError && (
-        <p
-          className="rounded-md border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700"
-          role="alert"
-        >
-          {createConversationMutation.error.message}
-        </p>
-      )}
     </section>
   );
 }

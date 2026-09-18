@@ -4,6 +4,12 @@ import { UserFacingError } from "@/api/UserFacingError.ts";
 
 export const USER_PROFILE_QUERY_ERROR_MESSAGE = "Failed to load profile";
 
+export class UserProfileNotFoundError extends UserFacingError {
+  constructor() {
+    super("Profile not found");
+  }
+}
+
 export type UserProfile = {
   username: string;
   displayName: string;
@@ -20,7 +26,7 @@ export const userProfileQueryOptions = (username: string) =>
       });
 
       if (response.status === 404) {
-        throw new UserFacingError("Profile not found");
+        throw new UserProfileNotFoundError();
       }
 
       if (!response.ok) {

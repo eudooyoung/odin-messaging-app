@@ -1,10 +1,9 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { MemoryRouter, Outlet, Route, Routes, useLocation, useParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
-import { createConversation } from "@/features/conversations/createConversation.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { UserSearch } from "./UserSearch.tsx";
@@ -13,9 +12,26 @@ vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-vi.mock("@/features/conversations/createConversation.ts", () => ({
-  createConversation: vi.fn(),
-}));
+function UserProfileRoute() {
+  const { username } = useParams<{ username: string }>();
+  const { pathname } = useLocation();
+
+  return (
+    <>
+      <h1>Profile @{username}</h1>
+      <p>Current path: {pathname}</p>
+    </>
+  );
+}
+
+function PersistentUserSearchLayout() {
+  return (
+    <>
+      <UserSearch />
+      <Outlet />
+    </>
+  );
+}
 
 describe("UserSearch", () => {
   let queryClient: QueryClient;
@@ -38,8 +54,24 @@ describe("UserSearch", () => {
   const renderUserSearch = (queryClient: QueryClient) =>
     render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <UserSearch />
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<UserSearch />} />
+            <Route path="/users/:username" element={<UserProfileRoute />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+  const renderPersistentUserSearch = (queryClient: QueryClient) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<PersistentUserSearchLayout />}>
+              <Route path="users/:username" element={<UserProfileRoute />} />
+            </Route>
+          </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -166,7 +198,6 @@ describe("UserSearch", () => {
           ]),
         ),
       );
-      vi.mocked(createConversation).mockReturnValue(new Promise<never>(() => undefined));
       const user = userEvent.setup();
 
       renderUserSearch(queryClient);
@@ -196,8 +227,9 @@ describe("UserSearch", () => {
 
       await user.keyboard("{Enter}");
 
-      expect(createConversation).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(createConversation).mock.calls[0]?.[0]).toBe("second-user");
+      expect(
+        await screen.findByRole("heading", { name: "Profile @second-user" }),
+      ).toBeInTheDocument();
     });
 
     it("moves to the previous search result with ArrowUp and selects it with Enter", async () => {
@@ -217,7 +249,6 @@ describe("UserSearch", () => {
           ]),
         ),
       );
-      vi.mocked(createConversation).mockReturnValue(new Promise<never>(() => undefined));
       const user = userEvent.setup();
 
       renderUserSearch(queryClient);
@@ -237,8 +268,9 @@ describe("UserSearch", () => {
 
       await user.keyboard("{Enter}");
 
-      expect(createConversation).toHaveBeenCalledTimes(1);
-      expect(vi.mocked(createConversation).mock.calls[0]?.[0]).toBe("first-user");
+      expect(
+        await screen.findByRole("heading", { name: "Profile @first-user" }),
+      ).toBeInTheDocument();
     });
 
     it("closes the search results with Escape and reopens them from the first option", async () => {
@@ -367,106 +399,103 @@ describe("UserSearch", () => {
     });
   });
 
-  describe("conversation creation", () => {
+  describe("user selection", () => {
     const targetUser = {
       username: "target-user",
       displayName: "Target User",
       profileImage: null,
     };
 
-    it("opens the conversation returned after selecting a user", async () => {
+    it("opens the selected user's profile", async () => {
       vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
-      vi.mocked(createConversation).mockResolvedValue({
-        id: 42,
-        participants: [
-          {
-            username: "current-user",
-            displayName: "Current User",
-            profileImage: null,
-          },
-          targetUser,
-        ],
-        createdAt: "2026-09-07T01:00:00.000Z",
-        lastActivityAt: "2026-09-07T01:00:00.000Z",
-      });
-      const user = userEvent.setup();
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={["/"]}>
-            <Routes>
-              <Route path="/" element={<UserSearch />} />
-              <Route path="/conversations/42" element={<h1>Conversation 42</h1>} />
-            </Routes>
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-
-      await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
-      await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
-
-      expect(vi.mocked(createConversation).mock.calls[0]?.[0]).toBe("target-user");
-      expect(await screen.findByRole("heading", { name: "Conversation 42" })).toBeInTheDocument();
-    });
-
-    it("disables all users while the conversation mutation is pending", async () => {
-      vi.mocked(apiFetch).mockImplementation(() =>
-        Promise.resolve(
-          usersResponse([
-            targetUser,
-            {
-              username: "other-user",
-              displayName: "Other User",
-              profileImage: null,
-            },
-          ]),
-        ),
-      );
-      const pendingConversation = new Promise<never>(() => undefined);
-      vi.mocked(createConversation).mockReturnValue(pendingConversation);
       const user = userEvent.setup();
 
       renderUserSearch(queryClient);
 
       await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
-      const targetUserOption = await screen.findByRole("option", {
-        name: /Target User @target-user/,
-      });
-      const otherUserOption = screen.getByRole("option", {
-        name: /Other User @other-user/,
-      });
-
-      await user.click(targetUserOption);
-
-      await waitFor(() => {
-        expect(targetUserOption).toBeDisabled();
-        expect(otherUserOption).toBeDisabled();
-      });
-    });
-
-    it("shows the mutation error without navigating when opening a conversation fails", async () => {
-      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
-      const mutationError = new Error("Failed to create conversation");
-      vi.mocked(createConversation).mockRejectedValue(mutationError);
-      const user = userEvent.setup();
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={["/"]}>
-            <Routes>
-              <Route path="/" element={<UserSearch />} />
-              <Route path="/conversations/:conversationId" element={<h1>Conversation</h1>} />
-            </Routes>
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-
-      await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
       await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
 
-      expect(await screen.findByRole("alert")).toHaveTextContent(mutationError.message);
-      expect(screen.queryByRole("heading", { name: "Conversation" })).not.toBeInTheDocument();
-      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Profile @target-user" }),
+      ).toBeInTheDocument();
+    });
+
+    it("encodes the selected username in the route and restores it as the route param", async () => {
+      const escapedTargetUser = {
+        username: "target/user?#name",
+        displayName: "Escaped Target User",
+        profileImage: null,
+      };
+      vi.mocked(apiFetch).mockImplementation(() =>
+        Promise.resolve(usersResponse([escapedTargetUser])),
+      );
+      const user = userEvent.setup();
+
+      renderUserSearch(queryClient);
+
+      await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
+      await user.click(
+        await screen.findByRole("option", {
+          name: `Escaped Target User @${escapedTargetUser.username}`,
+        }),
+      );
+
+      expect(
+        await screen.findByRole("heading", {
+          name: `Profile @${escapedTargetUser.username}`,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Current path: /users/target%2Fuser%3F%23name")).toBeInTheDocument();
+    });
+
+    it("closes the dropdown and clears the active option after mouse selection in a persistent layout", async () => {
+      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
+      const user = userEvent.setup();
+
+      renderPersistentUserSearch(queryClient);
+
+      const combobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.type(combobox, "target");
+      const targetOption = await screen.findByRole("option", {
+        name: /Target User @target-user/,
+      });
+      await user.keyboard("{ArrowDown}");
+      expect(combobox).toHaveAttribute("aria-activedescendant", targetOption.id);
+
+      await user.click(targetOption);
+
+      expect(
+        await screen.findByRole("heading", { name: "Profile @target-user" }),
+      ).toBeInTheDocument();
+      expect(combobox).toBeInTheDocument();
+      expect(combobox).toHaveAttribute("aria-expanded", "false");
+      expect(combobox).not.toHaveAttribute("aria-activedescendant");
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+
+    it("closes the dropdown and clears the active option after keyboard selection in a persistent layout", async () => {
+      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
+      const user = userEvent.setup();
+
+      renderPersistentUserSearch(queryClient);
+
+      const combobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.type(combobox, "target");
+      const targetOption = await screen.findByRole("option", {
+        name: /Target User @target-user/,
+      });
+      await user.keyboard("{ArrowDown}");
+      expect(combobox).toHaveAttribute("aria-activedescendant", targetOption.id);
+
+      await user.keyboard("{Enter}");
+
+      expect(
+        await screen.findByRole("heading", { name: "Profile @target-user" }),
+      ).toBeInTheDocument();
+      expect(combobox).toBeInTheDocument();
+      expect(combobox).toHaveAttribute("aria-expanded", "false");
+      expect(combobox).not.toHaveAttribute("aria-activedescendant");
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     });
   });
 });
