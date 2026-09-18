@@ -5,10 +5,58 @@ import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx"
 import { USERS_QUERY_ERROR_MESSAGE, usersQueryOptions } from "./usersQuery.ts";
 
 const USER_SEARCH_LISTBOX_ID = "user-search-results";
+const RECENT_USERS_STORAGE_KEY = "messaging-app:recent-users";
+const MAX_RECENT_USERS = 5;
 const getUserSearchOptionId = (index: number) => `user-search-option-${index}`;
+
+type UserSearchOption = {
+  username: string;
+  displayName: string;
+  profileImage: string | null;
+};
+
+const isUserSearchOption = (value: unknown): value is UserSearchOption => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const user = value as Record<string, unknown>;
+
+  return (
+    typeof user.username === "string" &&
+    typeof user.displayName === "string" &&
+    (typeof user.profileImage === "string" || user.profileImage === null)
+  );
+};
+
+const loadRecentUsers = (): UserSearchOption[] => {
+  try {
+    const storedUsers = localStorage.getItem(RECENT_USERS_STORAGE_KEY);
+    if (!storedUsers) {
+      return [];
+    }
+
+    const parsedUsers: unknown = JSON.parse(storedUsers);
+
+    return Array.isArray(parsedUsers)
+      ? parsedUsers.filter(isUserSearchOption).slice(0, MAX_RECENT_USERS)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const storeRecentUsers = (users: UserSearchOption[]) => {
+  try {
+    localStorage.setItem(RECENT_USERS_STORAGE_KEY, JSON.stringify(users));
+  } catch {
+    return;
+  }
+};
 
 export function UserSearch() {
   const [query, setQuery] = useState("");
+  const [recentUsers, setRecentUsers] = useState<UserSearchOption[]>(loadRecentUsers);
   const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -27,10 +75,13 @@ export function UserSearch() {
   });
   const hasUsers = !isPending && !isError && Boolean(users?.length);
   const showEmptyState = !isPending && !isError && users?.length === 0;
-  const activeOption = users?.[activeOptionIndex];
-  const isListboxOpen = isDropdownOpen && hasUsers;
+  const visibleUsers = hasQuery ? users : recentUsers;
+  const hasVisibleUsers = hasQuery ? hasUsers : recentUsers.length > 0;
+  const activeOption = visibleUsers?.[activeOptionIndex];
+  const isListboxOpen = isDropdownOpen && hasVisibleUsers;
   const isSearchPanelOpen =
-    isDropdownOpen && hasQuery && (isPending || isError || showEmptyState || hasUsers);
+    isDropdownOpen &&
+    (hasQuery ? isPending || isError || showEmptyState || hasUsers : recentUsers.length > 0);
 
   useEffect(() => {
     optionRefs.current[activeOptionIndex]?.scrollIntoView({ block: "nearest" });
@@ -55,17 +106,24 @@ export function UserSearch() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [isDropdownOpen]);
 
-  const selectUser = (username: string) => {
+  const selectUser = (user: UserSearchOption) => {
+    const updatedRecentUsers = [
+      user,
+      ...recentUsers.filter((recentUser) => recentUser.username !== user.username),
+    ].slice(0, MAX_RECENT_USERS);
+
+    setRecentUsers(updatedRecentUsers);
+    storeRecentUsers(updatedRecentUsers);
     setIsDropdownOpen(false);
     setActiveOptionIndex(-1);
-    navigate(`/users/${encodeURIComponent(username)}`);
+    navigate(`/users/${encodeURIComponent(user.username)}`);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown" && users?.length) {
+    if (event.key === "ArrowDown" && visibleUsers?.length) {
       event.preventDefault();
       setIsDropdownOpen(true);
-      setActiveOptionIndex((currentIndex) => Math.min(currentIndex + 1, users.length - 1));
+      setActiveOptionIndex((currentIndex) => Math.min(currentIndex + 1, visibleUsers.length - 1));
       return;
     }
 
@@ -84,7 +142,7 @@ export function UserSearch() {
 
     if (event.key === "Enter" && activeOption) {
       event.preventDefault();
-      selectUser(activeOption.username);
+      selectUser(activeOption);
     }
   };
 
@@ -109,34 +167,37 @@ export function UserSearch() {
           onChange={(event) => {
             setQuery(event.target.value);
             setActiveOptionIndex(-1);
-            setIsDropdownOpen(event.target.value.trim().length > 0);
+            setIsDropdownOpen(event.target.value.trim().length > 0 || recentUsers.length > 0);
+          }}
+          onFocus={() => {
+            if (!hasQuery && recentUsers.length > 0) {
+              setIsDropdownOpen(true);
+            }
           }}
           onKeyDown={handleKeyDown}
         />
 
         {isSearchPanelOpen && (
           <div className="absolute top-full right-0 left-0 z-20 mt-2 max-h-60 overflow-y-auto rounded-md border border-neutral-200 bg-white shadow-lg">
-            {isPending && (
+            {hasQuery && isPending && (
               <p className="px-3 py-2 text-sm text-neutral-500" role="status">
                 Searching users...
               </p>
             )}
 
-            {isError && (
+            {hasQuery && isError && (
               <div className="bg-danger-50 px-3 py-2 text-sm text-danger-700 [&>p]:m-0">
                 <UserFacingErrorMessage error={error} fallbackMessage={USERS_QUERY_ERROR_MESSAGE} />
               </div>
             )}
 
-            {showEmptyState && <p className="px-3 py-2 text-sm text-neutral-500">No users found</p>}
+            {hasQuery && showEmptyState && (
+              <p className="px-3 py-2 text-sm text-neutral-500">No users found</p>
+            )}
 
             {isListboxOpen && (
-              <ul
-                className="divide-y divide-neutral-200"
-                id={USER_SEARCH_LISTBOX_ID}
-                role="listbox"
-              >
-                {users?.map((user, index) => (
+              <ul id={USER_SEARCH_LISTBOX_ID} role="listbox">
+                {visibleUsers?.map((user, index) => (
                   <li key={user.username} role="presentation">
                     <button
                       aria-label={`${user.displayName} @${user.username}`}
@@ -149,7 +210,7 @@ export function UserSearch() {
                       role="option"
                       tabIndex={-1}
                       type="button"
-                      onClick={() => selectUser(user.username)}
+                      onClick={() => selectUser(user)}
                     >
                       <span
                         className={`min-w-0 truncate text-sm font-medium transition-colors ${activeOptionIndex === index ? "text-primary-600" : "text-neutral-900"}`}
