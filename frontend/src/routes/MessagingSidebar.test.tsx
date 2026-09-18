@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import { MessagingLayout } from "./MessagingLayout.tsx";
+import { MessagingSidebar } from "./MessagingSidebar.tsx";
 
 vi.mock("@/features/auth/LogoutButton.tsx", () => ({
   LogoutButton: () => <button type="button">Log out</button>,
@@ -16,13 +16,13 @@ vi.mock("@/features/users/UserSearch.tsx", () => ({
   UserSearch: () => <input aria-label="Search users" type="search" />,
 }));
 
-describe("MessagingLayout", () => {
+describe("MessagingSidebar", () => {
   it("collapses and expands the desktop sidebar", async () => {
     const user = userEvent.setup();
 
     render(
       <MemoryRouter>
-        <MessagingLayout />
+        <MessagingSidebar />
       </MemoryRouter>,
     );
 
