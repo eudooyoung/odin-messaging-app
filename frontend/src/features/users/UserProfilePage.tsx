@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
 import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
@@ -52,6 +52,9 @@ export function UserProfilePage() {
 
   return (
     <main>
+      <Link aria-label="Close profile" to="/">
+        ←
+      </Link>
       {profile.profileImage && (
         <img src={profile.profileImage} alt={`${profile.displayName} profile`} />
       )}

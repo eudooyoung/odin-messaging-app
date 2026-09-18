@@ -41,14 +41,19 @@ function ConversationRoute() {
   return <h1>Conversation {conversationId}</h1>;
 }
 
-const renderUserProfilePage = (username: string) =>
+const renderUserProfilePage = (
+  username: string,
+  initialEntries = [`/users/${username}`],
+) =>
   render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/users/${username}`]}>
+      <MemoryRouter initialEntries={initialEntries}>
         <Routes>
           <Route path="/users/:username" element={<UserProfilePage />} />
           <Route path="/conversations/:conversationId" element={<ConversationRoute />} />
           <Route path="/profile" element={<h1>Edit profile</h1>} />
+          <Route path="/" element={<h1>Messages</h1>} />
+          <Route path="/previous" element={<h1>Previous page</h1>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -103,6 +108,23 @@ describe("UserProfilePage", () => {
       expect(screen.getByRole("img")).toHaveAttribute("src", profile.profileImage);
       expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Save profile" })).not.toBeInTheDocument();
+    });
+
+    it("navigates explicitly to messages from a read-only profile", async () => {
+      const profile = {
+        username: "profile-user",
+        displayName: "Profile User",
+        bio: "Hello, I'm a profile user.",
+        profileImage: null,
+      } satisfies UserProfile;
+      vi.mocked(apiFetch).mockResolvedValue(jsonResponse(profile));
+      const user = userEvent.setup();
+
+      renderUserProfilePage(profile.username, ["/previous", `/users/${profile.username}`]);
+
+      await user.click(await screen.findByRole("link", { name: "Close profile" }));
+
+      expect(await screen.findByRole("heading", { name: "Messages" })).toBeInTheDocument();
     });
 
     it("shows the current user's profile without a Message button or redirecting to edit", async () => {
