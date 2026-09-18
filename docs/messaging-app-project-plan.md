@@ -85,8 +85,9 @@
 
 - `username` 또는 `displayName`으로 검색
 - 결과에 `displayName + @username` 표시
-- 기존 대화가 있으면 해당 대화 열기
-- 없으면 새 1:1 대화 생성 후 열기
+- 검색 결과 선택 시 `/users/:username`의 read-only 사용자 프로필로 이동
+- 다른 사용자의 프로필에서 `Message`를 선택하면 기존 1:1 대화를 재사용하거나 새 대화를 생성한 뒤 채팅으로 이동
+- 현재 로그인 사용자의 read-only 프로필에서는 `Message`를 표시하지 않고, 본인 프로필 편집은 기존 `/profile`에서 처리
 
 ### 채팅 화면
 
@@ -101,12 +102,15 @@
 
 ### 프로필
 
-- 프로필 이미지
-- `displayName`
-- `@username`
-- `bio`
-- 수정 가능: 프로필 이미지, `displayName`, `bio`
-- `username`은 수정 불가
+- 다른 사용자: `/users/:username`에서 read-only 프로필 표시
+  - 프로필 이미지
+  - `displayName`
+  - `@username`
+  - `bio`
+  - 다른 사용자에게 `Message` 진입점 제공
+- 현재 사용자: `/profile`에서 편집
+  - 수정 가능: 프로필 이미지, `displayName`, `bio`
+  - `username`은 수정 불가
 
 ## 3. 데이터 모델 + API 설계
 
@@ -353,7 +357,17 @@
   - [x] Auth MVP audit 완료 — MVP blocker 없음
 - [x] User Search
   - [x] 검색 query와 주요 상태
-  - [x] 사용자 선택 → conversation 생성/재사용 → 이동
+  - [x] 사용자 선택 → `/users/:username` read-only profile 이동
+- [x] User Profile / Conversation 시작 흐름
+  - [x] `UserProfilePage` read-only profile 조회 / loading / 404 / generic error
+  - [x] `UserProfileNotFoundError`로 profile 404 상태 구분
+  - [x] 다른 사용자 profile의 `Message` → conversation 생성/재사용 → 이동
+  - [x] Message mutation success / pending / error 상태
+  - [x] 현재 사용자 자신의 read-only profile에서는 `Message` 숨김
+  - [x] conversation 생성 성공 시 목록 invalidate를 시작하되 refetch 완료를 기다리지 않고 즉시 navigation
+  - [x] `/users/:username`을 `MessagingLayout` child protected route로 연결
+  - [x] 검색 → profile → Message → conversation → persistent sidebar 갱신 router integration
+  - [x] 기능 audit / re-audit 완료 — 필수 blocker 없음
 - [x] Conversation
   - [x] 목록 infinite query + pagination
   - [x] 목록 loading / empty / error / next-page 상태
@@ -401,7 +415,7 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
   - [x] 비로그인 → Login
   - [x] Login ↔ Register 이동 확인 및 양방향 navigation 보완
   - [x] 회원가입 → 로그인 → 홈
-  - [x] 사용자 검색 → conversation 생성/재사용 → 채팅 진입
+  - [x] 사용자 검색 → read-only profile → `Message` → conversation 생성/재사용 → 채팅 진입
   - [x] 메시지 조회 / 전송 / 실시간 수신
   - [x] 메시지 UI 표시 순서 수정 — 오래된 메시지 위 / 최신 메시지 아래
   - [x] `Load older messages`를 과거 메시지 방향에 맞게 목록 상단으로 이동
@@ -452,7 +466,10 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
     - [x] combobox / listbox / option semantic 구조와 `aria-activedescendant` 적용
     - [x] keyboard navigation: ArrowDown / ArrowUp / Enter / Escape
     - [x] keyboard active option과 mouse hover의 시각적 강조 정리
-    - [ ] 결과가 dropdown viewport를 벗어날 때 active option 자동 스크롤
+    - [x] 결과가 dropdown viewport를 벗어날 때 active option 자동 스크롤
+    - [x] UserSearch 외부 click 시 dropdown close
+    - [x] 결과 선택 후 persistent layout에서도 dropdown close + active option reset
+    - [x] reserved-character username의 UserSearch → profile route encode/decode 경계 보완
     - [ ] Profile 및 남은 loading / empty / error 상태 시각 정리
   - [ ] 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
 - [ ] frontend + backend 실제 브라우저 smoke test
@@ -523,12 +540,20 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
     - pending fetch 완료 후 message 재적용과 initial fetch error recovery refetch 테스트 보완
     - cache clear 후 stale async sync가 이전 사용자 cache를 되살리지 않는 lifecycle 방어 유지
     - test를 basic cache sync / ordering / fetch-recovery lifecycle 기준으로 정리
-- [x] User Search / Conversation 생성 흐름 manual audit
+- [x] User Search / read-only Profile / Conversation 시작 흐름 manual audit
   - [x] `usersQuery.ts` / test — queryKey, URL query encoding, signal, 400/generic HTTP error, transport passthrough 정리
   - [x] `UserSearch.tsx` / test — trim된 검색값과 원본 input 분리, whitespace-only query 비활성화
-  - [x] conversation mutation pending 동안 전체 사용자 버튼 disabled로 중복 생성/navigation race 방지
-  - [x] search / conversation creation 기준 semantic test 구획과 fixture 중복 정리
-  - [x] `createConversation.ts` / test — 200/201 success, 400/404 status-specific error, generic HTTP error, transport passthrough 정리
+  - [x] 사용자 선택 책임을 conversation 생성에서 encoded `/users/:username` navigation으로 변경
+  - [x] mouse click / Enter 선택 시 persistent layout에서도 dropdown close + active option reset
+  - [x] auto-scroll / click-outside / reserved-character route 경계 회귀 테스트 보완
+  - [x] `UserProfilePage` — read-only profile loading / success / 404 / generic error 상태
+  - [x] `UserProfileNotFoundError extends UserFacingError`로 profile 404를 type-safe하게 구분
+  - [x] 다른 사용자 profile의 Message mutation success / pending / error, 중복 mutation 방지
+  - [x] 현재 사용자 profile에서는 Message 숨김, `/profile` 자동 redirect는 하지 않음
+  - [x] conversation 생성 성공 시 conversations query exact invalidate를 시작하되 refetch 완료는 navigation의 선행조건으로 두지 않음
+  - [x] 검색 → profile → Message → conversation → sidebar 갱신 router integration 및 delayed-refetch lifecycle 테스트 보완
+  - [x] `createConversation.ts` / test — 200/201 success, 400/404 status-specific error, generic HTTP error, transport passthrough 유지
+  - [x] 최종 re-audit 완료 — 필수 frontend blocker 없음
 - [x] Profile query / mutation / page 흐름 manual audit
   - [x] `userProfileQuery.ts` / test — queryKey, username path encoding, signal, 404/generic HTTP error, transport passthrough 정리
   - [x] `updateUserProfile.ts` / test — PATCH 계약, 400/generic HTTP error, transport passthrough 정리
@@ -558,7 +583,8 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] 반복 test utility 중 동일 책임만 `createTestQueryClient`, `createDeferred`, `jsonResponse`로 공통화
   - [x] WebSocket stub, render helper, interaction helper 등 의미가 다른 테스트 도구는 억지로 공통화하지 않음
 - [x] Messaging layout 전환 후 persistent ConversationList cache 갱신 보완
-  - [x] UserSearch에서 conversation 생성/재사용 성공 후 `conversationsQueryOptions.queryKey`를 exact invalidate하여 새 대화가 sidebar에 즉시 반영되도록 수정
+  - [x] `UserProfilePage`에서 conversation 생성/재사용 성공 후 `conversationsQueryOptions.queryKey`를 exact invalidate
+  - [x] conversation 목록 refetch 완료를 기다리지 않고 conversation으로 이동하며 active refetch는 persistent sidebar에서 계속 유지
   - [x] 메시지 송신 REST 성공과 WebSocket `message.created` 수신이 공통으로 거치는 `syncMessagesToCache` 이후 conversation 목록을 exact invalidate
   - [x] sidebar의 `lastMessage`, `lastActivityAt`, 정렬 순서가 송신/수신 직후 서버 기준으로 갱신되는 router integration 회귀 테스트 추가
   - [ ] WebSocket reconnect/open에서 놓친 message를 REST로 복구한 뒤 conversation 목록까지 함께 복구하는 흐름은 후속 TODO로 유지
@@ -574,12 +600,14 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - 호출 자체가 계약이고 전체 인자 shape를 검증할 수 있으면 `toHaveBeenCalledWith` 등 의도가 직접 드러나는 matcher 우선 검토
   - TanStack Query `mutationFn`처럼 라이브러리가 추가 context 인자를 전달하는 경우에는 `toHaveBeenCalledTimes(1)`로 호출을 먼저 보장한 뒤 `mock.calls[0]`의 필요한 인자만 구조분해해 검증하는 패턴을 허용
   - `mock.calls[0]?.[0]`처럼 호출되지 않은 상태를 optional chaining으로 숨기는 표현은 점검하되, optional chaining이 실제 nullable/optional 상태를 표현하는 경우는 유지
+  - 신규 frontend 테스트에서는 호출 횟수를 먼저 보장한 뒤 optional chaining 없이 필요한 인자만 검증하도록 `frontend/AGENTS.md`에 규칙 반영 완료
   - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
 
 #### Product / Frontend behavior TODO
 
 - [ ] 메시지가 없는 Conversation을 대화 목록에서 제외
-  - 현재 `사용자 선택 → Conversation 생성/재사용 → 채팅 진입` 흐름은 우선 유지
+  - 현재는 UserSearch 선택만으로 conversation을 만들지 않고, `UserProfilePage`의 `Message`에서 Conversation 생성/재사용 후 채팅으로 진입
+  - 따라서 우발적인 빈 Conversation 생성은 줄었지만, Message 진입 후 실제 메시지를 보내지 않으면 빈 Conversation은 여전히 남을 수 있음
   - MVP 후보는 Prisma schema 변경 없이 `GET /conversations` 조회 단계에서 message가 하나 이상 있는 conversation만 반환하는 방식
   - 빈 Conversation 자동 삭제나 첫 메시지 전송 시 Conversation을 생성하는 재설계는 변경 범위가 커서 우선 보류
 
@@ -592,8 +620,15 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 
 - [ ] 사용자 검색에서 현재 로그인 사용자 제외
   - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
+  - 현재 frontend는 자기 자신의 read-only profile에서 `Message`를 숨기지만 검색 결과 자체는 유지
   - `POST /conversations`의 자기 자신과 대화 시작 방지 검증은 그대로 유지
   - backend 적용 시 frontend의 별도 본인 필터링은 두지 않음
+
+- [ ] 동일 participant pair의 concurrent Conversation 생성 hardening
+  - 현재 `POST /conversations`는 기존 conversation 조회 후 없으면 생성하는 `find → create` 흐름
+  - participant pair에 DB-level unique 제약이 없어 여러 탭/동시 요청에서는 중복 conversation 생성 가능성이 있음
+  - frontend의 Message pending 방지는 같은 화면의 중복 클릭만 막으므로 서버 불변조건을 보장하지는 않음
+  - 현재 사용자 흐름의 blocker는 아니며, DB 모델/transaction/unique 전략을 별도 backend 작업으로 검토
 
 #### 배포 전 확인
 
@@ -611,26 +646,33 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 ### 작업 방식
 
 - 공통 개발 흐름, TDD, 테스트, 리팩토링 규칙은 루트 `AGENTS.md`와 `frontend/AGENTS.md` / `backend/AGENTS.md`를 기준으로 한다.
+- Graft repo context graph를 도입했으며, 코드 탐색 시 루트 `AGENTS.md`의 Graft 지침을 따른다. `graft/`는 재생성 가능한 로컬 cache이며 Graft의 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값이 아닌 참고 추정치로 본다.
 - 이 문서는 현재 구현 상태, 프로젝트별 결정, TODO, 다음 작업 순서를 기록한다.
 - GPT 세션 교체 전 이 문서의 진행상황과 다음 시작점을 최신화한다.
 
 ### 다음 시작점
 
 - Backend / Frontend 핵심 기능 구현, 기능 단위 audit, frontend manual audit은 완료 상태다.
+- UserSearch → read-only UserProfilePage → Message → Conversation 흐름을 구현하고 최종 re-audit까지 완료했다.
+  - 검색 결과 mouse click / Enter → encoded `/users/:username`
+  - `/users/:username`은 `ProtectedRoute → MessagingLayout` 아래에서 sidebar를 유지
+  - profile loading / success / 404 / generic error 처리
+  - 다른 사용자 profile의 Message success / pending / error 및 중복 mutation 방지
+  - 현재 사용자 자신의 read-only profile에서는 Message 숨김, 편집은 기존 `/profile`
+  - conversation 생성 성공 시 sidebar conversations query exact invalidate를 시작하되 refetch를 await하지 않고 즉시 navigation
+  - persistent layout에서 검색 결과 선택 후 dropdown close + active option reset
+  - reserved-character username route encode/decode 경계 테스트 완료
+  - 기능 audit / re-audit 결과 필수 frontend blocker 없음
 - Auth 기본 UI와 desktop messaging 2-column shell에 이어 **desktop sidebar / ConversationList 스타일링까지 완료**했다.
   - ConversationList item layout / truncate / selected state / `No messages yet` placeholder / focus-visible 보완 완료
   - `MessagingLayout` sidebar collapse / expand, width transition, header, scrollable list, Profile·Logout navigation 스타일 완료
+  - UserSearch overlay / keyboard navigation / auto-scroll / click-outside / selection close 동작 완료
   - 앱 이름 / 로고 branding은 기능 UI 완료 후 별도 TODO로 보류
-- UserSearch는 overlay dropdown과 keyboard interaction을 보완했다.
-  - combobox / listbox / option semantics + `aria-activedescendant`
-  - ArrowDown / ArrowUp / Enter / Escape GREEN 확인
-  - keyboard active option visual state와 overlay dropdown 적용 완료
-  - **다음 시작점: 결과가 dropdown viewport를 벗어날 때 active option 자동 스크롤을 TDD로 보완**
-- UserSearch 자동 스크롤과 sidebar 최종 눈검사를 끝낸 뒤 다음 순서로 UI를 진행한다.
+- **다음 UI 시작점:** sidebar 전체를 최종 눈검사하고, 필요하면 `MessagingLayout`의 sidebar 책임을 `MessagingSidebar`로 분리하는 작은 리팩토링 여부를 결정한 뒤 다음 순서로 진행한다.
   1. ConversationPage header
   2. MessageList bubble / 시간 / loading·empty·pagination 상태
   3. MessageComposer 입력 / Send 영역
-  4. Profile 및 남은 loading / empty / error 상태 스타일
+  4. Profile / UserProfilePage 및 남은 loading / empty / error 상태 스타일
   5. 모바일 대화 목록 ↔ 채팅 화면 기본 responsive 처리
 - `router.test.tsx` app integration API mock 중복은 재검토 결과 현재 직접 path `if` 분기를 유지하기로 결정했고 추가 리팩토링은 하지 않았다.
 - 후속 TODO:
@@ -638,10 +680,10 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - WebSocket reconnect/open gap recovery가 message query뿐 아니라 conversation 목록도 갱신하도록 보완
   - 1:1 대화 나가기 / 내 히스토리 지우기 semantics 및 participant state 모델 검토
   - 사용자 검색에서 현재 로그인 사용자 제외는 backend TODO 유지
+  - concurrent `POST /conversations`에서 동일 participant pair 중복 생성을 막는 backend hardening 검토
 - CSS/UI 완료 후 frontend + backend 실제 브라우저 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 `이전 session pending mutation / refresh` race 방어는 Post-MVP hardening으로 유지한다.
-
 
 ## 6. 배포 / 인증 쿠키 정책
 

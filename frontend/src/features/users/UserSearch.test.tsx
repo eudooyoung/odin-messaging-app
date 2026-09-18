@@ -1,7 +1,7 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useParams } from "react-router";
+import { MemoryRouter, Outlet, Route, Routes, useLocation, useParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
@@ -14,8 +14,23 @@ vi.mock("@/api/apiFetch.ts", () => ({
 
 function UserProfileRoute() {
   const { username } = useParams<{ username: string }>();
+  const { pathname } = useLocation();
 
-  return <h1>Profile @{username}</h1>;
+  return (
+    <>
+      <h1>Profile @{username}</h1>
+      <p>Current path: {pathname}</p>
+    </>
+  );
+}
+
+function PersistentUserSearchLayout() {
+  return (
+    <>
+      <UserSearch />
+      <Outlet />
+    </>
+  );
 }
 
 describe("UserSearch", () => {
@@ -43,6 +58,19 @@ describe("UserSearch", () => {
           <Routes>
             <Route path="/" element={<UserSearch />} />
             <Route path="/users/:username" element={<UserProfileRoute />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+  const renderPersistentUserSearch = (queryClient: QueryClient) =>
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<PersistentUserSearchLayout />}>
+              <Route path="users/:username" element={<UserProfileRoute />} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
@@ -390,6 +418,84 @@ describe("UserSearch", () => {
       expect(
         await screen.findByRole("heading", { name: "Profile @target-user" }),
       ).toBeInTheDocument();
+    });
+
+    it("encodes the selected username in the route and restores it as the route param", async () => {
+      const escapedTargetUser = {
+        username: "target/user?#name",
+        displayName: "Escaped Target User",
+        profileImage: null,
+      };
+      vi.mocked(apiFetch).mockImplementation(() =>
+        Promise.resolve(usersResponse([escapedTargetUser])),
+      );
+      const user = userEvent.setup();
+
+      renderUserSearch(queryClient);
+
+      await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
+      await user.click(
+        await screen.findByRole("option", {
+          name: `Escaped Target User @${escapedTargetUser.username}`,
+        }),
+      );
+
+      expect(
+        await screen.findByRole("heading", {
+          name: `Profile @${escapedTargetUser.username}`,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Current path: /users/target%2Fuser%3F%23name")).toBeInTheDocument();
+    });
+
+    it("closes the dropdown and clears the active option after mouse selection in a persistent layout", async () => {
+      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
+      const user = userEvent.setup();
+
+      renderPersistentUserSearch(queryClient);
+
+      const combobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.type(combobox, "target");
+      const targetOption = await screen.findByRole("option", {
+        name: /Target User @target-user/,
+      });
+      await user.keyboard("{ArrowDown}");
+      expect(combobox).toHaveAttribute("aria-activedescendant", targetOption.id);
+
+      await user.click(targetOption);
+
+      expect(
+        await screen.findByRole("heading", { name: "Profile @target-user" }),
+      ).toBeInTheDocument();
+      expect(combobox).toBeInTheDocument();
+      expect(combobox).toHaveAttribute("aria-expanded", "false");
+      expect(combobox).not.toHaveAttribute("aria-activedescendant");
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+
+    it("closes the dropdown and clears the active option after keyboard selection in a persistent layout", async () => {
+      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
+      const user = userEvent.setup();
+
+      renderPersistentUserSearch(queryClient);
+
+      const combobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.type(combobox, "target");
+      const targetOption = await screen.findByRole("option", {
+        name: /Target User @target-user/,
+      });
+      await user.keyboard("{ArrowDown}");
+      expect(combobox).toHaveAttribute("aria-activedescendant", targetOption.id);
+
+      await user.keyboard("{Enter}");
+
+      expect(
+        await screen.findByRole("heading", { name: "Profile @target-user" }),
+      ).toBeInTheDocument();
+      expect(combobox).toBeInTheDocument();
+      expect(combobox).toHaveAttribute("aria-expanded", "false");
+      expect(combobox).not.toHaveAttribute("aria-activedescendant");
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     });
   });
 });

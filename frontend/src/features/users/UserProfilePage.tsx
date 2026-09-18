@@ -21,8 +21,8 @@ export function UserProfilePage() {
   });
   const createConversationMutation = useMutation({
     mutationFn: createConversation,
-    onSuccess: async (conversation) => {
-      await queryClient.invalidateQueries({
+    onSuccess: (conversation) => {
+      void queryClient.invalidateQueries({
         queryKey: conversationsQueryOptions.queryKey,
         exact: true,
       });

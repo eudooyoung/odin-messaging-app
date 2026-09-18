@@ -55,7 +55,11 @@ export function UserSearch() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [isDropdownOpen]);
 
-  const selectUser = (username: string) => navigate(`/users/${encodeURIComponent(username)}`);
+  const selectUser = (username: string) => {
+    setIsDropdownOpen(false);
+    setActiveOptionIndex(-1);
+    navigate(`/users/${encodeURIComponent(username)}`);
+  };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown" && users?.length) {
