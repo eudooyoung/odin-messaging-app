@@ -409,6 +409,10 @@ describe("router", () => {
         displayName: "Target User",
         profileImage: null,
       };
+      const targetProfile = {
+        ...targetUser,
+        bio: "Target user bio",
+      };
       const createdConversation = {
         id: 42,
         participants: [
@@ -454,6 +458,10 @@ describe("router", () => {
           return Promise.resolve(jsonResponse([targetUser]));
         }
 
+        if (input === `/users/${targetUser.username}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
         if (input === "/conversations") {
           return Promise.resolve(jsonResponse(createdConversation, 201));
         }
@@ -475,6 +483,11 @@ describe("router", () => {
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
       await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
       await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
+
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Message" }));
 
       expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();

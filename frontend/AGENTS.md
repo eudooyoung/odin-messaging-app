@@ -99,6 +99,7 @@ Frontend audit에서는 특히 다음을 확인한다.
 - fixture와 helper는 반복을 줄이되 테스트에서 중요한 값과 상태 차이를 숨기지 않는다.
 - Response 생성 같은 반복 boilerplate는 작은 test helper로 줄일 수 있다.
 - TanStack Query `mutationFn` mock은 라이브러리 context 인자를 추가로 받을 수 있다. 테스트 계약이 variables 인자만이라면 전체 호출 인자를 고정하지 말고 호출 횟수를 먼저 보장한 뒤 필요한 인자만 검증한다.
+- 호출 횟수를 먼저 보장한 경우 `mock.calls[0]?.[0]`처럼 optional chaining으로 호출 부재를 숨기지 않는다. 필요한 호출이 존재함을 명시적으로 보장한 뒤 해당 호출의 필요한 인자만 구조분해해 검증한다.
 - 테스트 파일에서 대부분의 테스트가 하나의 `QueryClient`를 생성하고 마지막에 `clear()`하는 패턴을 반복하면, 파일 단위 `beforeEach`에서 새 client를 생성하고 `afterEach`에서 `clear()`하는 lifecycle로 통합한다.
 - 여러 `QueryClient`가 필요하거나 특정 옵션/생성 시점/instance identity가 테스트 의미에 중요하거나 `clear()` 자체가 assertion 시나리오의 일부인 경우에는 local lifecycle을 유지한다.
 - WebSocket 등 test stub은 현재 테스트가 사용하는 API만 구현한다.

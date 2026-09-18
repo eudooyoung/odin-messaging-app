@@ -4,17 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
-import { createConversation } from "@/features/conversations/createConversation.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { UserSearch } from "./UserSearch.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
-}));
-
-vi.mock("@/features/conversations/createConversation.ts", () => ({
-  createConversation: vi.fn(),
 }));
 
 function UserProfileRoute() {
@@ -175,7 +170,6 @@ describe("UserSearch", () => {
           ]),
         ),
       );
-      vi.mocked(createConversation).mockReturnValue(new Promise<never>(() => undefined));
       const user = userEvent.setup();
 
       renderUserSearch(queryClient);
@@ -205,7 +199,6 @@ describe("UserSearch", () => {
 
       await user.keyboard("{Enter}");
 
-      expect(createConversation).not.toHaveBeenCalled();
       expect(
         await screen.findByRole("heading", { name: "Profile @second-user" }),
       ).toBeInTheDocument();
@@ -228,7 +221,6 @@ describe("UserSearch", () => {
           ]),
         ),
       );
-      vi.mocked(createConversation).mockReturnValue(new Promise<never>(() => undefined));
       const user = userEvent.setup();
 
       renderUserSearch(queryClient);
@@ -248,7 +240,6 @@ describe("UserSearch", () => {
 
       await user.keyboard("{Enter}");
 
-      expect(createConversation).not.toHaveBeenCalled();
       expect(
         await screen.findByRole("heading", { name: "Profile @first-user" }),
       ).toBeInTheDocument();
@@ -387,9 +378,8 @@ describe("UserSearch", () => {
       profileImage: null,
     };
 
-    it("opens the selected user's profile without creating a conversation", async () => {
+    it("opens the selected user's profile", async () => {
       vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse([targetUser])));
-      vi.mocked(createConversation).mockReturnValue(new Promise<never>(() => undefined));
       const user = userEvent.setup();
 
       renderUserSearch(queryClient);
@@ -397,7 +387,6 @@ describe("UserSearch", () => {
       await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
       await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
 
-      expect(createConversation).not.toHaveBeenCalled();
       expect(
         await screen.findByRole("heading", { name: "Profile @target-user" }),
       ).toBeInTheDocument();
