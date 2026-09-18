@@ -44,7 +44,16 @@ describe("ConversationPage", () => {
       displayName: "Current User",
     };
 
-    const defaultConversation = {
+    const defaultConversation: {
+      id: number;
+      participants: {
+        username: string;
+        displayName: string;
+        profileImage: string | null;
+      }[];
+      createdAt: string;
+      lastActivityAt: string;
+    } = {
       id: 42,
       participants: [
         {
@@ -99,18 +108,20 @@ describe("ConversationPage", () => {
       });
     };
 
-    it("shows a link back to conversations and navigates home when clicked", async () => {
+    it("shows a close icon that navigates home when clicked", async () => {
       arrangeConversationPageRequests();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
       renderConversationPage(queryClient);
 
-      const backLink = await screen.findByRole("link", {
-        name: "Back to conversations",
+      const closeLink = await screen.findByRole("link", {
+        name: "Close conversation",
       });
+      expect(closeLink).toHaveTextContent("←");
+      expect(screen.queryByText("Back to conversations")).not.toBeInTheDocument();
 
-      await user.click(backLink);
+      await user.click(closeLink);
 
       expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
     });
@@ -123,6 +134,28 @@ describe("ConversationPage", () => {
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
       expect(screen.getByText("@other-user")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("img", { name: "Other User profile" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the other participant's profile image when available", async () => {
+      const profileImage = "https://example.com/other-user.jpg";
+      arrangeConversationPageRequests({
+        conversation: {
+          ...defaultConversation,
+          participants: defaultConversation.participants.map((participant) =>
+            participant.username === "other-user" ? { ...participant, profileImage } : participant,
+          ),
+        },
+      });
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+
+      renderConversationPage(queryClient);
+
+      expect(
+        await screen.findByRole("img", { name: "Other User profile" }),
+      ).toHaveAttribute("src", profileImage);
     });
 
     it("renders the message list for the route conversation", async () => {
