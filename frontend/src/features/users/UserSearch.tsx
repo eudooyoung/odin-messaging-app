@@ -159,7 +159,7 @@ export function UserSearch() {
           aria-autocomplete="list"
           aria-controls={USER_SEARCH_LISTBOX_ID}
           aria-expanded={isSearchPanelOpen}
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+          className={`w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 ${isSearchPanelOpen ? "rounded-t-md rounded-b-none" : "rounded-md"}`}
           id="user-search"
           role="combobox"
           type="search"
@@ -178,7 +178,7 @@ export function UserSearch() {
         />
 
         {isSearchPanelOpen && (
-          <div className="absolute top-full right-0 left-0 z-20 mt-2 max-h-60 overflow-y-auto rounded-md border border-neutral-200 bg-white shadow-lg">
+          <div className="absolute top-full right-0 left-0 z-20 max-h-60 overflow-y-auto rounded-t-none rounded-b-md border border-t-0 border-neutral-200 bg-white shadow-lg">
             {hasQuery && isPending && (
               <p className="px-3 py-2 text-sm text-neutral-500" role="status">
                 Searching users...
