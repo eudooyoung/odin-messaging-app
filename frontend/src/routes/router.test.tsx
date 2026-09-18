@@ -110,7 +110,7 @@ describe("router", () => {
       await expectLoginPage();
     });
 
-    it("renders the conversation list and user search at the root route for an authenticated user", async () => {
+    it("renders the messaging sidebar and empty selection state at the root route", async () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
@@ -125,7 +125,10 @@ describe("router", () => {
       await renderRouterAt("/");
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-      expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+      expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
     });
   });
 
@@ -322,7 +325,7 @@ describe("router", () => {
       lastActivityAt: "2026-09-04T01:00:00.000Z",
     };
 
-    it("navigates from the main screen to the current user's profile", async () => {
+    it("renders the profile page outside the messaging layout", async () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
@@ -350,7 +353,7 @@ describe("router", () => {
       await renderRouterAt("/");
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-      expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
       await user.click(screen.getByRole("link", { name: "My profile" }));
 
       expect(router.state.location.pathname).toBe("/profile");
@@ -358,9 +361,324 @@ describe("router", () => {
         "Current User",
       );
       expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Search users" })).not.toBeInTheDocument();
+      expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "My profile" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
     });
 
-    it("renders the conversation page under the protected route", async () => {
+    it("refreshes the persistent conversation list after creating a conversation", async () => {
+      const targetUser = {
+        username: "target-user",
+        displayName: "Target User",
+        profileImage: null,
+      };
+      const createdConversation = {
+        id: 42,
+        participants: [
+          {
+            username: currentUser.username,
+            displayName: currentUser.displayName,
+            profileImage: null,
+          },
+          targetUser,
+        ],
+        createdAt: "2026-09-17T01:00:00.000Z",
+        lastActivityAt: "2026-09-17T01:00:00.000Z",
+      };
+      const refreshedConversationsPage = {
+        conversations: [
+          {
+            id: createdConversation.id,
+            otherUser: targetUser,
+            lastMessage: null,
+            lastActivityAt: createdConversation.lastActivityAt,
+          },
+        ],
+        nextCursor: null,
+      };
+      let conversationListRequestCount = 0;
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          conversationListRequestCount += 1;
+          return Promise.resolve(
+            jsonResponse(
+              conversationListRequestCount === 1
+                ? emptyConversationsPage
+                : refreshedConversationsPage,
+            ),
+          );
+        }
+
+        if (input.toString().startsWith("/users?query=")) {
+          return Promise.resolve(jsonResponse([targetUser]));
+        }
+
+        if (input === "/conversations") {
+          return Promise.resolve(jsonResponse(createdConversation, 201));
+        }
+
+        if (input === "/conversations/42") {
+          return Promise.resolve(jsonResponse(createdConversation));
+        }
+
+        if (input === "/conversations/42/messages?limit=20") {
+          return Promise.resolve(jsonResponse({ messages: [], nextCursor: null }));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt("/");
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
+      await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
+
+      expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
+      expect(screen.getByText("No messages yet")).toBeInTheDocument();
+    });
+
+    it("updates and reorders the persistent conversation list after sending a message", async () => {
+      const firstOtherUser = {
+        username: "first-user",
+        displayName: "First User",
+        profileImage: null,
+      };
+      const secondOtherUser = {
+        username: "second-user",
+        displayName: "Second User",
+        profileImage: null,
+      };
+      const secondConversation = {
+        id: 2,
+        participants: [
+          {
+            username: currentUser.username,
+            displayName: currentUser.displayName,
+            profileImage: null,
+          },
+          secondOtherUser,
+        ],
+        createdAt: "2026-09-01T00:00:00.000Z",
+        lastActivityAt: "2026-09-15T01:00:00.000Z",
+      };
+      const sentMessage = {
+        id: 20,
+        content: "Newest message from the sender",
+        sender: {
+          username: currentUser.username,
+          displayName: currentUser.displayName,
+          profileImage: null,
+        },
+        createdAt: "2026-09-17T02:00:00.000Z",
+      };
+      const initialConversationsPage = {
+        conversations: [
+          {
+            id: 1,
+            otherUser: firstOtherUser,
+            lastMessage: {
+              id: 10,
+              content: "First conversation message",
+              senderId: 2,
+              createdAt: "2026-09-16T01:00:00.000Z",
+            },
+            lastActivityAt: "2026-09-16T01:00:00.000Z",
+          },
+          {
+            id: secondConversation.id,
+            otherUser: secondOtherUser,
+            lastMessage: {
+              id: 11,
+              content: "Older second conversation message",
+              senderId: 3,
+              createdAt: secondConversation.lastActivityAt,
+            },
+            lastActivityAt: secondConversation.lastActivityAt,
+          },
+        ],
+        nextCursor: null,
+      };
+      const refreshedConversationsPage = {
+        conversations: [
+          {
+            id: secondConversation.id,
+            otherUser: secondOtherUser,
+            lastMessage: {
+              id: sentMessage.id,
+              content: sentMessage.content,
+              senderId: currentUser.id,
+              createdAt: sentMessage.createdAt,
+            },
+            lastActivityAt: sentMessage.createdAt,
+          },
+          initialConversationsPage.conversations[0],
+        ],
+        nextCursor: null,
+      };
+      let conversationListRequestCount = 0;
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          conversationListRequestCount += 1;
+          return Promise.resolve(
+            jsonResponse(
+              conversationListRequestCount === 1
+                ? initialConversationsPage
+                : refreshedConversationsPage,
+            ),
+          );
+        }
+
+        if (input === "/conversations/2") {
+          return Promise.resolve(jsonResponse(secondConversation));
+        }
+
+        if (input === "/conversations/2/messages?limit=20") {
+          return Promise.resolve(jsonResponse({ messages: [], nextCursor: null }));
+        }
+
+        if (input === "/conversations/2/messages") {
+          return Promise.resolve(jsonResponse(sentMessage, 201));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+      const getConversationPaths = () =>
+        screen
+          .getAllByRole("link")
+          .map((link) => link.getAttribute("href"))
+          .filter((href): href is string => href?.startsWith("/conversations/") ?? false);
+
+      await renderRouterAt("/");
+
+      expect(await screen.findByRole("link", { name: /First User/ })).toBeInTheDocument();
+      expect(getConversationPaths()).toEqual(["/conversations/1", "/conversations/2"]);
+      await user.click(screen.getByRole("link", { name: /Second User/ }));
+      await user.type(await screen.findByRole("textbox", { name: "Message" }), sentMessage.content);
+      await user.click(screen.getByRole("button", { name: "Send" }));
+
+      expect(
+        await screen.findByRole("link", { name: new RegExp(sentMessage.content) }),
+      ).toBeInTheDocument();
+      expect(getConversationPaths()).toEqual(["/conversations/2", "/conversations/1"]);
+    });
+
+    it("updates the persistent conversation list after receiving a WebSocket message", async () => {
+      const receivedMessage = {
+        id: 11,
+        content: "Newest message from the receiver event",
+        sender: {
+          username: "other-user",
+          displayName: "Other User",
+          profileImage: null,
+        },
+        createdAt: "2026-09-08T02:00:00.000Z",
+      };
+      const initialConversationsPage = {
+        conversations: [
+          {
+            id: conversation.id,
+            otherUser: conversation.participants[1],
+            lastMessage: {
+              id: 10,
+              content: "Previous sidebar message",
+              senderId: 2,
+              createdAt: conversation.lastActivityAt,
+            },
+            lastActivityAt: conversation.lastActivityAt,
+          },
+        ],
+        nextCursor: null,
+      };
+      const refreshedConversationsPage = {
+        conversations: [
+          {
+            id: conversation.id,
+            otherUser: conversation.participants[1],
+            lastMessage: {
+              id: receivedMessage.id,
+              content: receivedMessage.content,
+              senderId: 2,
+              createdAt: receivedMessage.createdAt,
+            },
+            lastActivityAt: receivedMessage.createdAt,
+          },
+        ],
+        nextCursor: null,
+      };
+      let conversationListRequestCount = 0;
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          conversationListRequestCount += 1;
+          return Promise.resolve(
+            jsonResponse(
+              conversationListRequestCount === 1
+                ? initialConversationsPage
+                : refreshedConversationsPage,
+            ),
+          );
+        }
+
+        if (input === "/conversations/1") {
+          return Promise.resolve(jsonResponse(conversation));
+        }
+
+        if (input === "/conversations/1/messages?limit=20") {
+          return Promise.resolve(jsonResponse({ messages: [], nextCursor: null }));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+
+      await renderRouterAt("/conversations/1");
+
+      expect(
+        await screen.findByRole("link", { name: /Previous sidebar message/ }),
+      ).toBeInTheDocument();
+      expect(WebSocketStub.instances).toHaveLength(1);
+      const [webSocket] = WebSocketStub.instances;
+
+      if (!webSocket) {
+        throw new Error("Expected a WebSocket connection");
+      }
+
+      act(() => {
+        webSocket.emitMessage(
+          JSON.stringify({
+            type: "message.created",
+            payload: {
+              conversationId: conversation.id,
+              message: receivedMessage,
+            },
+          }),
+        );
+      });
+
+      expect(
+        await screen.findByText(receivedMessage.content, { selector: "section p" }),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: new RegExp(receivedMessage.content) }),
+      ).toBeInTheDocument();
+    });
+
+    it("renders the messaging sidebar alongside the conversation page", async () => {
       const existingMessage = {
         id: 10,
         content: "Hello from the protected route",
@@ -374,6 +692,10 @@ describe("router", () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
         }
 
         if (input === "/conversations/1") {
@@ -394,6 +716,10 @@ describe("router", () => {
       await renderRouterAt("/conversations/1");
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
       expect(await screen.findByText("Hello from the protected route")).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
@@ -403,6 +729,10 @@ describe("router", () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
         }
 
         if (input === "/conversations/1") {

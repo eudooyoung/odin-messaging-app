@@ -1,4 +1,5 @@
 import { type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
+import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
 import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
 
 type Message = MessagesPage["messages"][number];
@@ -61,6 +62,10 @@ export const syncMessageToCache = (
   };
 
   mergeMessageIntoCache();
+  void queryClient.invalidateQueries({
+    queryKey: conversationsQueryOptions.queryKey,
+    exact: true,
+  });
 
   void pendingMessagesQueryFetch?.then(() => {
     const latestMessageQuery = queryClient.getQueryCache().find({ queryKey, exact: true });

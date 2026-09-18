@@ -1,12 +1,10 @@
 import { LoginPage } from "@/features/auth/LoginPage.tsx";
-import { LogoutButton } from "@/features/auth/LogoutButton.tsx";
 import { RegisterPage } from "@/features/auth/RegisterPage.tsx";
-import { ConversationList } from "@/features/conversations/ConversationList.tsx";
 import { ConversationPage } from "@/features/conversations/ConversationPage.tsx";
 import { ProfilePage } from "@/features/users/ProfilePage.tsx";
-import { UserSearch } from "@/features/users/UserSearch.tsx";
-import { createBrowserRouter, Link } from "react-router";
+import { createBrowserRouter } from "react-router";
 import { GuestOnlyRoute } from "./GuestOnlyRoute.tsx";
+import { MessagingLayout } from "./MessagingLayout.tsx";
 import { ProtectedRoute } from "./ProtectedRoute.tsx";
 
 const routes = [
@@ -15,18 +13,17 @@ const routes = [
     children: [
       {
         path: "/",
-        element: (
-          <>
-            <Link to="/profile">My profile</Link>
-            <LogoutButton />
-            <UserSearch />
-            <ConversationList />
-          </>
-        ),
-      },
-      {
-        path: "/conversations/:conversationId",
-        element: <ConversationPage />,
+        element: <MessagingLayout />,
+        children: [
+          {
+            index: true,
+            element: <p>Select a conversation</p>,
+          },
+          {
+            path: "conversations/:conversationId",
+            element: <ConversationPage />,
+          },
+        ],
       },
       {
         path: "/profile",

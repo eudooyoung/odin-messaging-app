@@ -50,7 +50,7 @@ export function RegisterPage() {
   });
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 py-12 font-body text-neutral-900">
+    <main className="flex min-h-dvh items-center justify-center bg-neutral-50 px-4 py-12 font-body text-neutral-900">
       <form
         className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-6 shadow-sm sm:p-8"
         onSubmit={handleSubmit((input) =>
