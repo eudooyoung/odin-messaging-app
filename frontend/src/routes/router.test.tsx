@@ -125,7 +125,7 @@ describe("router", () => {
       await renderRouterAt("/");
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-      expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
       expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
@@ -353,7 +353,7 @@ describe("router", () => {
       await renderRouterAt("/");
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-      expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
       await user.click(screen.getByRole("link", { name: "My profile" }));
 
       expect(router.state.location.pathname).toBe("/profile");
@@ -361,7 +361,7 @@ describe("router", () => {
         "Current User",
       );
       expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
-      expect(screen.queryByRole("searchbox", { name: "Search users" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Search users" })).not.toBeInTheDocument();
       expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "My profile" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
@@ -437,8 +437,8 @@ describe("router", () => {
       await renderRouterAt("/");
 
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-      await user.type(screen.getByRole("searchbox", { name: "Search users" }), "target");
-      await user.click(await screen.findByRole("button", { name: /Target User @target-user/ }));
+      await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
+      await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
 
       expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
@@ -717,7 +717,7 @@ describe("router", () => {
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
       expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
-      expect(screen.getByRole("searchbox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
       expect(await screen.findByText("Hello from the protected route")).toBeInTheDocument();

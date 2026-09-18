@@ -98,6 +98,7 @@ Frontend audit에서는 특히 다음을 확인한다.
 
 - fixture와 helper는 반복을 줄이되 테스트에서 중요한 값과 상태 차이를 숨기지 않는다.
 - Response 생성 같은 반복 boilerplate는 작은 test helper로 줄일 수 있다.
+- TanStack Query `mutationFn` mock은 라이브러리 context 인자를 추가로 받을 수 있다. 테스트 계약이 variables 인자만이라면 전체 호출 인자를 고정하지 말고 호출 횟수를 먼저 보장한 뒤 필요한 인자만 검증한다.
 - 테스트 파일에서 대부분의 테스트가 하나의 `QueryClient`를 생성하고 마지막에 `clear()`하는 패턴을 반복하면, 파일 단위 `beforeEach`에서 새 client를 생성하고 `afterEach`에서 `clear()`하는 lifecycle로 통합한다.
 - 여러 `QueryClient`가 필요하거나 특정 옵션/생성 시점/instance identity가 테스트 의미에 중요하거나 `clear()` 자체가 assertion 시나리오의 일부인 경우에는 local lifecycle을 유지한다.
 - WebSocket 등 test stub은 현재 테스트가 사용하는 API만 구현한다.
@@ -157,4 +158,7 @@ Frontend audit에서는 특히 다음을 확인한다.
 
 - semantic HTML과 접근성을 유지한다.
 - 사용자에게 보이는 loading, empty, error 상태를 실제 기능 요구사항에 맞게 처리한다.
+- CSS/Tailwind 시각 스타일 자체는 TDD 대상으로 보지 않는다. interaction, validation, submit payload, 접근성 semantics처럼 observable behavior가 바뀌면 기존 TDD 흐름을 적용한다.
+- 동일한 간격 목적이면 `space-x-*` / `space-y-*`보다 일반 CSS `gap`과 직접 대응되는 `flex/grid + gap-*`를 우선한다.
+- 한두 곳에서만 쓰는 class는 component에 직접 두고, 길고 반복되는 className부터 상수화한다. 스타일 중복만을 이유로 React wrapper component를 성급하게 추가하지 않는다.
 - 명시적인 요청 없이 백엔드 API 또는 WebSocket event 계약을 변경하거나 새 동작을 가정하지 않는다.

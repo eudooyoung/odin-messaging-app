@@ -431,15 +431,30 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
     - `confirmPassword`는 `registerUser` API payload에서 제외하고 기존 backend request 계약 유지
     - Confirm password 추가로 깨진 기존 success / validation / API error test fixture와 helper 보완
     - Login/Register에서 반복되는 긴 FormField wrapper/input Tailwind class는 auth 범위에서 상수로 정리하고, 별도 wrapper component 추출은 보류
-  - [ ] 데스크톱 메시징 2-column layout
-  - [ ] ConversationList / ConversationPage / MessageList / MessageComposer
+  - [x] 데스크톱 메시징 2-column layout
+    - `MessagingLayout`을 추가하고 protected messaging route를 nested route로 재구성
+    - sidebar는 `w-80 shrink-0`, chat pane은 `flex-1 min-w-0`인 desktop 2-column shell로 구성
+    - `/`는 대화 미선택 안내, `/conversations/:conversationId`는 같은 layout의 `Outlet`에서 렌더링
+    - ConversationList / UserSearch / Profile / Logout sidebar는 conversation route 이동 중에도 유지
+    - full-height viewport는 `h-dvh` / `min-h-dvh`를 기본으로 사용
+  - [x] ConversationList / desktop sidebar
+    - Conversation item을 `displayName + time` 상단 행, `@username`, `lastMessage` 구조로 정리하고 긴 텍스트 truncate 적용
+    - 현재 conversation은 `NavLink`의 `aria-current="page"`와 selected style로 구분
+    - `lastMessage: null`이면 `No messages yet` placeholder를 표시해 item 높이/구조 유지
+    - loading / empty / pagination error / Load more 상태 스타일 정리
+    - 첫/마지막 item의 focus-visible ring이 sidebar card radius와 맞도록 보완
+    - `MessagingLayout` sidebar collapse / expand 추가 — 기본 `w-80`, collapsed `w-16`, width/padding transition
+    - sidebar header / UserSearch / scrollable ConversationList / 하단 Profile·Logout navigation 영역 정리
+    - 앱 이름 / 로고 branding은 기능 UI 완료 후 별도 작업으로 보류
+  - [ ] ConversationPage / MessageList / MessageComposer
   - [ ] User Search / Profile / loading / empty / error 상태
+    - [x] UserSearch 결과를 ConversationList를 밀지 않는 overlay dropdown으로 전환
+    - [x] combobox / listbox / option semantic 구조와 `aria-activedescendant` 적용
+    - [x] keyboard navigation: ArrowDown / ArrowUp / Enter / Escape
+    - [x] keyboard active option과 mouse hover의 시각적 강조 정리
+    - [ ] 결과가 dropdown viewport를 벗어날 때 active option 자동 스크롤
+    - [ ] Profile 및 남은 loading / empty / error 상태 시각 정리
   - [ ] 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
-  - 스타일 작성 규칙
-    - 동일 목적이면 `space-x-*` / `space-y-*`보다 일반 CSS `gap`과 직접 대응되는 `flex/grid + gap-*`를 우선
-    - 한두 곳에서만 쓰는 class는 component에 직접 두고, 길고 반복되는 className부터 상수화
-    - 스타일 중복만을 이유로 React wrapper component를 성급하게 추가하지 않고, 사용 범위가 넓어질 때 다시 공통화 검토
-    - CSS/Tailwind 스타일 자체는 TDD 대상으로 보지 않고, validation / submit payload 같은 동작 계약 변경만 TDD로 처리
 - [ ] frontend + backend 실제 브라우저 smoke test
   - mock 없이 핵심 흐름을 처음부터 끝까지 실행
   - 테스트에서 드러나지 않는 CORS / cookie / routing / WebSocket integration 문제 확인
@@ -542,14 +557,36 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] 테스트 fixture / helper / lifecycle을 실제 사용 범위에 맞춰 `it` / nested `describe` / 최상위 suite scope로 재배치
   - [x] 반복 test utility 중 동일 책임만 `createTestQueryClient`, `createDeferred`, `jsonResponse`로 공통화
   - [x] WebSocket stub, render helper, interaction helper 등 의미가 다른 테스트 도구는 억지로 공통화하지 않음
+- [x] Messaging layout 전환 후 persistent ConversationList cache 갱신 보완
+  - [x] UserSearch에서 conversation 생성/재사용 성공 후 `conversationsQueryOptions.queryKey`를 exact invalidate하여 새 대화가 sidebar에 즉시 반영되도록 수정
+  - [x] 메시지 송신 REST 성공과 WebSocket `message.created` 수신이 공통으로 거치는 `syncMessagesToCache` 이후 conversation 목록을 exact invalidate
+  - [x] sidebar의 `lastMessage`, `lastActivityAt`, 정렬 순서가 송신/수신 직후 서버 기준으로 갱신되는 router integration 회귀 테스트 추가
+  - [ ] WebSocket reconnect/open에서 놓친 message를 REST로 복구한 뒤 conversation 목록까지 함께 복구하는 흐름은 후속 TODO로 유지
 
 #### Frontend test cleanup TODO
 
+- [x] `router.test.tsx` 최근 app integration 회귀 테스트의 긴 `apiFetch.mockImplementation` path 분기 재검토
+  - 직접 `if (input === ...)` 분기가 각 integration scenario의 요청 흐름을 가장 명확하게 보여주는 것으로 판단
+  - 공통 path helper는 override/fallback 구조가 필요해 오히려 범용 mock abstraction에 가까워지므로 도입하지 않음
+  - `emptyMessagesPage` fixture 정도만 추출 후보였으나 현재 inline object가 더 읽기 쉬워 변경하지 않음
+  - 오늘 추가한 conversation list cache 회귀 테스트는 유지한 채 코드 변경 없이 cleanup 완료로 처리
 - [ ] 테스트 전반의 불필요한 optional chaining / `mock.calls` 직접 접근 정리
   - 호출 자체가 계약이고 전체 인자 shape를 검증할 수 있으면 `toHaveBeenCalledWith` 등 의도가 직접 드러나는 matcher 우선 검토
   - TanStack Query `mutationFn`처럼 라이브러리가 추가 context 인자를 전달하는 경우에는 `toHaveBeenCalledTimes(1)`로 호출을 먼저 보장한 뒤 `mock.calls[0]`의 필요한 인자만 구조분해해 검증하는 패턴을 허용
   - `mock.calls[0]?.[0]`처럼 호출되지 않은 상태를 optional chaining으로 숨기는 표현은 점검하되, optional chaining이 실제 nullable/optional 상태를 표현하는 경우는 유지
   - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
+
+#### Product / Frontend behavior TODO
+
+- [ ] 메시지가 없는 Conversation을 대화 목록에서 제외
+  - 현재 `사용자 선택 → Conversation 생성/재사용 → 채팅 진입` 흐름은 우선 유지
+  - MVP 후보는 Prisma schema 변경 없이 `GET /conversations` 조회 단계에서 message가 하나 이상 있는 conversation만 반환하는 방식
+  - 빈 Conversation 자동 삭제나 첫 메시지 전송 시 Conversation을 생성하는 재설계는 변경 범위가 커서 우선 보류
+
+- [ ] 1:1 대화 나가기 / 내 히스토리 지우기
+  - hard delete가 아니라 사용자별 participant state(`leftAt` / `clearedAt` 등)로 모델링하는 방향 검토
+  - 한 사용자가 나가도 상대방의 기존 대화 기록은 유지
+  - 재진입 시 나간 사용자에게는 clear 시점 이후 메시지만 보이도록 하는 의미를 후보로 유지
 
 #### Backend refactor TODO
 
@@ -573,34 +610,34 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 
 ### 작업 방식
 
-- query / mutation / UI 단위의 주요 상태를 식별한 뒤 성공 경로부터 RED → GREEN으로 진행한다.
-- 한 단위를 시작하면 필요한 주요 상태를 모두 처리한 뒤 다음 단위로 이동한다.
-- 큰 기능 완료 후 API/event 계약, 실제 router/page 흐름, cache/lifecycle, 테스트 누락을 audit한다.
-- audit의 필수 blocker를 모두 보완한 뒤 다음 큰 기능으로 이동한다.
+- 공통 개발 흐름, TDD, 테스트, 리팩토링 규칙은 루트 `AGENTS.md`와 `frontend/AGENTS.md` / `backend/AGENTS.md`를 기준으로 한다.
+- 이 문서는 현재 구현 상태, 프로젝트별 결정, TODO, 다음 작업 순서를 기록한다.
 - GPT 세션 교체 전 이 문서의 진행상황과 다음 시작점을 최신화한다.
 
 ### 다음 시작점
 
-- Backend / Frontend 핵심 기능 구현, 기능 단위 audit, 실제 브라우저 사용자 흐름 audit, 필수 navigation 보완을 완료했다.
-- **Frontend manual audit / code walkthrough도 완료했다.**
-  - app/router/auth lifecycle, `apiFetch`, REST query/cache, WebSocket, Conversation/Message, User Search, Profile, Auth form/mutation까지 전체 흐름을 재검토했다.
-  - query/mutation/component/router 테스트의 책임 중복을 줄이고 semantic `describe`, fixture/helper scope, 공통 test utility를 정리했다.
-  - 로그인 성공 후에는 기존 pending `auth/me`를 cancel하고 fresh 요청을 시작하도록 보완했다.
-- 사용자 검색에서 본인 제외는 frontend 필터링 대신 Backend refactor TODO로 유지한다.
-- 스타일 기초 토큰과 Tailwind 작성 규칙을 합의했고 **Login / Register 기본 폼 UI를 완료했다.**
-  - weak card auth layout + Forest Green primary / custom neutral / semantic danger 적용
-  - Login/Register frontend validation을 backend 입력 계약과 맞춤
-  - Register에 frontend-only `Confirm password`와 mismatch validation 추가
-  - `confirmPassword`는 backend payload에 포함하지 않음
-  - 반복되는 auth FormField wrapper/input className은 상수화하고, 나머지는 과도한 공통화를 보류
-  - 동일 목적이면 `space-*`보다 `flex/grid + gap-*`를 우선
-- **다음 작업은 데스크톱 메시징 2-column layout이다.**
-  1. 대화 목록 영역과 채팅 상세 영역의 desktop shell / width / border / overflow 구조 결정
-  2. ConversationList / ConversationPage / MessageList / MessageComposer 스타일
-  3. User Search / Profile / loading / empty / error 상태 스타일
-  4. 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
-- Auth/Confirm password 변경 이후 전체 frontend 테스트 재실행 여부는 별도로 확인한다.
-- Frontend test cleanup TODO에서 불필요한 optional chaining / `mock.calls` 직접 접근 패턴을 추후 전체 점검한다.
+- Backend / Frontend 핵심 기능 구현, 기능 단위 audit, frontend manual audit은 완료 상태다.
+- Auth 기본 UI와 desktop messaging 2-column shell에 이어 **desktop sidebar / ConversationList 스타일링까지 완료**했다.
+  - ConversationList item layout / truncate / selected state / `No messages yet` placeholder / focus-visible 보완 완료
+  - `MessagingLayout` sidebar collapse / expand, width transition, header, scrollable list, Profile·Logout navigation 스타일 완료
+  - 앱 이름 / 로고 branding은 기능 UI 완료 후 별도 TODO로 보류
+- UserSearch는 overlay dropdown과 keyboard interaction을 보완했다.
+  - combobox / listbox / option semantics + `aria-activedescendant`
+  - ArrowDown / ArrowUp / Enter / Escape GREEN 확인
+  - keyboard active option visual state와 overlay dropdown 적용 완료
+  - **다음 시작점: 결과가 dropdown viewport를 벗어날 때 active option 자동 스크롤을 TDD로 보완**
+- UserSearch 자동 스크롤과 sidebar 최종 눈검사를 끝낸 뒤 다음 순서로 UI를 진행한다.
+  1. ConversationPage header
+  2. MessageList bubble / 시간 / loading·empty·pagination 상태
+  3. MessageComposer 입력 / Send 영역
+  4. Profile 및 남은 loading / empty / error 상태 스타일
+  5. 모바일 대화 목록 ↔ 채팅 화면 기본 responsive 처리
+- `router.test.tsx` app integration API mock 중복은 재검토 결과 현재 직접 path `if` 분기를 유지하기로 결정했고 추가 리팩토링은 하지 않았다.
+- 후속 TODO:
+  - 메시지가 없는 Conversation은 `GET /conversations`에서 제외하는 backend 조회 방식 우선 검토
+  - WebSocket reconnect/open gap recovery가 message query뿐 아니라 conversation 목록도 갱신하도록 보완
+  - 1:1 대화 나가기 / 내 히스토리 지우기 semantics 및 participant state 모델 검토
+  - 사용자 검색에서 현재 로그인 사용자 제외는 backend TODO 유지
 - CSS/UI 완료 후 frontend + backend 실제 브라우저 smoke test를 진행한다.
 - 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 `이전 session pending mutation / refresh` race 방어는 Post-MVP hardening으로 유지한다.
