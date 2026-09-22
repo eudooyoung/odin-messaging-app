@@ -50,7 +50,7 @@ export const getConversationsController: GetConversationsHandler = async (_req, 
 export const createConversationController: CreateConversationHandler = async (req, res) => {
   const { conversation, created } = await createConversationService(
     res.locals.userId,
-    req.body.targetUsername,
+    req.body.targetHandle,
   );
 
   res.status(created ? 201 : 200).json({

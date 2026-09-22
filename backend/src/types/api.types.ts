@@ -89,7 +89,19 @@ export type SearchUsersQuery = {
 };
 
 export type CreateConversationInput = {
-  targetUsername: string;
+  targetHandle: string;
+};
+
+export type CreateConversationResponseBody = {
+  id: number;
+  participants: {
+    id: number;
+    handle: string;
+    displayName: string;
+    profileImage: string | null;
+  }[];
+  createdAt: string;
+  lastActivityAt: string;
 };
 
 export type ConversationResponseBody = {

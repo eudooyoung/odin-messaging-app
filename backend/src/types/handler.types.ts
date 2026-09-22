@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import type {
   ConversationResponseBody,
   CreateConversationInput,
+  CreateConversationResponseBody,
   CreateMessageInput,
   GetConversationsQuery,
   GetConversationsResponseBody,
@@ -75,7 +76,7 @@ export type SearchUsersHandler = RequestHandler<
 
 export type CreateConversationHandler = RequestHandler<
   Record<string, never>,
-  ConversationResponseBody,
+  CreateConversationResponseBody,
   CreateConversationInput,
   Record<string, never>,
   { userId: number }

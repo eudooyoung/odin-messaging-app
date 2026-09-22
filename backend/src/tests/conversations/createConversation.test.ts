@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import "@/tests/integration.setup.js";
-import type { ConversationResponseBody } from "@/types/api.types.js";
+import type { CreateConversationResponseBody } from "@/types/api.types.js";
 
 const getBody = <T>(response: Response) => response.body as T;
 
@@ -14,12 +14,14 @@ describe("POST /conversations", () => {
     const app = createApp();
     const credentials = {
       username: "current-user",
+      handle: "current_handle",
       password: "secure-password",
       displayName: "Current User",
     };
     const currentUser = await createTestUser(credentials);
     const targetUser = await createTestUser({
       username: "target-user",
+      handle: "a_1",
       displayName: "Target User",
       profileImage: "https://example.com/target.jpg",
     });
@@ -28,11 +30,11 @@ describe("POST /conversations", () => {
     const response = await request(app)
       .post("/conversations")
       .set("Cookie", accessCookie)
-      .send({ targetUsername: targetUser.username });
+      .send({ targetHandle: targetUser.handle });
 
     expect(response.status).toBe(201);
 
-    const body = getBody<ConversationResponseBody>(response);
+    const body = getBody<CreateConversationResponseBody>(response);
     expect(typeof body.id).toBe("number");
     expect(typeof body.createdAt).toBe("string");
     expect(typeof body.lastActivityAt).toBe("string");
@@ -40,13 +42,15 @@ describe("POST /conversations", () => {
     expect(body.participants).toHaveLength(2);
 
     expect(body.participants).toContainEqual({
-      username: currentUser.username,
+      id: currentUser.id,
+      handle: currentUser.handle,
       displayName: currentUser.displayName,
       profileImage: currentUser.profileImage,
     });
 
     expect(body.participants).toContainEqual({
-      username: targetUser.username,
+      id: targetUser.id,
+      handle: targetUser.handle,
       displayName: targetUser.displayName,
       profileImage: targetUser.profileImage,
     });
@@ -56,13 +60,16 @@ describe("POST /conversations", () => {
     const app = createApp();
     const credentials = {
       username: "current-user",
+      handle: "current_handle",
       password: "secure-password",
       displayName: "Current User",
     };
     const currentUser = await createTestUser(credentials);
     const targetUser = await createTestUser({
       username: "target-user",
+      handle: "_1234567890.abcdefghijklmnopq_",
       displayName: "Target User",
+      profileImage: "https://example.com/target.jpg",
     });
     const existingConversation = await prisma.conversation.create({
       data: {
@@ -76,18 +83,31 @@ describe("POST /conversations", () => {
     const response = await request(app)
       .post("/conversations")
       .set("Cookie", accessCookie)
-      .send({ targetUsername: targetUser.username });
+      .send({ targetHandle: targetUser.handle });
 
     expect(response.status).toBe(200);
 
-    const body = getBody<ConversationResponseBody>(response);
+    const body = getBody<CreateConversationResponseBody>(response);
     expect(body.id).toBe(existingConversation.id);
+    expect(body.participants).toHaveLength(2);
+    expect(body.participants).toContainEqual({
+      id: currentUser.id,
+      handle: currentUser.handle,
+      displayName: currentUser.displayName,
+      profileImage: currentUser.profileImage,
+    });
+    expect(body.participants).toContainEqual({
+      id: targetUser.id,
+      handle: targetUser.handle,
+      displayName: targetUser.displayName,
+      profileImage: targetUser.profileImage,
+    });
     await expect(prisma.conversation.count()).resolves.toBe(1);
   });
 
   it("returns 401 when the access token cookie is missing", async () => {
     const response = await request(createApp()).post("/conversations").send({
-      targetUsername: "target-user",
+      targetHandle: "target_handle",
     });
 
     expect(response.status).toBe(401);
@@ -96,18 +116,19 @@ describe("POST /conversations", () => {
   it.each([
     {
       caseName: "the target user does not exist",
-      targetUsername: "missing-user",
+      targetHandle: "missing_handle",
       expectedStatus: 404,
     },
     {
       caseName: "the target user is the current user",
-      targetUsername: "current-user",
+      targetHandle: "current_handle",
       expectedStatus: 400,
     },
-  ])("returns $expectedStatus when $caseName", async ({ targetUsername, expectedStatus }) => {
+  ])("returns $expectedStatus when $caseName", async ({ targetHandle, expectedStatus }) => {
     const app = createApp();
     const credentials = {
       username: "current-user",
+      handle: "current_handle",
       password: "secure-password",
       displayName: "Current User",
     };
@@ -117,27 +138,55 @@ describe("POST /conversations", () => {
     const response = await request(app)
       .post("/conversations")
       .set("Cookie", accessCookie)
-      .send({ targetUsername });
+      .send({ targetHandle });
 
     expect(response.status).toBe(expectedStatus);
   });
 
   it.each([
     {
-      caseName: "the target username is missing",
+      caseName: "the target handle is missing",
       requestBody: {},
     },
     {
-      caseName: "the target username is empty",
-      requestBody: { targetUsername: "" },
+      caseName: "only the legacy target username is provided",
+      requestBody: { targetUsername: "target-user" },
     },
     {
-      caseName: "the target username contains only whitespace",
-      requestBody: { targetUsername: "   " },
+      caseName: "the target handle is empty",
+      requestBody: { targetHandle: "" },
     },
     {
-      caseName: "the target username is longer than 30 characters",
-      requestBody: { targetUsername: "a".repeat(31) },
+      caseName: "the target handle contains only whitespace",
+      requestBody: { targetHandle: "   " },
+    },
+    {
+      caseName: "the target handle is shorter than 3 characters",
+      requestBody: { targetHandle: "ab" },
+    },
+    {
+      caseName: "the target handle is longer than 30 characters",
+      requestBody: { targetHandle: "a".repeat(31) },
+    },
+    {
+      caseName: "the target handle contains an uppercase letter",
+      requestBody: { targetHandle: "invalidHandle" },
+    },
+    {
+      caseName: "the target handle contains a disallowed character",
+      requestBody: { targetHandle: "invalid-handle" },
+    },
+    {
+      caseName: "the target handle starts with a dot",
+      requestBody: { targetHandle: ".invalid_handle" },
+    },
+    {
+      caseName: "the target handle ends with a dot",
+      requestBody: { targetHandle: "invalid_handle." },
+    },
+    {
+      caseName: "the target handle contains consecutive dots",
+      requestBody: { targetHandle: "invalid..handle" },
     },
   ])("returns 400 when $caseName", async ({ requestBody }) => {
     const app = createApp();
