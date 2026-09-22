@@ -1,5 +1,5 @@
 import * as argon2 from "argon2";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { createUser, findUserById, findUserByUsername } from "@/repositories/user.repository.js";
 import type { LoginInput, RegisterInput } from "@/types/api.types";
@@ -16,6 +16,9 @@ import {
 } from "@/repositories/refreshSession.repository";
 
 const refreshTokenLifetime = 7 * 24 * 60 * 60 * 1000;
+const maxHandleCreationAttempts = 5;
+const handleUniqueDbIndex = "User_handle_key";
+const initialHandleCharacters = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 const createRefreshTokenHash = (refreshToken: string) =>
   createHash("sha256").update(refreshToken).digest("hex");
@@ -23,26 +26,90 @@ const createRefreshTokenHash = (refreshToken: string) =>
 const createRefreshUnauthorizedError = () =>
   new UnauthorizedError("Invalid refresh token", "INVALID_REFRESH_TOKEN");
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const isHandleUniqueConstraintError = (error: unknown) => {
+  const isUniqueConstraintError =
+    error instanceof PrismaClientKnownRequestError && error.code === "P2002";
+  if (!isUniqueConstraintError) {
+    return false;
+  }
+
+  const driverAdapterError = error.meta?.driverAdapterError;
+  if (!isRecord(driverAdapterError)) {
+    return false;
+  }
+  const cause = driverAdapterError.cause;
+  if (!isRecord(cause)) {
+    return false;
+  }
+
+  const isUniqueConstraintViolation = cause.kind === "UniqueConstraintViolation";
+  const constraint = cause.constraint;
+  if (!isUniqueConstraintViolation || !isRecord(constraint)) {
+    return false;
+  }
+
+  const fields = constraint.fields;
+  if (Array.isArray(fields)) {
+    if (fields.includes("handle")) {
+      return true;
+    }
+  }
+
+  return constraint.index === handleUniqueDbIndex;
+};
+
+const createUntriedInitialHandle = (attemptedHandles: Set<string>) => {
+  let handle: string;
+
+  do {
+    const suffix = Array.from({ length: 8 }, () =>
+      initialHandleCharacters.charAt(randomInt(initialHandleCharacters.length)),
+    ).join("");
+    handle = `user_${suffix}`;
+  } while (attemptedHandles.has(handle));
+
+  attemptedHandles.add(handle);
+
+  return handle;
+};
+
 export const registerService = async ({ username, password, displayName }: RegisterInput) => {
   const passwordHash = await argon2.hash(password, {
     type: argon2.argon2id,
   });
-  const handle = `user_${randomBytes(4).toString("hex")}`;
+  const attemptedHandles = new Set<string>();
+  let handle = createUntriedInitialHandle(attemptedHandles);
 
-  try {
-    return await createUser({
-      username,
-      handle,
-      passwordHash,
-      displayName,
-    });
-  } catch (error) {
-    if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new ConflictError("Username already exists", "USERNAME_ALREADY_EXISTS");
+  for (let attempt = 1; attempt <= maxHandleCreationAttempts; attempt++) {
+    try {
+      return await createUser({
+        username,
+        handle,
+        passwordHash,
+        displayName,
+      });
+    } catch (error) {
+      if (isHandleUniqueConstraintError(error)) {
+        if (attempt === maxHandleCreationAttempts) {
+          throw error;
+        }
+
+        handle = createUntriedInitialHandle(attemptedHandles);
+        continue;
+      }
+
+      if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ConflictError("Username already exists", "USERNAME_ALREADY_EXISTS");
+      }
+
+      throw error;
     }
-
-    throw error;
   }
+
+  throw new Error("Unexpected handle creation state");
 };
 
 export const loginService = async ({ username, password }: LoginInput) => {

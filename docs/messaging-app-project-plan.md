@@ -338,6 +338,7 @@
   - [x] refresh session 서버 저장 + SHA-256 token hash
   - [x] refresh rotation transaction
   - [x] Zod env validation / test DB 분리
+  - [x] register initial handle 자동 생성 + unique collision retry(max 5)
 - [x] User / Profile API
   - [x] 사용자 조회
   - [x] 내 프로필 수정
@@ -641,16 +642,23 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 
 #### User identity refactor — 현재 최우선
 
-UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단하고, 공개 `username`을 제거하는 identity / API refactor를 먼저 완료한다. 아래 계약은 확정됐지만 아직 구현 전이다.
+UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단하고, 공개 `username`을 제거하는 identity / API refactor를 먼저 완료한다. 계약은 확정됐고 backend부터 TDD로 전환 중이다.
 
-- [ ] User model에 `handle` 추가 및 기존 사용자 backfill / migration 전략 확정
+- [x] User model에 `handle` 추가 + migration / 기존 사용자 backfill
   - 최종 상태: required + unique + mutable, 최대 30자
+  - 기존 dev 데이터는 migration에서 `user_<id>`로 backfill 후 `NOT NULL` + unique index 적용
   - handle validation은 API/Zod에서 관리
-- [ ] 회원가입 시 initial handle 자동 생성
+- [x] 회원가입 시 initial handle 자동 생성
   - `user_` + random lowercase alphanumeric 8자
-  - unique collision 시 재생성
+  - 한 register 요청에서 이미 시도한 handle은 재사용하지 않음
+  - handle unique collision은 최대 5회까지 새 handle로 재시도
+  - 마지막 handle collision은 원래 Prisma `P2002`를 그대로 throw
+  - username unique `P2002`는 기존 `USERNAME_ALREADY_EXISTS` ConflictError로 변환
+  - password hashing은 retry와 무관하게 1회만 수행
 - [ ] Auth self payload 반영
-  - register / auth-me에 `handle` 추가
+  - [x] register service / repository 흐름에 `handle` 포함
+  - [ ] `POST /auth/register` HTTP response 타입 / integration 계약에서 `handle` 최종 확인
+  - [ ] `GET /auth/me` response에 `handle` 추가
   - `username`은 로그인 전용 self data로 유지
 - [ ] 공개 User/Profile API를 username → handle로 전환
   - `GET /users/:handle`
@@ -712,7 +720,7 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 ### 작업 방식
 
 - 공통 개발 흐름, TDD, 테스트, 리팩토링 규칙은 루트 `AGENTS.md`와 `frontend/AGENTS.md` / `backend/AGENTS.md`를 기준으로 한다.
-- Graft repo context graph를 도입했으며, 코드 탐색 시 루트 `AGENTS.md`의 Graft 지침을 따른다. `graft/`는 재생성 가능한 로컬 cache이며 Graft의 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값이 아닌 참고 추정치로 본다.
+- Graft repo context graph를 도입했고 Codex MCP / hooks도 연결했다. 코드 탐색 시 루트 `AGENTS.md`의 Graft 지침을 따른다. `graft/`는 재생성 가능한 로컬 cache이며 Graft의 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값이 아닌 참고 추정치로 본다.
 - 이 문서는 현재 구현 상태, 프로젝트별 결정, TODO, 다음 작업 순서를 기록한다.
 - GPT 세션 교체 전 이 문서의 진행상황과 다음 시작점을 최신화한다.
 
@@ -736,7 +744,13 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - 사용자 URL / 검색에는 DB `id`를 사용하지 않음
   - authenticated conversation/message payload에서는 안정적인 identity 비교를 위해 user `id` 포함
   - 다른 사용자 payload에서 `username` 제거
-- **다음 구현 시작점:** `refactor/user-identity` 브랜치에서 User `handle` migration / backfill 전략을 먼저 확정하고, TDD 순서로 backend → frontend 계약을 전환한다.
+- identity refactor의 첫 단계는 완료했다.
+  - User `handle` schema / migration / dev backfill 적용 완료
+  - register initial handle 생성 완료
+  - handle collision 최대 5회 retry + exhaustion semantics 완료
+  - username collision의 기존 ConflictError semantics 유지 확인
+  - 관련 `registerService` unit test 리팩토링 완료
+- **다음 구현 시작점:** Auth self contract를 이어서 `GET /auth/me` response에 `handle`을 포함하는 작업부터 TDD로 진행한다. 이후 register HTTP 계약 확인 → User/Profile API → Conversation → Message/WebSocket → Frontend 순으로 identity 계약을 전환한다.
 - identity refactor 완료 후 UI를 다음 순서로 재개한다.
   1. MessageList bubble / 시간 / loading·empty·pagination 상태
   2. MessageComposer 입력 / Send 영역
