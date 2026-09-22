@@ -76,7 +76,11 @@ export type UserSearchResult = {
   profileImage: string | null;
 };
 
-export type SearchUsersResponseBody = UserSearchResult[];
+export type SearchUsersResponseBody = {
+  handle: string;
+  displayName: string;
+  profileImage: string | null;
+}[];
 
 export type SearchUsersQuery = {
   query: string;

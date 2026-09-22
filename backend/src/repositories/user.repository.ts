@@ -66,12 +66,12 @@ export const searchUsers = (query: string) =>
   prisma.user.findMany({
     where: {
       OR: [
-        { username: { contains: query, mode: "insensitive" } },
+        { handle: { contains: query, mode: "insensitive" } },
         { displayName: { contains: query, mode: "insensitive" } },
       ],
     },
     select: {
-      username: true,
+      handle: true,
       displayName: true,
       profileImage: true,
     },
