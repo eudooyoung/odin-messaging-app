@@ -10,7 +10,7 @@ import type {
 } from "@/types/handler.types.js";
 
 export const getUserProfileController: GetUserProfileHandler = async (req, res) => {
-  const userProfile = await getUserProfileService(req.params.username);
+  const userProfile = await getUserProfileService(req.params.handle);
 
   res.status(200).json(userProfile);
 };

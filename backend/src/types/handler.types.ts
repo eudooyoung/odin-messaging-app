@@ -6,6 +6,7 @@ import type {
   GetConversationsQuery,
   GetConversationsResponseBody,
   GetMessagesResponseBody,
+  GetUserProfileResponseBody,
   LoginInput,
   LoginResponseBody,
   LogoutResponseBody,
@@ -49,8 +50,8 @@ export type MeHandler = RequestHandler<
 >;
 
 export type GetUserProfileHandler = RequestHandler<
-  { username: string },
-  UserProfileResponseBody,
+  { handle: string },
+  GetUserProfileResponseBody,
   Record<string, never>,
   Record<string, never>,
   { userId: number }

@@ -38,11 +38,12 @@ export const findUserById = (userId: number) =>
     },
   });
 
-export const findUserProfileByUsername = (username: string) =>
+export const findUserProfileByHandle = (handle: string) =>
   prisma.user.findUnique({
-    where: { username },
+    where: { handle },
     select: {
-      username: true,
+      id: true,
+      handle: true,
       displayName: true,
       bio: true,
       profileImage: true,

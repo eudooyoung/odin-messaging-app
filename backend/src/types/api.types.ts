@@ -49,6 +49,14 @@ export type MeResponseBody = {
   displayName: string;
 };
 
+export type GetUserProfileResponseBody = {
+  id: number;
+  handle: string;
+  displayName: string;
+  bio: string | null;
+  profileImage: string | null;
+};
+
 export type UserProfileResponseBody = {
   username: string;
   displayName: string;
