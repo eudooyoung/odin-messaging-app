@@ -33,6 +33,7 @@ export const findUserById = (userId: number) =>
     select: {
       id: true,
       username: true,
+      handle: true,
       displayName: true,
     },
   });

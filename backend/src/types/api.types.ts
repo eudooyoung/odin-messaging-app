@@ -45,6 +45,7 @@ export type LogoutResponseBody = Record<string, never>;
 export type MeResponseBody = {
   id: number;
   username: string;
+  handle: string;
   displayName: string;
 };
 
