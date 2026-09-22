@@ -56,6 +56,7 @@ export const updateUserProfile = (userId: number, updateData: UpdateUserProfileI
     data: updateData,
     select: {
       username: true,
+      handle: true,
       displayName: true,
       bio: true,
       profileImage: true,

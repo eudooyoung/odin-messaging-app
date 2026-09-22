@@ -8,6 +8,7 @@ import ConflictError from "@/errors/conflictError";
 import { env } from "@/config/env.config.js";
 import UnauthorizedError from "@/errors/unauthorizedError";
 import { createAccessToken } from "@/lib/accessToken.js";
+import { isHandleUniqueConstraintError } from "@/lib/handleUniqueConstraint.js";
 import {
   createRefreshSession,
   deleteRefreshSessionByTokenHash,
@@ -17,7 +18,6 @@ import {
 
 const refreshTokenLifetime = 7 * 24 * 60 * 60 * 1000;
 const maxHandleCreationAttempts = 5;
-const handleUniqueDbIndex = "User_handle_key";
 const initialHandleCharacters = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 const createRefreshTokenHash = (refreshToken: string) =>
@@ -25,41 +25,6 @@ const createRefreshTokenHash = (refreshToken: string) =>
 
 const createRefreshUnauthorizedError = () =>
   new UnauthorizedError("Invalid refresh token", "INVALID_REFRESH_TOKEN");
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const isHandleUniqueConstraintError = (error: unknown) => {
-  const isUniqueConstraintError =
-    error instanceof PrismaClientKnownRequestError && error.code === "P2002";
-  if (!isUniqueConstraintError) {
-    return false;
-  }
-
-  const driverAdapterError = error.meta?.driverAdapterError;
-  if (!isRecord(driverAdapterError)) {
-    return false;
-  }
-  const cause = driverAdapterError.cause;
-  if (!isRecord(cause)) {
-    return false;
-  }
-
-  const isUniqueConstraintViolation = cause.kind === "UniqueConstraintViolation";
-  const constraint = cause.constraint;
-  if (!isUniqueConstraintViolation || !isRecord(constraint)) {
-    return false;
-  }
-
-  const fields = constraint.fields;
-  if (Array.isArray(fields)) {
-    if (fields.includes("handle")) {
-      return true;
-    }
-  }
-
-  return constraint.index === handleUniqueDbIndex;
-};
 
 const createUntriedInitialHandle = (attemptedHandles: Set<string>) => {
   let handle: string;

@@ -59,12 +59,14 @@ export type GetUserProfileResponseBody = {
 
 export type UserProfileResponseBody = {
   username: string;
+  handle: string;
   displayName: string;
   bio: string | null;
   profileImage: string | null;
 };
 
 export type UpdateUserProfileInput = {
+  handle?: string;
   displayName?: string;
   bio?: string | null;
   profileImage?: string | null;
