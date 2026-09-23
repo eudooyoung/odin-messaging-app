@@ -339,16 +339,21 @@
   - [x] refresh rotation transaction
   - [x] Zod env validation / test DB 분리
   - [x] register initial handle 자동 생성 + unique collision retry(max 5)
+  - [x] register / auth-me self payload에 `handle` 포함
 - [x] User / Profile API
-  - [x] 사용자 조회
-  - [x] 내 프로필 수정
-  - [x] username / displayName 검색 — 기존 구현 완료, handle 기반 identity refactor 예정
+  - [x] `GET /users/:handle` 공개 사용자 조회
+  - [x] `GET /users?query=...` handle / displayName 검색
+  - [x] `PATCH /users/me` handle 변경 + validation + duplicate handle `409`
+  - [x] 공개 payload에서 `username` 제거
 - [x] Conversation
   - [x] 생성 / 기존 1:1 conversation 재사용
+  - [x] 생성 요청 `targetHandle` 전환
+  - [x] participants / otherUser를 `{ id, handle, displayName, profileImage }`로 전환
   - [x] 목록 cursor pagination
   - [x] 상세 조회 / participant 권한 검사
 - [x] Message REST
   - [x] 메시지 생성 / 조회
+  - [x] sender를 `{ id, handle, displayName, profileImage }`로 전환
   - [x] participant 권한 검사
   - [x] cursor pagination
   - [x] message 생성 시 `lastActivityAt` 갱신
@@ -356,6 +361,7 @@
   - [x] cookie access token 인증
   - [x] 사용자별 connection registry
   - [x] `message.created`를 sender 제외 상대 connection들에 publish
+  - [x] `message.created.message.sender`를 REST와 동일한 handle 기반 shape로 전환
   - [x] connection close cleanup
   - [x] connection `error` event 처리
   - [x] frontend REST message shape와 event payload 계약 일치
@@ -640,9 +646,9 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - 신규 frontend 테스트에서는 호출 횟수를 먼저 보장한 뒤 optional chaining 없이 필요한 인자만 검증하도록 `frontend/AGENTS.md`에 규칙 반영 완료
   - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
 
-#### User identity refactor — 현재 최우선
+#### User identity refactor — Backend 전환 완료 / Frontend 대기
 
-UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단하고, 공개 `username`을 제거하는 identity / API refactor를 먼저 완료한다. 계약은 확정됐고 backend부터 TDD로 전환 중이다.
+UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환은 완료했고 전체 테스트 GREEN 및 최종 audit에서 기능 blocker 없음**을 확인했다. Frontend 전환 전에 backend cleanup / 테스트 리팩토링 / 기존 TODO를 먼저 처리한다.
 
 - [x] User model에 `handle` 추가 + migration / 기존 사용자 backfill
   - 최종 상태: required + unique + mutable, 최대 30자
@@ -655,22 +661,32 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - 마지막 handle collision은 원래 Prisma `P2002`를 그대로 throw
   - username unique `P2002`는 기존 `USERNAME_ALREADY_EXISTS` ConflictError로 변환
   - password hashing은 retry와 무관하게 1회만 수행
-- [ ] Auth self payload 반영
+  - handle unique `P2002` 판별의 중복 infrastructure 로직은 handle 전용 공통 helper로 추출
+- [x] Auth self payload 반영
   - [x] register service / repository 흐름에 `handle` 포함
-  - [ ] `POST /auth/register` HTTP response 타입 / integration 계약에서 `handle` 최종 확인
-  - [ ] `GET /auth/me` response에 `handle` 추가
+  - [x] `POST /auth/register` HTTP response `{ id, username, handle, displayName }` 계약 확인
+  - [x] `GET /auth/me` response에 `handle` 추가
   - `username`은 로그인 전용 self data로 유지
-- [ ] 공개 User/Profile API를 username → handle로 전환
-  - `GET /users/:handle`
-  - search: `handle | displayName`
-  - `PATCH /users/me`에서 handle 변경 지원, duplicate `409`
-- [ ] Conversation API 전환
-  - `targetUsername` → `targetHandle`
-  - participants / otherUser: `{ id, handle, displayName, profileImage }`
-  - 본인 / 상대 판별은 `auth/me.id`와 user `id` 비교
-- [ ] Message REST / WebSocket sender 전환
-  - sender: `{ id, handle, displayName, profileImage }`
-  - 내 메시지 판별은 `sender.id === auth/me.id`
+- [x] 공개 User/Profile API를 username → handle로 전환
+  - [x] `GET /users/:handle`
+  - [x] search: `handle | displayName`, 공개 응답에서 `username` 제거
+  - [x] `PATCH /users/me`에서 handle 변경 + validation + duplicate handle `409`
+  - [x] handle 규칙 경계(3/30자) 및 허용 문자 성공 경로 보완
+- [x] Conversation API 전환
+  - [x] `targetUsername` → `targetHandle`
+  - [x] participants / otherUser: `{ id, handle, displayName, profileImage }`
+  - [x] 생성 201 / 기존 대화 재사용 200 / self 400 / target 404 / validation / 401 유지
+  - [x] detail / list payload와 service fixture를 handle 기반 계약으로 정리
+- [x] Message REST / WebSocket sender 전환
+  - [x] REST sender: `{ id, handle, displayName, profileImage }`
+  - [x] WebSocket `message.created.message.sender`도 REST와 동일한 shape
+  - [x] sender 제외 / 상대의 모든 connection 전달 계약 유지 및 직접 검증
+- [ ] Backend identity refactor 최종 cleanup
+  - 최종 audit에서 기능 blocker 없음 확인
+  - 전체 TypeScript 검사 및 전체 backend 테스트 GREEN 확인
+  - [ ] 미사용 `UserSearchResult` export 삭제
+  - [ ] `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
+  - `targetUsername`을 400으로 거부하는 legacy request 테스트는 회귀 테스트로 유지
 - [ ] Frontend route / query / mutation / recent-users storage를 handle 계약으로 전환
   - `/users/:handle`
   - 공개 화면의 `@username` → `@handle`
@@ -691,6 +707,11 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - 재진입 시 나간 사용자에게는 clear 시점 이후 메시지만 보이도록 하는 의미를 후보로 유지
 
 #### Backend refactor TODO
+
+- [ ] Backend 전체 테스트 리팩토링 / cleanup
+  - backend identity 최종 cleanup 이후 기존 테스트 전반의 fixture / 중복 / 구조를 다시 점검
+  - 동작 변경 없이 테스트 가독성·현재 타입 계약 일치·불필요한 legacy 흔적을 정리
+  - 완료 후 아래 backend TODO를 순서대로 진행
 
 - [ ] 사용자 검색에서 현재 로그인 사용자 제외
   - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
@@ -721,37 +742,37 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 
 - 공통 개발 흐름, TDD, 테스트, 리팩토링 규칙은 루트 `AGENTS.md`와 `frontend/AGENTS.md` / `backend/AGENTS.md`를 기준으로 한다.
 - Graft repo context graph를 도입했고 Codex MCP / hooks도 연결했다. 코드 탐색 시 루트 `AGENTS.md`의 Graft 지침을 따른다. `graft/`는 재생성 가능한 로컬 cache이며 Graft의 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값이 아닌 참고 추정치로 본다.
+  - 2026-09-23 기준 Graft `0.19.0`, `graft check`에서 wiring graph와 코드 동기화 `OK` 확인
+  - deep layer는 아직 build하지 않았으며 현재 wiring graph를 source of truth로 사용
 - 이 문서는 현재 구현 상태, 프로젝트별 결정, TODO, 다음 작업 순서를 기록한다.
 - GPT 세션 교체 전 이 문서의 진행상황과 다음 시작점을 최신화한다.
 
 ### 다음 시작점
 
 - Backend / Frontend 핵심 기능 구현, 기능 단위 audit, frontend manual audit은 완료 상태다.
-- UI는 desktop sidebar와 `ConversationPage` header까지 진행했다.
-  - `MessagingSidebar` 분리 완료
-  - `/profile`을 `MessagingLayout` child route로 이동해 sidebar 유지
-  - UserSearch overlay / keyboard / auto-scroll / click-outside / selection close 완료
-  - 최근 선택 사용자 localStorage(max 5) + empty-focus recent dropdown 완료
-  - input + dropdown 연결 스타일, option separator 제거 완료
-  - ConversationPage header의 close control / avatar fallback / displayName / 공개 식별자 영역 스타일 완료
-  - MessageList / MessageComposer / Profile states / mobile responsive는 아직 남음
-- UI 작업 중 `username`이 로그인 식별자와 공개 사용자 식별자를 동시에 담당하는 문제를 재검토했고, **공개 identity를 `handle`로 분리하는 refactor를 먼저 진행하기로 결정**했다.
-- 확정된 identity 정책:
-  - `username`: unique / immutable / 로그인 전용 비공개 식별자
-  - `handle`: unique / mutable / 공개 식별자, `/users/:handle`, 검색, conversation 생성에 사용
-  - handle 규칙: 3~30자, lowercase `a-z`, `0-9`, `_`, `.`, `_` 처음/끝 허용, `.` 처음/끝 불가, `..` 불가
-  - 가입 시 `user_` + random lowercase alphanumeric 8자로 initial handle 자동 생성
-  - 사용자 URL / 검색에는 DB `id`를 사용하지 않음
-  - authenticated conversation/message payload에서는 안정적인 identity 비교를 위해 user `id` 포함
-  - 다른 사용자 payload에서 `username` 제거
-- identity refactor의 첫 단계는 완료했다.
-  - User `handle` schema / migration / dev backfill 적용 완료
-  - register initial handle 생성 완료
-  - handle collision 최대 5회 retry + exhaustion semantics 완료
-  - username collision의 기존 ConflictError semantics 유지 확인
-  - 관련 `registerService` unit test 리팩토링 완료
-- **다음 구현 시작점:** Auth self contract를 이어서 `GET /auth/me` response에 `handle`을 포함하는 작업부터 TDD로 진행한다. 이후 register HTTP 계약 확인 → User/Profile API → Conversation → Message/WebSocket → Frontend 순으로 identity 계약을 전환한다.
-- identity refactor 완료 후 UI를 다음 순서로 재개한다.
+- UI는 desktop sidebar와 `ConversationPage` header까지 진행했고 identity refactor 때문에 잠시 중단했다.
+- **Backend identity 기능/API 전환은 완료**했다.
+  - Auth self payload에 `handle` 포함
+  - 공개 User/Profile API를 handle 기반으로 전환
+  - Conversation request / participants / otherUser를 handle 기반으로 전환
+  - Message REST / WebSocket sender를 `{ id, handle, displayName, profileImage }`로 전환
+  - backend 전체 TypeScript 검사 및 전체 테스트 GREEN 확인
+  - backend 최종 audit에서 기능 blocker 없음 확인
+- **다음 즉시 시작점:** backend identity 최종 cleanup 2건
+  1. `api.types.ts`의 미사용 `UserSearchResult` export 삭제
+  2. `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
+- cleanup 후 **Backend 전체 테스트 리팩토링 / cleanup**을 진행한다.
+- 그 다음 기존 Backend TODO를 다음 순서로 진행한다.
+  1. `GET /users?query=...`에서 현재 로그인 사용자 제외
+  2. concurrent `POST /conversations`에서 동일 participant pair 중복 생성 hardening
+  3. Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
+- 위 backend 정리 이후 Frontend identity refactor로 이동한다.
+  - `/users/:handle`
+  - auth/user/conversation/message query·mutation 타입과 payload handle 전환
+  - recent users storage key / route를 username에서 handle로 전환
+  - 공개 화면의 `@username` → `@handle`
+  - 본인/상대/메시지 판별은 안정적인 user `id` 사용
+- Frontend identity refactor 완료 후 UI를 다음 순서로 재개한다.
   1. MessageList bubble / 시간 / loading·empty·pagination 상태
   2. MessageComposer 입력 / Send 영역
   3. Profile / UserProfilePage 및 남은 loading / empty / error 상태 스타일
@@ -761,10 +782,8 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - 메시지가 없는 Conversation은 `GET /conversations`에서 제외하는 backend 조회 방식 우선 검토
   - WebSocket reconnect/open gap recovery가 message query뿐 아니라 conversation 목록도 갱신하도록 보완
   - 1:1 대화 나가기 / 내 히스토리 지우기 semantics 및 participant state 모델 검토
-  - 사용자 검색에서 현재 로그인 사용자 제외는 backend TODO 유지
-  - concurrent `POST /conversations`에서 동일 participant pair 중복 생성을 막는 backend hardening 검토
 - CSS/UI 완료 후 frontend + backend 실제 브라우저 smoke test를 진행한다.
-- 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
+- 이후 WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 `이전 session pending mutation / refresh` race 방어는 Post-MVP hardening으로 유지한다.
 
 ## 6. 배포 / 인증 쿠키 정책

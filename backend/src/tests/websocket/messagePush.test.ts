@@ -135,6 +135,12 @@ describe("new message WebSocket push", () => {
         message: createdMessage,
       },
     });
+    expect(receivedEvent).toHaveProperty("payload.message.sender", {
+      id: currentUser.id,
+      handle: currentUser.handle,
+      displayName: currentUser.displayName,
+      profileImage: currentUser.profileImage,
+    });
   });
 
   it("pushes a message.created event to all connections of the other participant", async () => {

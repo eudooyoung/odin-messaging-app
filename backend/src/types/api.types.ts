@@ -72,12 +72,6 @@ export type UpdateUserProfileInput = {
   profileImage?: string | null;
 };
 
-export type UserSearchResult = {
-  username: string;
-  displayName: string;
-  profileImage: string | null;
-};
-
 export type SearchUsersResponseBody = {
   handle: string;
   displayName: string;

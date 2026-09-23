@@ -7,7 +7,6 @@ const { searchUsersMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
-  findUserProfileByUsername: vi.fn(),
   searchUsers: searchUsersMock,
   updateUserProfile: vi.fn(),
 }));
