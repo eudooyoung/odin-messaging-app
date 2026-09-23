@@ -14,6 +14,7 @@ describe("GET /conversations/:id", () => {
     const app = createApp();
     const credentials = {
       username: "current-user",
+      handle: "current_handle",
       password: "secure-password",
       displayName: "Current User",
     };
@@ -23,6 +24,7 @@ describe("GET /conversations/:id", () => {
     });
     const otherUser = await createTestUser({
       username: "other-user",
+      handle: "other_handle",
       displayName: "Other User",
     });
     const conversation = await prisma.conversation.create({
@@ -50,13 +52,15 @@ describe("GET /conversations/:id", () => {
     expect(body.participants).toHaveLength(2);
 
     expect(body.participants).toContainEqual({
-      username: currentUser.username,
+      id: currentUser.id,
+      handle: currentUser.handle,
       displayName: currentUser.displayName,
       profileImage: currentUser.profileImage,
     });
 
     expect(body.participants).toContainEqual({
-      username: otherUser.username,
+      id: otherUser.id,
+      handle: otherUser.handle,
       displayName: otherUser.displayName,
       profileImage: otherUser.profileImage,
     });

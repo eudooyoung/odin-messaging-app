@@ -15,7 +15,8 @@ export const getConversationController: GetConversationHandler = async (_req, re
   res.status(200).json({
     id: conversation.id,
     participants: conversation.participants.map((participant) => ({
-      username: participant.username,
+      id: participant.id,
+      handle: participant.handle,
       displayName: participant.displayName,
       profileImage: participant.profileImage,
     })),

@@ -106,7 +106,12 @@ export type CreateConversationResponseBody = {
 
 export type ConversationResponseBody = {
   id: number;
-  participants: UserSearchResult[];
+  participants: {
+    id: number;
+    handle: string;
+    displayName: string;
+    profileImage: string | null;
+  }[];
   createdAt: string;
   lastActivityAt: string;
 };

@@ -32,13 +32,13 @@ describe("getConversationService", () => {
       participants: [
         {
           id: currentUserId,
-          username: "current-user",
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
         {
           id: 2,
-          username: "other-user",
+          handle: "other_handle",
           displayName: "Other User",
           profileImage: "https://example.com/other-user.jpg",
         },
@@ -75,13 +75,13 @@ describe("getConversationService", () => {
       participants: [
         {
           id: 2,
-          username: "first-participant",
+          handle: "first_participant",
           displayName: "First Participant",
           profileImage: null,
         },
         {
           id: 3,
-          username: "second-participant",
+          handle: "second_participant",
           displayName: "Second Participant",
           profileImage: null,
         },

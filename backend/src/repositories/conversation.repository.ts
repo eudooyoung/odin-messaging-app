@@ -8,7 +8,7 @@ export const findConversationById = (conversationId: number) =>
       participants: {
         select: {
           id: true,
-          username: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },
