@@ -7,11 +7,13 @@ export type RegisterInput = {
 export type RegisterResponseBody = {
   id: number;
   username: string;
+  handle: string;
   displayName: string;
 };
 
 export type CreateUserData = {
   username: string;
+  handle: string;
   passwordHash: string;
   displayName: string;
 };
@@ -43,41 +45,67 @@ export type LogoutResponseBody = Record<string, never>;
 export type MeResponseBody = {
   id: number;
   username: string;
+  handle: string;
   displayName: string;
+};
+
+export type GetUserProfileResponseBody = {
+  id: number;
+  handle: string;
+  displayName: string;
+  bio: string | null;
+  profileImage: string | null;
 };
 
 export type UserProfileResponseBody = {
   username: string;
+  handle: string;
   displayName: string;
   bio: string | null;
   profileImage: string | null;
 };
 
 export type UpdateUserProfileInput = {
+  handle?: string;
   displayName?: string;
   bio?: string | null;
   profileImage?: string | null;
 };
 
-export type UserSearchResult = {
-  username: string;
+export type SearchUsersResponseBody = {
+  handle: string;
   displayName: string;
   profileImage: string | null;
-};
-
-export type SearchUsersResponseBody = UserSearchResult[];
+}[];
 
 export type SearchUsersQuery = {
   query: string;
 };
 
 export type CreateConversationInput = {
-  targetUsername: string;
+  targetHandle: string;
+};
+
+export type CreateConversationResponseBody = {
+  id: number;
+  participants: {
+    id: number;
+    handle: string;
+    displayName: string;
+    profileImage: string | null;
+  }[];
+  createdAt: string;
+  lastActivityAt: string;
 };
 
 export type ConversationResponseBody = {
   id: number;
-  participants: UserSearchResult[];
+  participants: {
+    id: number;
+    handle: string;
+    displayName: string;
+    profileImage: string | null;
+  }[];
   createdAt: string;
   lastActivityAt: string;
 };
@@ -85,7 +113,12 @@ export type ConversationResponseBody = {
 export type GetConversationsResponseBody = {
   conversations: {
     id: number;
-    otherUser: UserSearchResult;
+    otherUser: {
+      id: number;
+      handle: string;
+      displayName: string;
+      profileImage: string | null;
+    };
     lastMessage: {
       id: number;
       content: string;
@@ -109,7 +142,7 @@ export type CreateMessageInput = {
 export type MessageResponseBody = {
   id: number;
   content: string;
-  sender: UserSearchResult;
+  sender: CreateMessageResponseBody["sender"];
   createdAt: string;
 };
 
@@ -122,7 +155,8 @@ export type CreateMessageResponseBody = {
   id: number;
   content: string;
   sender: {
-    username: string;
+    id: number;
+    handle: string;
     displayName: string;
     profileImage: string | null;
   };

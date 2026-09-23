@@ -9,25 +9,28 @@ import type { SearchUsersResponseBody } from "@/types/api.types.js";
 const getBody = <T>(response: Response) => response.body as T;
 
 describe("GET /users?query=", () => {
-  it("returns users whose username or display name contains the query", async () => {
+  it("returns users whose handle or display name contains the query", async () => {
     const app = createApp();
     const credentials = {
       username: "requesting-user",
       password: "secure-password",
       displayName: "Requesting User",
     };
-    const usernameMatch = await createTestUser({
-      username: "alex-user",
+    const handleMatch = await createTestUser({
+      username: "handle-match-user",
+      handle: "alex-handle",
       displayName: "First Match",
       profileImage: null,
     });
     const displayNameMatch = await createTestUser({
       username: "display-name-match",
+      handle: "display-name-match-handle",
       displayName: "Alexandra Lee",
       profileImage: "https://example.com/alexandra.jpg",
     });
     await createTestUser({
-      username: "unrelated-user",
+      username: "alex-username-only",
+      handle: "unrelated-handle",
       displayName: "Unrelated User",
     });
     const requestingUser = await createTestUser(credentials);
@@ -45,12 +48,12 @@ describe("GET /users?query=", () => {
     expect(body).toEqual(
       expect.arrayContaining([
         {
-          username: usernameMatch.username,
-          displayName: usernameMatch.displayName,
-          profileImage: usernameMatch.profileImage,
+          handle: handleMatch.handle,
+          displayName: handleMatch.displayName,
+          profileImage: handleMatch.profileImage,
         },
         {
-          username: displayNameMatch.username,
+          handle: displayNameMatch.handle,
           displayName: displayNameMatch.displayName,
           profileImage: displayNameMatch.profileImage,
         },

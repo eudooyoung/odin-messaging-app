@@ -361,7 +361,7 @@ describe("router", () => {
       lastActivityAt: "2026-09-04T01:00:00.000Z",
     };
 
-    it("renders the profile page outside the messaging layout", async () => {
+    it("renders the profile page inside the messaging layout", async () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
@@ -397,10 +397,10 @@ describe("router", () => {
         "Current User",
       );
       expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
-      expect(screen.queryByRole("combobox", { name: "Search users" })).not.toBeInTheDocument();
-      expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "My profile" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByText("No conversations yet")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
     });
 
     it("refreshes the persistent conversation list after creating a conversation", async () => {

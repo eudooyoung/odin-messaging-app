@@ -17,16 +17,20 @@
 
 ### 사용자 / 인증
 
-- `username` + `password`
-- `username`은 unique, 계정 식별용
-- `displayName`은 표시용 이름
+- `username` + `password`로 로그인
+- `username`은 unique, 변경 불가인 로그인 전용 비공개 식별자
+- `username`에 이메일 형식을 강제하지 않음
+- `handle`은 공개 unique 식별자이며 `@handle`로 표시
+- `handle`은 변경 가능하며 사용자 URL / 검색 / 대화 시작에 사용
+- `displayName`은 중복 가능한 표시용 이름
 - 로그인한 사용자만 주요 기능 이용
 
 ### 사용자 탐색
 
-- `username` 또는 `displayName`으로 검색
+- `handle` 또는 `displayName`으로 검색
 - 전체 사용자 목록은 공개하지 않음
 - 자기 자신과 대화 시작 불가
+- 공개 사용자 URL은 `/users/:handle` 사용
 
 ### 1:1 대화
 
@@ -49,10 +53,12 @@
 
 ### 프로필
 
+- `handle`
 - `displayName`
 - `bio`
 - 프로필 이미지
-- `username`은 변경 불가
+- `handle`은 변경 가능
+- `username`은 로그인 전용이며 변경 불가 / 다른 사용자에게 비공개
 - 프로필 이미지 저장 방식은 추후 결정
 
 ### MVP 제외
@@ -83,15 +89,16 @@
 
 ### 사용자 검색
 
-- `username` 또는 `displayName`으로 검색
-- 결과에 `displayName + @username` 표시
-- 검색 결과 선택 시 `/users/:username`의 read-only 사용자 프로필로 이동
+- `handle` 또는 `displayName`으로 검색
+- 결과에 `displayName + @handle` 표시
+- 검색 결과 선택 시 `/users/:handle`의 read-only 사용자 프로필로 이동
+- 최근 선택한 사용자는 로컬 recent list로 보관하고 빈 검색창 focus 시 표시
 - 다른 사용자의 프로필에서 `Message`를 선택하면 기존 1:1 대화를 재사용하거나 새 대화를 생성한 뒤 채팅으로 이동
 - 현재 로그인 사용자의 read-only 프로필에서는 `Message`를 표시하지 않고, 본인 프로필 편집은 기존 `/profile`에서 처리
 
 ### 채팅 화면
 
-- 상단: 상대 프로필 이미지, `displayName`, `@username`
+- 상단: 상대 프로필 이미지, `displayName`, `@handle`
 - 중앙: 메시지 목록
 - 하단: 입력창 + 전송 버튼
 - 내 메시지 / 상대 메시지 구분
@@ -102,15 +109,15 @@
 
 ### 프로필
 
-- 다른 사용자: `/users/:username`에서 read-only 프로필 표시
+- 다른 사용자: `/users/:handle`에서 read-only 프로필 표시
   - 프로필 이미지
   - `displayName`
-  - `@username`
+  - `@handle`
   - `bio`
   - 다른 사용자에게 `Message` 진입점 제공
 - 현재 사용자: `/profile`에서 편집
-  - 수정 가능: 프로필 이미지, `displayName`, `bio`
-  - `username`은 수정 불가
+  - 수정 가능: 프로필 이미지, `handle`, `displayName`, `bio`
+  - `username`은 로그인 전용이며 수정 불가
 
 ## 3. 데이터 모델 + API 설계
 
@@ -119,7 +126,14 @@
 #### User
 
 - `id`: Int
-- `username`: unique, 최대 30자, 변경 불가
+- `username`: unique, 최대 30자, 변경 불가, 로그인 전용 비공개 식별자
+- `handle`: required, unique, 최대 30자, 변경 가능, 공개 식별자
+  - 3~30자
+  - lowercase `a-z`, `0-9`, `_`, `.`만 허용
+  - `_`는 처음 / 끝 허용
+  - `.`은 처음 / 끝 불가
+  - 연속 `..` 불가
+  - 가입 시 서버가 `user_` + random lowercase alphanumeric 8자로 자동 생성
 - `passwordHash`
 - `displayName`: 최대 50자
 - `bio`: nullable, 최대 300자
@@ -163,6 +177,10 @@
 - Conversation 참여자만 메시지 조회 / 전송 가능
 - 사용자와 Conversation은 implicit many-to-many
 - 내부 PK는 Int 사용
+- 사용자 URL / 검색에는 내부 `id`를 사용하지 않고 `handle`을 사용
+- authenticated API에서 본인 / 상대 / sender의 안정적인 identity 비교가 필요한 payload에는 사용자 `id`를 포함
+- 다른 사용자에게 노출되는 payload에서는 `username`을 제거
+- 변경 전 handle은 별도 alias / redirect를 유지하지 않으며 `/users/:oldHandle`은 `404`
 
 ### API
 
@@ -170,7 +188,7 @@
 
 - `POST /auth/register`
   - request: `{ username, password, displayName }`
-  - response: `{ id, username, displayName }`
+  - response: `{ id, username, handle, displayName }`
   - success: `201`
   - error: `400` validation, `409` duplicate username
 
@@ -196,27 +214,27 @@
   - 이미 로그아웃 상태여도 `204`
 
 - `GET /auth/me`
-  - response: `{ id, username, displayName }`
+  - response: `{ id, username, handle, displayName }`
   - success: `200`
   - error: `401`
 
 #### User / Profile
 
-- `GET /users/{username}`
-  - response: `{ username, displayName, bio, profileImage }`
+- `GET /users/{handle}`
+  - response: `{ id, handle, displayName, bio, profileImage }`
   - success: `200`
   - error: `401`, `404`
 
 - `PATCH /users/me`
-  - request: `{ displayName?, bio?, profileImage? }`
-  - response: `{ username, displayName, bio, profileImage }`
+  - request: `{ handle?, displayName?, bio?, profileImage? }`
+  - response: `{ username, handle, displayName, bio, profileImage }`
   - success: `200`
-  - error: `400` validation, `401`
+  - error: `400` validation, `401`, `409` duplicate handle
 
 - `GET /users?query=...`
-  - `username` 또는 `displayName` 검색
+  - `handle` 또는 `displayName` 검색
   - `query`: trim 후 1~50자
-  - response: `[{ username, displayName, profileImage }]`
+  - response: `[{ handle, displayName, profileImage }]`
   - success: `200`
   - error: `400` validation, `401`
   - 검색 결과 없음: `200 []`
@@ -224,9 +242,10 @@
 #### Conversation
 
 - `POST /conversations`
-  - request: `{ targetUsername }`
-  - `targetUsername`: trim 후 1~30자
+  - request: `{ targetHandle }`
+  - `targetHandle`: handle validation 규칙 적용
   - response: `{ id, participants, createdAt, lastActivityAt }`
+  - `participants` user shape: `{ id, handle, displayName, profileImage }`
   - 새 대화 생성: `201`
   - 기존 대화 반환: `200`
   - error: `400` validation / 자기 자신, `401`, `404` target user 없음
@@ -234,6 +253,7 @@
 - `GET /conversations`
   - 현재 사용자의 대화 목록
   - response: `{ conversations: [{ id, otherUser, lastMessage?, lastActivityAt }], nextCursor }`
+  - `otherUser` shape: `{ id, handle, displayName, profileImage }`
   - 정렬: `lastActivityAt DESC, id DESC`
   - `cursor`: optional positive integer
   - `limit`: optional positive integer
@@ -245,6 +265,7 @@
 - `GET /conversations/{id}`
   - `id`: positive integer
   - response: `{ id, participants, createdAt, lastActivityAt }`
+  - `participants` user shape: `{ id, handle, displayName, profileImage }`
   - success: `200`
   - error: `400` id validation, `401`, `403` participant 아님, `404`
 
@@ -253,11 +274,13 @@
 - `POST /conversations/{id}/messages`
   - request: `{ content }`
   - response: `{ id, content, sender, createdAt }`
+  - `sender` shape: `{ id, handle, displayName, profileImage }`
   - success: `201`
   - error: `400` validation, `401`, `403` participant 아님, `404`
 
 - `GET /conversations/{id}/messages`
   - response: `{ messages: [{ id, content, sender, createdAt }], nextCursor }`
+  - `sender` shape: `{ id, handle, displayName, profileImage }`
   - 정렬: `createdAt DESC, id DESC`
   - cursor: 마지막으로 받은 `messageId`
   - success: `200`
@@ -271,6 +294,7 @@
 - Message 조회 / 생성은 participant만 가능
 - 프로필 수정은 본인만 가능
 - 다른 사용자 프로필 조회 / 검색은 로그인 사용자에게 허용
+- WebSocket `message.created.message.sender`는 REST message sender와 동일한 `{ id, handle, displayName, profileImage }` shape 사용
 
 ## 4. 기술 스택
 
@@ -314,16 +338,22 @@
   - [x] refresh session 서버 저장 + SHA-256 token hash
   - [x] refresh rotation transaction
   - [x] Zod env validation / test DB 분리
+  - [x] register initial handle 자동 생성 + unique collision retry(max 5)
+  - [x] register / auth-me self payload에 `handle` 포함
 - [x] User / Profile API
-  - [x] 사용자 조회
-  - [x] 내 프로필 수정
-  - [x] username / displayName 검색
+  - [x] `GET /users/:handle` 공개 사용자 조회
+  - [x] `GET /users?query=...` handle / displayName 검색
+  - [x] `PATCH /users/me` handle 변경 + validation + duplicate handle `409`
+  - [x] 공개 payload에서 `username` 제거
 - [x] Conversation
   - [x] 생성 / 기존 1:1 conversation 재사용
+  - [x] 생성 요청 `targetHandle` 전환
+  - [x] participants / otherUser를 `{ id, handle, displayName, profileImage }`로 전환
   - [x] 목록 cursor pagination
   - [x] 상세 조회 / participant 권한 검사
 - [x] Message REST
   - [x] 메시지 생성 / 조회
+  - [x] sender를 `{ id, handle, displayName, profileImage }`로 전환
   - [x] participant 권한 검사
   - [x] cursor pagination
   - [x] message 생성 시 `lastActivityAt` 갱신
@@ -331,6 +361,7 @@
   - [x] cookie access token 인증
   - [x] 사용자별 connection registry
   - [x] `message.created`를 sender 제외 상대 connection들에 publish
+  - [x] `message.created.message.sender`를 REST와 동일한 handle 기반 shape로 전환
   - [x] connection close cleanup
   - [x] connection `error` event 처리
   - [x] frontend REST message shape와 event payload 계약 일치
@@ -357,7 +388,7 @@
   - [x] Auth MVP audit 완료 — MVP blocker 없음
 - [x] User Search
   - [x] 검색 query와 주요 상태
-  - [x] 사용자 선택 → `/users/:username` read-only profile 이동
+  - [x] 사용자 선택 → read-only profile 이동 — 기존 `/users/:username`, handle refactor 예정
 - [x] User Profile / Conversation 시작 흐름
   - [x] `UserProfilePage` read-only profile 조회 / loading / 404 / generic error
   - [x] `UserProfileNotFoundError`로 profile 404 상태 구분
@@ -365,7 +396,7 @@
   - [x] Message mutation success / pending / error 상태
   - [x] 현재 사용자 자신의 read-only profile에서는 `Message` 숨김
   - [x] conversation 생성 성공 시 목록 invalidate를 시작하되 refetch 완료를 기다리지 않고 즉시 navigation
-  - [x] `/users/:username`을 `MessagingLayout` child protected route로 연결
+  - [x] read-only profile route를 `MessagingLayout` child protected route로 연결 — 현재 `/users/:username`, `/users/:handle`로 refactor 예정
   - [x] 검색 → profile → Message → conversation → persistent sidebar 갱신 router integration
   - [x] 기능 audit / re-audit 완료 — 필수 blocker 없음
 - [x] Conversation
@@ -396,7 +427,7 @@
   - [x] 최종 re-audit 완료 — 필수 WebSocket blocker 없음
 - [x] Profile
   - [x] Profile query
-  - [x] username path segment 인코딩
+  - [x] profile path segment 인코딩 — 현재 username 기준, handle 기준으로 refactor 예정
   - [x] Profile edit mutation
   - [x] Profile UI / validation / loading / query error / mutation 상태
   - [x] null bio/profileImage 표시 및 submit 변환
@@ -445,14 +476,17 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
     - `confirmPassword`는 `registerUser` API payload에서 제외하고 기존 backend request 계약 유지
     - Confirm password 추가로 깨진 기존 success / validation / API error test fixture와 helper 보완
     - Login/Register에서 반복되는 긴 FormField wrapper/input Tailwind class는 auth 범위에서 상수로 정리하고, 별도 wrapper component 추출은 보류
+  - [ ] 회원가입 성공 후 Login 화면으로 이동할 때 성공 메시지 표시
   - [x] 데스크톱 메시징 2-column layout
     - `MessagingLayout`을 추가하고 protected messaging route를 nested route로 재구성
     - sidebar는 `w-80 shrink-0`, chat pane은 `flex-1 min-w-0`인 desktop 2-column shell로 구성
+    - sidebar 책임을 `MessagingSidebar`로 분리
     - `/`는 대화 미선택 안내, `/conversations/:conversationId`는 같은 layout의 `Outlet`에서 렌더링
-    - ConversationList / UserSearch / Profile / Logout sidebar는 conversation route 이동 중에도 유지
+    - `/profile`도 `MessagingLayout` child route로 이동해 sidebar 유지
+    - ConversationList / UserSearch / Profile / Logout sidebar는 conversation / profile route 이동 중에도 유지
     - full-height viewport는 `h-dvh` / `min-h-dvh`를 기본으로 사용
   - [x] ConversationList / desktop sidebar
-    - Conversation item을 `displayName + time` 상단 행, `@username`, `lastMessage` 구조로 정리하고 긴 텍스트 truncate 적용
+    - Conversation item을 `displayName + time` 상단 행, 공개 handle, `lastMessage` 구조로 정리하는 방향으로 설계했으며 현재 UI는 identity refactor 전 `@username` 표시
     - 현재 conversation은 `NavLink`의 `aria-current="page"`와 selected style로 구분
     - `lastMessage: null`이면 `No messages yet` placeholder를 표시해 item 높이/구조 유지
     - loading / empty / pagination error / Load more 상태 스타일 정리
@@ -461,6 +495,10 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
     - sidebar header / UserSearch / scrollable ConversationList / 하단 Profile·Logout navigation 영역 정리
     - 앱 이름 / 로고 branding은 기능 UI 완료 후 별도 작업으로 보류
   - [ ] ConversationPage / MessageList / MessageComposer
+    - [x] ConversationPage header 스타일링 — `/` 고정 이동 close control, 상대 avatar / fallback initial, displayName, 공개 식별자 영역, bottom border / focus-visible
+    - [ ] identity refactor 후 header의 `@username` 표시를 `@handle`로 전환
+    - [ ] MessageList bubble / 시간 / loading·empty·pagination 상태
+    - [ ] MessageComposer 입력 / Send 영역
   - [ ] User Search / Profile / loading / empty / error 상태
     - [x] UserSearch 결과를 ConversationList를 밀지 않는 overlay dropdown으로 전환
     - [x] combobox / listbox / option semantic 구조와 `aria-activedescendant` 적용
@@ -469,7 +507,12 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
     - [x] 결과가 dropdown viewport를 벗어날 때 active option 자동 스크롤
     - [x] UserSearch 외부 click 시 dropdown close
     - [x] 결과 선택 후 persistent layout에서도 dropdown close + active option reset
-    - [x] reserved-character username의 UserSearch → profile route encode/decode 경계 보완
+    - [x] reserved-character username의 UserSearch → profile route encode/decode 경계 보완 — handle refactor 시 동일 경계 재적용 예정
+    - [x] 최근 선택 사용자(localStorage, 최대 5명, 중복 시 최신 순) 표시
+    - [x] 빈 검색창 focus 시 recent users 표시, 입력 중에는 live search 결과 표시
+    - [x] 검색 input + open dropdown을 하나의 combobox surface처럼 보이도록 radius / border 연결
+    - [x] result / recent option 사이 separator 제거
+    - [ ] identity refactor 후 recent user 저장 key / route를 username에서 handle로 전환
     - [ ] Profile 및 남은 loading / empty / error 상태 시각 정리
   - [ ] 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
 - [ ] frontend + backend 실제 브라우저 smoke test
@@ -543,7 +586,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 - [x] User Search / read-only Profile / Conversation 시작 흐름 manual audit
   - [x] `usersQuery.ts` / test — queryKey, URL query encoding, signal, 400/generic HTTP error, transport passthrough 정리
   - [x] `UserSearch.tsx` / test — trim된 검색값과 원본 input 분리, whitespace-only query 비활성화
-  - [x] 사용자 선택 책임을 conversation 생성에서 encoded `/users/:username` navigation으로 변경
+  - [x] 사용자 선택 책임을 conversation 생성에서 encoded profile navigation으로 변경 — 당시 `/users/:username`, handle refactor 예정
   - [x] mouse click / Enter 선택 시 persistent layout에서도 dropdown close + active option reset
   - [x] auto-scroll / click-outside / reserved-character route 경계 회귀 테스트 보완
   - [x] `UserProfilePage` — read-only profile loading / success / 404 / generic error 상태
@@ -555,7 +598,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] `createConversation.ts` / test — 200/201 success, 400/404 status-specific error, generic HTTP error, transport passthrough 유지
   - [x] 최종 re-audit 완료 — 필수 frontend blocker 없음
 - [x] Profile query / mutation / page 흐름 manual audit
-  - [x] `userProfileQuery.ts` / test — queryKey, username path encoding, signal, 404/generic HTTP error, transport passthrough 정리
+  - [x] `userProfileQuery.ts` / test — queryKey, path encoding, signal, 404/generic HTTP error, transport passthrough 정리 — 현재 username 기반, handle refactor 예정
   - [x] `updateUserProfile.ts` / test — PATCH 계약, 400/generic HTTP error, transport passthrough 정리
   - [x] `ProfilePage.tsx` — input field에 기존 `FormField` 재사용, profile cache 동기화 helper로 성공 lifecycle 가독성 개선
   - [x] profile form의 `bio` / `profileImage` 빈 문자열 → `null` 변환을 명시적으로 정리
@@ -603,6 +646,53 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - 신규 frontend 테스트에서는 호출 횟수를 먼저 보장한 뒤 optional chaining 없이 필요한 인자만 검증하도록 `frontend/AGENTS.md`에 규칙 반영 완료
   - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
 
+#### User identity refactor — Backend 전환 완료 / Frontend 대기
+
+UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환은 완료했고 전체 테스트 GREEN 및 최종 audit에서 기능 blocker 없음**을 확인했다. Frontend 전환 전에 backend cleanup / 테스트 리팩토링 / 기존 TODO를 먼저 처리한다.
+
+- [x] User model에 `handle` 추가 + migration / 기존 사용자 backfill
+  - 최종 상태: required + unique + mutable, 최대 30자
+  - 기존 dev 데이터는 migration에서 `user_<id>`로 backfill 후 `NOT NULL` + unique index 적용
+  - handle validation은 API/Zod에서 관리
+- [x] 회원가입 시 initial handle 자동 생성
+  - `user_` + random lowercase alphanumeric 8자
+  - 한 register 요청에서 이미 시도한 handle은 재사용하지 않음
+  - handle unique collision은 최대 5회까지 새 handle로 재시도
+  - 마지막 handle collision은 원래 Prisma `P2002`를 그대로 throw
+  - username unique `P2002`는 기존 `USERNAME_ALREADY_EXISTS` ConflictError로 변환
+  - password hashing은 retry와 무관하게 1회만 수행
+  - handle unique `P2002` 판별의 중복 infrastructure 로직은 handle 전용 공통 helper로 추출
+- [x] Auth self payload 반영
+  - [x] register service / repository 흐름에 `handle` 포함
+  - [x] `POST /auth/register` HTTP response `{ id, username, handle, displayName }` 계약 확인
+  - [x] `GET /auth/me` response에 `handle` 추가
+  - `username`은 로그인 전용 self data로 유지
+- [x] 공개 User/Profile API를 username → handle로 전환
+  - [x] `GET /users/:handle`
+  - [x] search: `handle | displayName`, 공개 응답에서 `username` 제거
+  - [x] `PATCH /users/me`에서 handle 변경 + validation + duplicate handle `409`
+  - [x] handle 규칙 경계(3/30자) 및 허용 문자 성공 경로 보완
+- [x] Conversation API 전환
+  - [x] `targetUsername` → `targetHandle`
+  - [x] participants / otherUser: `{ id, handle, displayName, profileImage }`
+  - [x] 생성 201 / 기존 대화 재사용 200 / self 400 / target 404 / validation / 401 유지
+  - [x] detail / list payload와 service fixture를 handle 기반 계약으로 정리
+- [x] Message REST / WebSocket sender 전환
+  - [x] REST sender: `{ id, handle, displayName, profileImage }`
+  - [x] WebSocket `message.created.message.sender`도 REST와 동일한 shape
+  - [x] sender 제외 / 상대의 모든 connection 전달 계약 유지 및 직접 검증
+- [ ] Backend identity refactor 최종 cleanup
+  - 최종 audit에서 기능 blocker 없음 확인
+  - 전체 TypeScript 검사 및 전체 backend 테스트 GREEN 확인
+  - [ ] 미사용 `UserSearchResult` export 삭제
+  - [ ] `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
+  - `targetUsername`을 400으로 거부하는 legacy request 테스트는 회귀 테스트로 유지
+- [ ] Frontend route / query / mutation / recent-users storage를 handle 계약으로 전환
+  - `/users/:handle`
+  - 공개 화면의 `@username` → `@handle`
+  - username을 다른 사용자 payload에서 사용하지 않도록 제거
+- [ ] identity refactor 전체 test / audit 완료 후 UI 스타일링 재개
+
 #### Product / Frontend behavior TODO
 
 - [ ] 메시지가 없는 Conversation을 대화 목록에서 제외
@@ -617,6 +707,11 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - 재진입 시 나간 사용자에게는 clear 시점 이후 메시지만 보이도록 하는 의미를 후보로 유지
 
 #### Backend refactor TODO
+
+- [ ] Backend 전체 테스트 리팩토링 / cleanup
+  - backend identity 최종 cleanup 이후 기존 테스트 전반의 fixture / 중복 / 구조를 다시 점검
+  - 동작 변경 없이 테스트 가독성·현재 타입 계약 일치·불필요한 legacy 흔적을 정리
+  - 완료 후 아래 backend TODO를 순서대로 진행
 
 - [ ] 사용자 검색에서 현재 로그인 사용자 제외
   - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
@@ -646,43 +741,49 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 ### 작업 방식
 
 - 공통 개발 흐름, TDD, 테스트, 리팩토링 규칙은 루트 `AGENTS.md`와 `frontend/AGENTS.md` / `backend/AGENTS.md`를 기준으로 한다.
-- Graft repo context graph를 도입했으며, 코드 탐색 시 루트 `AGENTS.md`의 Graft 지침을 따른다. `graft/`는 재생성 가능한 로컬 cache이며 Graft의 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값이 아닌 참고 추정치로 본다.
+- Graft repo context graph를 도입했고 Codex MCP / hooks도 연결했다. 코드 탐색 시 루트 `AGENTS.md`의 Graft 지침을 따른다. `graft/`는 재생성 가능한 로컬 cache이며 Graft의 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값이 아닌 참고 추정치로 본다.
+  - 2026-09-23 기준 Graft `0.19.0`, `graft check`에서 wiring graph와 코드 동기화 `OK` 확인
+  - deep layer는 아직 build하지 않았으며 현재 wiring graph를 source of truth로 사용
 - 이 문서는 현재 구현 상태, 프로젝트별 결정, TODO, 다음 작업 순서를 기록한다.
 - GPT 세션 교체 전 이 문서의 진행상황과 다음 시작점을 최신화한다.
 
 ### 다음 시작점
 
 - Backend / Frontend 핵심 기능 구현, 기능 단위 audit, frontend manual audit은 완료 상태다.
-- UserSearch → read-only UserProfilePage → Message → Conversation 흐름을 구현하고 최종 re-audit까지 완료했다.
-  - 검색 결과 mouse click / Enter → encoded `/users/:username`
-  - `/users/:username`은 `ProtectedRoute → MessagingLayout` 아래에서 sidebar를 유지
-  - profile loading / success / 404 / generic error 처리
-  - 다른 사용자 profile의 Message success / pending / error 및 중복 mutation 방지
-  - 현재 사용자 자신의 read-only profile에서는 Message 숨김, 편집은 기존 `/profile`
-  - conversation 생성 성공 시 sidebar conversations query exact invalidate를 시작하되 refetch를 await하지 않고 즉시 navigation
-  - persistent layout에서 검색 결과 선택 후 dropdown close + active option reset
-  - reserved-character username route encode/decode 경계 테스트 완료
-  - 기능 audit / re-audit 결과 필수 frontend blocker 없음
-- Auth 기본 UI와 desktop messaging 2-column shell에 이어 **desktop sidebar / ConversationList 스타일링까지 완료**했다.
-  - ConversationList item layout / truncate / selected state / `No messages yet` placeholder / focus-visible 보완 완료
-  - `MessagingLayout` sidebar collapse / expand, width transition, header, scrollable list, Profile·Logout navigation 스타일 완료
-  - UserSearch overlay / keyboard navigation / auto-scroll / click-outside / selection close 동작 완료
-  - 앱 이름 / 로고 branding은 기능 UI 완료 후 별도 TODO로 보류
-- **다음 UI 시작점:** sidebar 전체를 최종 눈검사하고, 필요하면 `MessagingLayout`의 sidebar 책임을 `MessagingSidebar`로 분리하는 작은 리팩토링 여부를 결정한 뒤 다음 순서로 진행한다.
-  1. ConversationPage header
-  2. MessageList bubble / 시간 / loading·empty·pagination 상태
-  3. MessageComposer 입력 / Send 영역
-  4. Profile / UserProfilePage 및 남은 loading / empty / error 상태 스타일
-  5. 모바일 대화 목록 ↔ 채팅 화면 기본 responsive 처리
-- `router.test.tsx` app integration API mock 중복은 재검토 결과 현재 직접 path `if` 분기를 유지하기로 결정했고 추가 리팩토링은 하지 않았다.
+- UI는 desktop sidebar와 `ConversationPage` header까지 진행했고 identity refactor 때문에 잠시 중단했다.
+- **Backend identity 기능/API 전환은 완료**했다.
+  - Auth self payload에 `handle` 포함
+  - 공개 User/Profile API를 handle 기반으로 전환
+  - Conversation request / participants / otherUser를 handle 기반으로 전환
+  - Message REST / WebSocket sender를 `{ id, handle, displayName, profileImage }`로 전환
+  - backend 전체 TypeScript 검사 및 전체 테스트 GREEN 확인
+  - backend 최종 audit에서 기능 blocker 없음 확인
+- **다음 즉시 시작점:** backend identity 최종 cleanup 2건
+  1. `api.types.ts`의 미사용 `UserSearchResult` export 삭제
+  2. `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
+- cleanup 후 **Backend 전체 테스트 리팩토링 / cleanup**을 진행한다.
+- 그 다음 기존 Backend TODO를 다음 순서로 진행한다.
+  1. `GET /users?query=...`에서 현재 로그인 사용자 제외
+  2. concurrent `POST /conversations`에서 동일 participant pair 중복 생성 hardening
+  3. Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
+- 위 backend 정리 이후 Frontend identity refactor로 이동한다.
+  - `/users/:handle`
+  - auth/user/conversation/message query·mutation 타입과 payload handle 전환
+  - recent users storage key / route를 username에서 handle로 전환
+  - 공개 화면의 `@username` → `@handle`
+  - 본인/상대/메시지 판별은 안정적인 user `id` 사용
+- Frontend identity refactor 완료 후 UI를 다음 순서로 재개한다.
+  1. MessageList bubble / 시간 / loading·empty·pagination 상태
+  2. MessageComposer 입력 / Send 영역
+  3. Profile / UserProfilePage 및 남은 loading / empty / error 상태 스타일
+  4. 모바일 대화 목록 ↔ 채팅 화면 기본 responsive 처리
+- 회원가입 성공 후 Login 화면에 성공 메시지를 표시하는 TODO는 유지한다.
 - 후속 TODO:
   - 메시지가 없는 Conversation은 `GET /conversations`에서 제외하는 backend 조회 방식 우선 검토
   - WebSocket reconnect/open gap recovery가 message query뿐 아니라 conversation 목록도 갱신하도록 보완
   - 1:1 대화 나가기 / 내 히스토리 지우기 semantics 및 participant state 모델 검토
-  - 사용자 검색에서 현재 로그인 사용자 제외는 backend TODO 유지
-  - concurrent `POST /conversations`에서 동일 participant pair 중복 생성을 막는 backend hardening 검토
 - CSS/UI 완료 후 frontend + backend 실제 브라우저 smoke test를 진행한다.
-- 이후 Backend Message atomicity, WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
+- 이후 WebSocket Origin 검증 등 배포 전 확인을 마치고 전체 테스트 / build / 최종 audit 후 배포 단계로 이동한다.
 - Auth의 남은 `이전 session pending mutation / refresh` race 방어는 Post-MVP hardening으로 유지한다.
 
 ## 6. 배포 / 인증 쿠키 정책

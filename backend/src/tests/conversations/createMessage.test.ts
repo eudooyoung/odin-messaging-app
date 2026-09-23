@@ -14,6 +14,7 @@ describe("POST /conversations/:id/messages", () => {
     const app = createApp();
     const credentials = {
       username: "current-user",
+      handle: "current_handle",
       password: "secure-password",
       displayName: "Current User",
     };
@@ -47,7 +48,8 @@ describe("POST /conversations/:id/messages", () => {
     expect(typeof body.id).toBe("number");
     expect(body.content).toBe(content);
     expect(body.sender).toEqual({
-      username: currentUser.username,
+      id: currentUser.id,
+      handle: currentUser.handle,
       displayName: currentUser.displayName,
       profileImage: currentUser.profileImage,
     });

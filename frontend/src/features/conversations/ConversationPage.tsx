@@ -48,9 +48,35 @@ export function ConversationPage() {
 
   return (
     <>
-      <Link to="/">Back to conversations</Link>
-      <h1>{otherUser.displayName}</h1>
-      <p>@{otherUser.username}</p>
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-neutral-200 bg-white px-6 py-4">
+        <Link
+          aria-label="Close conversation"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+          to="/"
+        >
+          ←
+        </Link>
+        {otherUser.profileImage ? (
+          <img
+            className="h-10 w-10 shrink-0 rounded-full object-cover"
+            src={otherUser.profileImage}
+            alt={`${otherUser.displayName} profile`}
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 font-heading text-sm font-semibold text-primary-700"
+          >
+            {otherUser.displayName.charAt(0)}
+          </span>
+        )}
+        <div className="min-w-0">
+          <h1 className="truncate font-heading text-base font-semibold text-neutral-900">
+            {otherUser.displayName}
+          </h1>
+          <p className="truncate text-sm text-neutral-500">@{otherUser.username}</p>
+        </div>
+      </header>
       <MessageList conversationId={parsedConversationId} />
       <MessageComposer conversationId={parsedConversationId} />
     </>

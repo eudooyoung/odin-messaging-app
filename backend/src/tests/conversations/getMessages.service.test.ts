@@ -39,13 +39,13 @@ describe("getMessagesService", () => {
       participants: [
         {
           id: currentUserId,
-          username: "current-user",
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
         {
           id: 2,
-          username: "other-user",
+          handle: "other_handle",
           displayName: "Other User",
           profileImage: null,
         },
@@ -58,7 +58,8 @@ describe("getMessagesService", () => {
         id: 3,
         content: "Third message",
         sender: {
-          username: "current-user",
+          id: currentUserId,
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
@@ -68,7 +69,8 @@ describe("getMessagesService", () => {
         id: 2,
         content: "Second message",
         sender: {
-          username: "other-user",
+          id: 2,
+          handle: "other_handle",
           displayName: "Other User",
           profileImage: null,
         },
@@ -78,7 +80,8 @@ describe("getMessagesService", () => {
         id: 1,
         content: "First message",
         sender: {
-          username: "current-user",
+          id: currentUserId,
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
@@ -109,7 +112,7 @@ describe("getMessagesService", () => {
       participants: [
         {
           id: currentUserId,
-          username: "current-user",
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
@@ -121,7 +124,8 @@ describe("getMessagesService", () => {
       id,
       content: `Message ${id}`,
       sender: {
-        username: "current-user",
+        id: currentUserId,
+        handle: "current_handle",
         displayName: "Current User",
         profileImage: null,
       },
@@ -150,7 +154,7 @@ describe("getMessagesService", () => {
       participants: [
         {
           id: currentUserId,
-          username: "current-user",
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
@@ -163,7 +167,8 @@ describe("getMessagesService", () => {
         id: 19,
         content: "Message 19",
         sender: {
-          username: "current-user",
+          id: currentUserId,
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
@@ -204,13 +209,13 @@ describe("getMessagesService", () => {
       participants: [
         {
           id: 2,
-          username: "first-participant",
+          handle: "first_participant",
           displayName: "First Participant",
           profileImage: null,
         },
         {
           id: 3,
-          username: "second-participant",
+          handle: "second_participant",
           displayName: "Second Participant",
           profileImage: null,
         },

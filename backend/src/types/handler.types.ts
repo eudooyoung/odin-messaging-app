@@ -2,10 +2,13 @@ import type { RequestHandler } from "express";
 import type {
   ConversationResponseBody,
   CreateConversationInput,
+  CreateConversationResponseBody,
   CreateMessageInput,
+  CreateMessageResponseBody,
   GetConversationsQuery,
   GetConversationsResponseBody,
   GetMessagesResponseBody,
+  GetUserProfileResponseBody,
   LoginInput,
   LoginResponseBody,
   LogoutResponseBody,
@@ -49,8 +52,8 @@ export type MeHandler = RequestHandler<
 >;
 
 export type GetUserProfileHandler = RequestHandler<
-  { username: string },
-  UserProfileResponseBody,
+  { handle: string },
+  GetUserProfileResponseBody,
   Record<string, never>,
   Record<string, never>,
   { userId: number }
@@ -74,7 +77,7 @@ export type SearchUsersHandler = RequestHandler<
 
 export type CreateConversationHandler = RequestHandler<
   Record<string, never>,
-  ConversationResponseBody,
+  CreateConversationResponseBody,
   CreateConversationInput,
   Record<string, never>,
   { userId: number }
@@ -98,7 +101,7 @@ export type GetConversationHandler = RequestHandler<
 
 export type CreateMessageHandler = RequestHandler<
   { id: string },
-  MessageResponseBody,
+  CreateMessageResponseBody,
   CreateMessageInput,
   Record<string, never>,
   { userId: number; conversationId: number }

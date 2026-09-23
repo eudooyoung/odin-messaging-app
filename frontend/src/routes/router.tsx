@@ -28,11 +28,11 @@ const routes = [
             path: "users/:username",
             element: <UserProfilePage />,
           },
+          {
+            path: "profile",
+            element: <ProfilePage />,
+          },
         ],
-      },
-      {
-        path: "/profile",
-        element: <ProfilePage />,
       },
     ],
   },

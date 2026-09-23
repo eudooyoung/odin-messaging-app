@@ -8,7 +8,7 @@ export const findConversationById = (conversationId: number) =>
       participants: {
         select: {
           id: true,
-          username: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },
@@ -42,7 +42,8 @@ export const findConversationsByParticipantId = (
           id: { not: participantId },
         },
         select: {
-          username: true,
+          id: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },
@@ -91,7 +92,8 @@ export const findConversationByParticipantIds = (participantIds: number[]) =>
       id: true,
       participants: {
         select: {
-          username: true,
+          id: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },
@@ -112,7 +114,8 @@ export const createConversation = (participantIds: number[]) =>
       id: true,
       participants: {
         select: {
-          username: true,
+          id: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },

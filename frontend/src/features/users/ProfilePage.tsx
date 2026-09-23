@@ -108,7 +108,9 @@ export function ProfilePage() {
 
   return (
     <form onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}>
-      <Link to="/">Back to conversations</Link>
+      <Link aria-label="Close profile" to="/">
+        ←
+      </Link>
 
       <FormField
         id="display-name"

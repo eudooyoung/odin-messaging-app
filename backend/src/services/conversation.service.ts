@@ -7,7 +7,7 @@ import {
   findConversationByParticipantIds,
   findConversationsByParticipantId,
 } from "@/repositories/conversation.repository.js";
-import { findUserByUsername } from "@/repositories/user.repository.js";
+import { findUserByHandle } from "@/repositories/user.repository.js";
 
 export const getConversationService = async (currentUserId: number, conversationId: number) => {
   const conversation = await findConversationById(conversationId);
@@ -48,8 +48,8 @@ export const getConversationsService = async (
   };
 };
 
-export const createConversationService = async (currentUserId: number, targetUsername: string) => {
-  const targetUser = await findUserByUsername(targetUsername);
+export const createConversationService = async (currentUserId: number, targetHandle: string) => {
+  const targetUser = await findUserByHandle(targetHandle);
 
   if (!targetUser) {
     throw new NotFoundError("User not found", "USER_NOT_FOUND");

@@ -20,11 +20,13 @@ describe("GET /conversations", () => {
     const currentUser = await createTestUser(credentials);
     const firstOtherUser = await createTestUser({
       username: "first-other-user",
+      handle: "first_other_user",
       displayName: "First Other User",
       profileImage: "https://example.com/first-other-user.jpg",
     });
     const secondOtherUser = await createTestUser({
       username: "second-other-user",
+      handle: "second_other_user",
       displayName: "Second Other User",
     });
     const firstLastActivityAt = new Date("2026-09-01T01:00:00.000Z");
@@ -89,7 +91,8 @@ describe("GET /conversations", () => {
       {
         id: secondConversation.id,
         otherUser: {
-          username: secondOtherUser.username,
+          id: secondOtherUser.id,
+          handle: secondOtherUser.handle,
           displayName: secondOtherUser.displayName,
           profileImage: secondOtherUser.profileImage,
         },
@@ -104,7 +107,8 @@ describe("GET /conversations", () => {
       {
         id: firstConversation.id,
         otherUser: {
-          username: firstOtherUser.username,
+          id: firstOtherUser.id,
+          handle: firstOtherUser.handle,
           displayName: firstOtherUser.displayName,
           profileImage: firstOtherUser.profileImage,
         },

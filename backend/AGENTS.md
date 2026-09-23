@@ -174,6 +174,8 @@ CreateUserData
 - unit test는 실제 DB 연결이나 cleanup에 의존하지 않는다.
 - integration test에서는 HTTP 계약을 검증하고 service/repository 내부 구현을 중복 검증하지 않는다.
 - service unit test에서는 비즈니스 규칙과 infrastructure error 해석처럼 service가 책임지는 동작을 검증한다.
+- mock 호출의 전체 인자 shape가 곧 계약이면 `toHaveBeenCalledWith`, `objectContaining`, `stringMatching`처럼 의도가 직접 드러나는 matcher를 우선하고, 불필요한 `mock.calls` 직접 접근과 수동 narrowing은 피한다.
+- retry처럼 호출별 순서나 각 시도의 값 자체가 계약이면 `mock.calls` 직접 접근을 사용할 수 있으며, 이 경우 필요한 호출 횟수와 시도별 차이만 명확하게 검증한다.
 - DB integration test는 test DB만 사용한다.
 - DB cleanup hook은 전역 `setupFiles`에 두지 않고 DB가 필요한 integration test에서 `integration.setup.ts`를 명시적으로 import한다.
 - 테스트 간 DB 상태가 영향을 주지 않도록 cleanup을 유지한다.
@@ -234,6 +236,15 @@ CreateUserData
 - `displayName`: trim, 1~50자
 - validation failure → 400
 - duplicate username → 409
+
+initial handle 생성 정책:
+
+- 가입 시 서버가 `user_` + random lowercase alphanumeric 8자로 생성한다.
+- 한 register 요청에서 이미 시도한 handle은 다시 사용하지 않는다.
+- handle unique `P2002`는 최대 5회까지 새 handle로 재시도한다.
+- 마지막 허용 시도에서도 handle collision이면 해당 Prisma `P2002`를 그대로 throw한다.
+- username unique `P2002`는 `USERNAME_ALREADY_EXISTS` ConflictError로 변환한다.
+- password hashing은 handle retry 바깥에서 1회만 수행한다.
 
 새 API는 이 코드를 기계적으로 복사하지 않는다.
 기능 요구사항에 맞춰 같은 책임 분리 원칙을 적용한다.

@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 export const createConversationSchema = z.object({
-  targetUsername: z.string().trim().min(1).max(30),
+  targetHandle: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^(?!\.)(?!.*\.\.)(?!.*\.$)[a-z0-9_.]+$/),
 });
 
 export const getConversationsQuerySchema = z.object({

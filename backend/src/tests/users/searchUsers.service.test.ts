@@ -7,7 +7,6 @@ const { searchUsersMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
-  findUserProfileByUsername: vi.fn(),
   searchUsers: searchUsersMock,
   updateUserProfile: vi.fn(),
 }));
@@ -21,12 +20,12 @@ describe("searchUsersService", () => {
     const query = "alex";
     const users = [
       {
-        username: "alex",
+        handle: "alex",
         displayName: "Alex Kim",
         profileImage: null,
       },
       {
-        username: "another-user",
+        handle: "another-user",
         displayName: "Alexandra Lee",
         profileImage: "https://example.com/alexandra.jpg",
       },

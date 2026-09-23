@@ -2,7 +2,7 @@ import { type QueryClient, QueryClientProvider, useQuery } from "@tanstack/react
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
@@ -49,14 +49,29 @@ const profileQueryKey = userProfileQueryOptions(currentUser.username).queryKey;
 
 const profileResponse = (profile: UserProfile) => jsonResponse(profile);
 
-const renderProfilePage = (queryClient: QueryClient, observer?: ReactNode) => {
+const renderProfilePage = (
+  queryClient: QueryClient,
+  observer?: ReactNode,
+  initialEntries = ["/profile"],
+) => {
   queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
-        <ProfilePage />
-        {observer}
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route
+            path="/profile"
+            element={
+              <>
+                <ProfilePage />
+                {observer}
+              </>
+            }
+          />
+          <Route path="/" element={<h1>Messages</h1>} />
+          <Route path="/previous" element={<h1>Previous page</h1>} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -111,6 +126,19 @@ const ProfileQueryObserver = () => {
 };
 
 describe("ProfilePage", () => {
+  describe("navigation", () => {
+    it("navigates explicitly to messages from the profile editor", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient, undefined, ["/previous", "/profile"]);
+
+      await user.click(await screen.findByRole("link", { name: "Close profile" }));
+
+      expect(await screen.findByRole("heading", { name: "Messages" })).toBeInTheDocument();
+    });
+  });
+
   describe("profile loading and form state", () => {
     it("loads the current user's profile and shows a loading state while it is pending", () => {
       const pendingProfileResponse = new Promise<Response>(() => undefined);

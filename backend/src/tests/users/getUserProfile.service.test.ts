@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import NotFoundError from "@/errors/notFoundError.js";
 import { getUserProfileService } from "@/services/user.service.js";
 
-const { findUserProfileByUsernameMock } = vi.hoisted(() => ({
-  findUserProfileByUsernameMock: vi.fn(),
+const { findUserProfileByHandleMock } = vi.hoisted(() => ({
+  findUserProfileByHandleMock: vi.fn(),
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
-  findUserProfileByUsername: findUserProfileByUsernameMock,
+  findUserProfileByHandle: findUserProfileByHandleMock,
 }));
 
 beforeEach(() => {
@@ -16,30 +16,31 @@ beforeEach(() => {
 
 describe("getUserProfileService", () => {
   it("returns the user's public profile", async () => {
-    const username = "existing-user";
+    const handle = "existing-user-handle";
     const userProfile = {
-      username,
+      id: 1,
+      handle,
       displayName: "Existing User",
       bio: "Hello, I'm an existing user.",
       profileImage: "https://example.com/profile.jpg",
     };
 
-    findUserProfileByUsernameMock.mockResolvedValue(userProfile);
+    findUserProfileByHandleMock.mockResolvedValue(userProfile);
 
-    const result = await getUserProfileService(username);
+    const result = await getUserProfileService(handle);
 
-    expect(findUserProfileByUsernameMock).toHaveBeenCalledWith(username);
+    expect(findUserProfileByHandleMock).toHaveBeenCalledWith(handle);
     expect(result).toEqual(userProfile);
   });
 
   it("throws a not found error when the user does not exist", async () => {
-    const username = "missing-user";
+    const handle = "missing-handle";
 
-    findUserProfileByUsernameMock.mockResolvedValue(null);
+    findUserProfileByHandleMock.mockResolvedValue(null);
 
-    const result = getUserProfileService(username);
+    const result = getUserProfileService(handle);
 
-    expect(findUserProfileByUsernameMock).toHaveBeenCalledWith(username);
+    expect(findUserProfileByHandleMock).toHaveBeenCalledWith(handle);
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
     await expect(result).rejects.toMatchObject({ statusCode: 404 });
   });

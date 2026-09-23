@@ -38,6 +38,7 @@ describe("UserSearch", () => {
 
   beforeEach(() => {
     queryClient = createTestQueryClient();
+    localStorage.clear();
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -46,6 +47,7 @@ describe("UserSearch", () => {
 
   afterEach(() => {
     queryClient.clear();
+    localStorage.clear();
     Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
   });
 
@@ -322,9 +324,7 @@ describe("UserSearch", () => {
         displayName: `User ${index + 1}`,
         profileImage: null,
       }));
-      vi.mocked(apiFetch).mockImplementation(() =>
-        Promise.resolve(usersResponse(searchResults)),
-      );
+      vi.mocked(apiFetch).mockImplementation(() => Promise.resolve(usersResponse(searchResults)));
       const scrolledOptions: HTMLElement[] = [];
       Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
         configurable: true,
@@ -396,6 +396,168 @@ describe("UserSearch", () => {
 
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
       expect(combobox).toHaveAttribute("aria-expanded", "false");
+    });
+  });
+
+  describe("recent users", () => {
+    const recentUsers = Array.from({ length: 6 }, (_, index) => ({
+      username: `user-${index + 1}`,
+      displayName: `User ${index + 1}`,
+      profileImage: null,
+    }));
+
+    const mockSearchResults = (users: typeof recentUsers) => {
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        const requestUrl = new URL(input.toString(), "http://localhost");
+        const query = requestUrl.searchParams.get("query");
+        const matchingUser = users.find((user) => user.username === query);
+
+        return Promise.resolve(usersResponse(matchingUser ? [matchingUser] : []));
+      });
+    };
+
+    const expectUserInLocalStorage = (username: string) => {
+      const storedValues = Array.from({ length: localStorage.length }, (_, index) => {
+        const key = localStorage.key(index);
+
+        return key ? localStorage.getItem(key) : null;
+      });
+
+      expect(storedValues.some((value) => value?.includes(username))).toBe(true);
+    };
+
+    const selectSearchResult = async (
+      user: ReturnType<typeof userEvent.setup>,
+      selectedUser: (typeof recentUsers)[number],
+    ) => {
+      const combobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.clear(combobox);
+      await user.type(combobox, selectedUser.username);
+      await user.click(
+        await screen.findByRole("option", {
+          name: `${selectedUser.displayName} @${selectedUser.username}`,
+        }),
+      );
+    };
+
+    it("does not show an empty dropdown and persists a clicked user for encoded recent navigation", async () => {
+      const escapedUser = {
+        username: "recent/user?#name",
+        displayName: "Recent User",
+        profileImage: null,
+      };
+      mockSearchResults([escapedUser]);
+      const user = userEvent.setup();
+      const firstRender = renderPersistentUserSearch(queryClient);
+
+      const combobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.click(combobox);
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+
+      await user.type(combobox, escapedUser.username);
+      await user.click(
+        await screen.findByRole("option", {
+          name: `${escapedUser.displayName} @${escapedUser.username}`,
+        }),
+      );
+      expectUserInLocalStorage(escapedUser.username);
+      firstRender.unmount();
+
+      renderPersistentUserSearch(queryClient);
+
+      const emptyCombobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.click(emptyCombobox);
+      await user.click(
+        await screen.findByRole("option", {
+          name: `${escapedUser.displayName} @${escapedUser.username}`,
+        }),
+      );
+
+      expect(
+        await screen.findByRole("heading", {
+          name: `Profile @${escapedUser.username}`,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Current path: /users/recent%2Fuser%3F%23name")).toBeInTheDocument();
+    });
+
+    it("persists an Enter selection and switches between recent users and live results", async () => {
+      const [recentUser, liveSearchUser] = recentUsers;
+      mockSearchResults([recentUser, liveSearchUser]);
+      const user = userEvent.setup();
+      const firstRender = renderPersistentUserSearch(queryClient);
+
+      const combobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.type(combobox, recentUser.username);
+      await screen.findByRole("option", {
+        name: `${recentUser.displayName} @${recentUser.username}`,
+      });
+      await user.keyboard("{ArrowDown}{Enter}");
+      expectUserInLocalStorage(recentUser.username);
+      firstRender.unmount();
+
+      renderPersistentUserSearch(queryClient);
+
+      const emptyCombobox = screen.getByRole("combobox", { name: "Search users" });
+      await user.click(emptyCombobox);
+      expect(
+        await screen.findByRole("option", {
+          name: `${recentUser.displayName} @${recentUser.username}`,
+        }),
+      ).toBeInTheDocument();
+
+      await user.type(emptyCombobox, liveSearchUser.username);
+
+      expect(
+        await screen.findByRole("option", {
+          name: `${liveSearchUser.displayName} @${liveSearchUser.username}`,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", {
+          name: `${recentUser.displayName} @${recentUser.username}`,
+        }),
+      ).not.toBeInTheDocument();
+
+      await user.clear(emptyCombobox);
+
+      expect(
+        await screen.findByRole("option", {
+          name: `${recentUser.displayName} @${recentUser.username}`,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", {
+          name: `${liveSearchUser.displayName} @${liveSearchUser.username}`,
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps five unique recent users ordered by most recent selection", async () => {
+      mockSearchResults(recentUsers);
+      const user = userEvent.setup();
+
+      const firstRender = renderPersistentUserSearch(queryClient);
+
+      for (const recentUser of recentUsers) {
+        await selectSearchResult(user, recentUser);
+      }
+      await selectSearchResult(user, recentUsers[2]);
+      firstRender.unmount();
+
+      renderPersistentUserSearch(queryClient);
+      await user.click(screen.getByRole("combobox", { name: "Search users" }));
+
+      const recentOptions = await screen.findAllByRole("option");
+      expect(recentOptions).toHaveLength(5);
+      expect(recentOptions.map((option) => option.getAttribute("aria-label"))).toEqual([
+        "User 3 @user-3",
+        "User 6 @user-6",
+        "User 5 @user-5",
+        "User 4 @user-4",
+        "User 2 @user-2",
+      ]);
     });
   });
 
