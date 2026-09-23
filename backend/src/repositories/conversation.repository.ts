@@ -42,7 +42,8 @@ export const findConversationsByParticipantId = (
           id: { not: participantId },
         },
         select: {
-          username: true,
+          id: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },

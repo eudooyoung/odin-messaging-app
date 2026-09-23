@@ -119,7 +119,12 @@ export type ConversationResponseBody = {
 export type GetConversationsResponseBody = {
   conversations: {
     id: number;
-    otherUser: UserSearchResult;
+    otherUser: {
+      id: number;
+      handle: string;
+      displayName: string;
+      profileImage: string | null;
+    };
     lastMessage: {
       id: number;
       content: string;
