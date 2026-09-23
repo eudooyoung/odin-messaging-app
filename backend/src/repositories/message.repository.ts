@@ -13,7 +13,8 @@ export const findMessagesByConversationId = (
       content: true,
       sender: {
         select: {
-          username: true,
+          id: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },
@@ -41,7 +42,8 @@ export const createMessage = (conversationId: number, senderId: number, content:
       content: true,
       sender: {
         select: {
-          username: true,
+          id: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },

@@ -148,7 +148,7 @@ export type CreateMessageInput = {
 export type MessageResponseBody = {
   id: number;
   content: string;
-  sender: UserSearchResult;
+  sender: CreateMessageResponseBody["sender"];
   createdAt: string;
 };
 
@@ -161,7 +161,8 @@ export type CreateMessageResponseBody = {
   id: number;
   content: string;
   sender: {
-    username: string;
+    id: number;
+    handle: string;
     displayName: string;
     profileImage: string | null;
   };

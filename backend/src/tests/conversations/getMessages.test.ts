@@ -14,6 +14,7 @@ describe("GET /conversations/:id/messages", () => {
     const app = createApp();
     const credentials = {
       username: "current-user",
+      handle: "current_handle",
       password: "secure-password",
       displayName: "Current User",
     };
@@ -23,6 +24,7 @@ describe("GET /conversations/:id/messages", () => {
     });
     const otherUser = await createTestUser({
       username: "other-user",
+      handle: "other_handle",
       displayName: "Other User",
     });
     const conversation = await prisma.conversation.create({
@@ -72,7 +74,8 @@ describe("GET /conversations/:id/messages", () => {
         id: thirdMessage.id,
         content: thirdMessage.content,
         sender: {
-          username: currentUser.username,
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: currentUser.displayName,
           profileImage: currentUser.profileImage,
         },
@@ -82,7 +85,8 @@ describe("GET /conversations/:id/messages", () => {
         id: secondMessage.id,
         content: secondMessage.content,
         sender: {
-          username: otherUser.username,
+          id: otherUser.id,
+          handle: otherUser.handle,
           displayName: otherUser.displayName,
           profileImage: otherUser.profileImage,
         },
@@ -92,7 +96,8 @@ describe("GET /conversations/:id/messages", () => {
         id: firstMessage.id,
         content: firstMessage.content,
         sender: {
-          username: currentUser.username,
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: currentUser.displayName,
           profileImage: currentUser.profileImage,
         },

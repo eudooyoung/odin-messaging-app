@@ -4,6 +4,7 @@ import type {
   CreateConversationInput,
   CreateConversationResponseBody,
   CreateMessageInput,
+  CreateMessageResponseBody,
   GetConversationsQuery,
   GetConversationsResponseBody,
   GetMessagesResponseBody,
@@ -100,7 +101,7 @@ export type GetConversationHandler = RequestHandler<
 
 export type CreateMessageHandler = RequestHandler<
   { id: string },
-  MessageResponseBody,
+  CreateMessageResponseBody,
   CreateMessageInput,
   Record<string, never>,
   { userId: number; conversationId: number }
