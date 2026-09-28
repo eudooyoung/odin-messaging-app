@@ -1,9 +1,9 @@
 import * as argon2 from "argon2";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ConflictError from "@/errors/conflictError.js";
 import { createUser } from "@/repositories/user.repository.js";
 import { registerService } from "@/services/auth.service.js";
+import { createUniqueConstraintError } from "@/tests/helpers/createUniqueConstraintError.js";
 
 vi.mock("argon2", async (importOriginal) => {
   const actual = await importOriginal<typeof import("argon2")>();
@@ -29,22 +29,6 @@ const uniqueConstraintIndexes = {
   handle: "User_handle_key",
   username: "User_username_key",
 };
-
-const createUniqueConstraintError = (index: string) =>
-  new PrismaClientKnownRequestError("Unique constraint failed", {
-    code: "P2002",
-    clientVersion: "test",
-    meta: {
-      modelName: "User",
-      driverAdapterError: {
-        name: "DriverAdapterError",
-        cause: {
-          kind: "UniqueConstraintViolation",
-          constraint: { index },
-        },
-      },
-    },
-  });
 
 const createRegisteredUser = (handle: string) => ({
   id: 1,

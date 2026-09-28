@@ -1,13 +1,12 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
 import type { UpdateUserProfileInput, UserProfileResponseBody } from "@/types/api.types.js";
-
-const getBody = <T>(response: Response) => response.body as T;
 
 describe("PATCH /users/me", () => {
   it("updates and returns the authenticated user's profile", async () => {
@@ -74,7 +73,7 @@ describe("PATCH /users/me", () => {
     const app = createApp();
     const user = await createTestUser({
       username: "existing-user",
-      handle: "existing-handle",
+      handle: "existing_handle",
       displayName: "Existing User",
       bio: "Existing bio",
       profileImage: "https://example.com/existing-profile.jpg",

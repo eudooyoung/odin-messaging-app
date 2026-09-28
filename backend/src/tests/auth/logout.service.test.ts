@@ -1,22 +1,15 @@
 import { createHash } from "node:crypto";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { deleteRefreshSessionByTokenHash } from "@/repositories/refreshSession.repository.js";
 import { logoutService } from "@/services/auth.service.js";
 
 const { deleteRefreshSessionByTokenHashMock } = vi.hoisted(() => ({
-  deleteRefreshSessionByTokenHashMock: vi.fn<(tokenHash: string) => Promise<unknown>>(),
-}));
-
-vi.mock("@/repositories/user.repository.js", () => ({
-  createUser: vi.fn(),
-  findUserByUsername: vi.fn(),
+  deleteRefreshSessionByTokenHashMock: vi.fn<typeof deleteRefreshSessionByTokenHash>(),
 }));
 
 vi.mock("@/repositories/refreshSession.repository.js", () => ({
-  createRefreshSession: vi.fn(),
   deleteRefreshSessionByTokenHash: deleteRefreshSessionByTokenHashMock,
-  findRefreshSessionByTokenHash: vi.fn(),
-  rotateRefreshSession: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -28,7 +21,13 @@ describe("logoutService", () => {
     const refreshToken = "valid-refresh-token";
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
-    deleteRefreshSessionByTokenHashMock.mockResolvedValue({ count: 1 });
+    deleteRefreshSessionByTokenHashMock.mockResolvedValue({
+      id: 1,
+      tokenHash,
+      userId: 1,
+      expiresAt: new Date("2026-09-08T00:00:00.000Z"),
+      createdAt: new Date("2026-09-01T00:00:00.000Z"),
+    });
 
     await expect(logoutService(refreshToken)).resolves.toBeUndefined();
     expect(deleteRefreshSessionByTokenHashMock).toHaveBeenCalledWith(tokenHash);

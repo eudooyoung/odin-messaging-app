@@ -1,12 +1,11 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
 import type { SearchUsersResponseBody } from "@/types/api.types.js";
-
-const getBody = <T>(response: Response) => response.body as T;
 
 describe("GET /users?query=", () => {
   it("returns users whose handle or display name contains the query", async () => {
@@ -18,19 +17,19 @@ describe("GET /users?query=", () => {
     };
     const handleMatch = await createTestUser({
       username: "handle-match-user",
-      handle: "alex-handle",
+      handle: "alex_handle",
       displayName: "First Match",
       profileImage: null,
     });
     const displayNameMatch = await createTestUser({
       username: "display-name-match",
-      handle: "display-name-match-handle",
+      handle: "display_name_match_handle",
       displayName: "Alexandra Lee",
       profileImage: "https://example.com/alexandra.jpg",
     });
     await createTestUser({
       username: "alex-username-only",
-      handle: "unrelated-handle",
+      handle: "unrelated_handle",
       displayName: "Unrelated User",
     });
     const requestingUser = await createTestUser(credentials);

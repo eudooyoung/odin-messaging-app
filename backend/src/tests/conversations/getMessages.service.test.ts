@@ -1,14 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ForbiddenError from "@/errors/forbiddenError.js";
 import NotFoundError from "@/errors/notFoundError.js";
-import type {
-  findConversationById,
-  updateConversationLastActivityAt,
-} from "@/repositories/conversation.repository.js";
-import type {
-  createMessage,
-  findMessagesByConversationId,
-} from "@/repositories/message.repository.js";
+import type { findConversationById } from "@/repositories/conversation.repository.js";
+import type { findMessagesByConversationId } from "@/repositories/message.repository.js";
 import { getMessagesService } from "@/services/message.service.js";
 
 const { findConversationByIdMock, findMessagesByConversationIdMock } = vi.hoisted(() => ({
@@ -18,11 +12,9 @@ const { findConversationByIdMock, findMessagesByConversationIdMock } = vi.hoiste
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
   findConversationById: findConversationByIdMock,
-  updateConversationLastActivityAt: vi.fn<typeof updateConversationLastActivityAt>(),
 }));
 
 vi.mock("@/repositories/message.repository.js", () => ({
-  createMessage: vi.fn<typeof createMessage>(),
   findMessagesByConversationId: findMessagesByConversationIdMock,
 }));
 
@@ -31,7 +23,7 @@ describe("getMessagesService", () => {
     vi.resetAllMocks();
   });
 
-  it("returns the conversation messages ordered by creation time and id descending", async () => {
+  it("returns the conversation messages without a next cursor", async () => {
     const currentUserId = 1;
     const conversationId = 10;
     const conversation = {
@@ -55,30 +47,8 @@ describe("getMessagesService", () => {
     };
     const messages = [
       {
-        id: 3,
-        content: "Third message",
-        sender: {
-          id: currentUserId,
-          handle: "current_handle",
-          displayName: "Current User",
-          profileImage: null,
-        },
-        createdAt: new Date("2026-09-02T02:00:00.000Z"),
-      },
-      {
-        id: 2,
-        content: "Second message",
-        sender: {
-          id: 2,
-          handle: "other_handle",
-          displayName: "Other User",
-          profileImage: null,
-        },
-        createdAt: new Date("2026-09-02T02:00:00.000Z"),
-      },
-      {
         id: 1,
-        content: "First message",
+        content: "Hello!",
         sender: {
           id: currentUserId,
           handle: "current_handle",

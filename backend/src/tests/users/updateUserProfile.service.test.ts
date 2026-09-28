@@ -4,6 +4,7 @@ import ConflictError from "@/errors/conflictError.js";
 import UnauthorizedError from "@/errors/unauthorizedError.js";
 import type { updateUserProfile } from "@/repositories/user.repository.js";
 import { updateUserProfileService } from "@/services/user.service.js";
+import { createUniqueConstraintError } from "@/tests/helpers/createUniqueConstraintError.js";
 
 const { updateUserProfileMock } = vi.hoisted(() => ({
   updateUserProfileMock: vi.fn<typeof updateUserProfile>(),
@@ -18,28 +19,12 @@ const uniqueConstraintIndexes = {
   username: "User_username_key",
 };
 
-const createUniqueConstraintError = (index: string) =>
-  new PrismaClientKnownRequestError("Unique constraint failed", {
-    code: "P2002",
-    clientVersion: "test",
-    meta: {
-      modelName: "User",
-      driverAdapterError: {
-        name: "DriverAdapterError",
-        cause: {
-          kind: "UniqueConstraintViolation",
-          constraint: { index },
-        },
-      },
-    },
-  });
-
 beforeEach(() => {
   vi.resetAllMocks();
 });
 
 describe("updateUserProfileService", () => {
-  it("updates and returns the user's public profile", async () => {
+  it("updates and returns the user's own profile", async () => {
     const userId = 1;
     const updateData = {
       handle: "updated_handle",

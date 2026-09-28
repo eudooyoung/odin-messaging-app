@@ -1,20 +1,19 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import type { MeResponseBody } from "@/types/api.types.js";
 import "@/tests/integration.setup.js";
 
-const getBody = <T>(response: Response) => response.body as T;
-
 describe("GET /auth/me", () => {
-  it("returns the logged-in user's public fields for a valid access token cookie", async () => {
+  it("returns the logged-in user's account fields for a valid access token cookie", async () => {
     const app = createApp();
     const credentials = {
       username: "existing-user",
       password: "secure-password",
-      handle: "existing-user-handle",
+      handle: "existing_user_handle",
       displayName: "Existing User",
     };
     const user = await createTestUser(credentials);
@@ -31,7 +30,6 @@ describe("GET /auth/me", () => {
       handle: user.handle,
       displayName: user.displayName,
     });
-    expect(body).not.toHaveProperty("passwordHash");
   });
 
   it.each([

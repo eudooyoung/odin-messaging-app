@@ -646,9 +646,9 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - 신규 frontend 테스트에서는 호출 횟수를 먼저 보장한 뒤 optional chaining 없이 필요한 인자만 검증하도록 `frontend/AGENTS.md`에 규칙 반영 완료
   - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
 
-#### User identity refactor — Backend 전환 완료 / Frontend 대기
+#### User identity refactor — Backend 전환·최종 cleanup 완료 / Frontend 대기
 
-UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환은 완료했고 전체 테스트 GREEN 및 최종 audit에서 기능 blocker 없음**을 확인했다. Frontend 전환 전에 backend cleanup / 테스트 리팩토링 / 기존 TODO를 먼저 처리한다.
+UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환과 최종 cleanup을 완료했고, 전체 테스트 GREEN 및 최종 audit에서 blocker 없음**을 확인했다. Frontend 전환 전에 남은 Backend TODO를 순서대로 처리한다.
 
 - [x] User model에 `handle` 추가 + migration / 기존 사용자 backfill
   - 최종 상태: required + unique + mutable, 최대 30자
@@ -681,11 +681,11 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - [x] REST sender: `{ id, handle, displayName, profileImage }`
   - [x] WebSocket `message.created.message.sender`도 REST와 동일한 shape
   - [x] sender 제외 / 상대의 모든 connection 전달 계약 유지 및 직접 검증
-- [ ] Backend identity refactor 최종 cleanup
-  - 최종 audit에서 기능 blocker 없음 확인
-  - 전체 TypeScript 검사 및 전체 backend 테스트 GREEN 확인
-  - [ ] 미사용 `UserSearchResult` export 삭제
-  - [ ] `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
+- [x] Backend identity refactor 최종 cleanup
+  - [x] 최종 audit에서 기능 blocker 없음 확인
+  - [x] 전체 TypeScript 검사 및 전체 backend 테스트 GREEN 확인
+  - [x] 미사용 `UserSearchResult` export 삭제
+  - [x] `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
   - `targetUsername`을 400으로 거부하는 legacy request 테스트는 회귀 테스트로 유지
 - [ ] Frontend route / query / mutation / recent-users storage를 handle 계약으로 전환
   - `/users/:handle`
@@ -708,10 +708,12 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 
 #### Backend refactor TODO
 
-- [ ] Backend 전체 테스트 리팩토링 / cleanup
-  - backend identity 최종 cleanup 이후 기존 테스트 전반의 fixture / 중복 / 구조를 다시 점검
-  - 동작 변경 없이 테스트 가독성·현재 타입 계약 일치·불필요한 legacy 흔적을 정리
-  - 완료 후 아래 backend TODO를 순서대로 진행
+- [x] Backend 전체 테스트 리팩토링 / cleanup
+  - backend identity 최종 cleanup 이후 기존 테스트 전반의 fixture / 중복 / 구조를 점검하고, 동작 변경 없이 테스트 가독성·현재 타입 계약 일치·불필요한 legacy 흔적을 정리
+  - [x] refresh rotation atomicity 회귀 테스트 추가: 실제 test DB에서 repository의 replacement session 생성이 unique `tokenHash` 충돌로 실패할 때, 기존 session 삭제가 rollback되고 두 기존 session이 그대로 남는 계약 검증
+  - [x] 최종 검증: backend 32개 test files, 192 tests 전체 GREEN; TypeScript 검사, Prettier, `git diff --check` 통과; lint error 0
+  - [x] 최종 audit blocker 없음
+  - 다음 작업은 아래 Backend TODO의 첫 번째 항목부터 진행
 
 - [ ] 사용자 검색에서 현재 로그인 사용자 제외
   - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
@@ -751,21 +753,18 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 
 - Backend / Frontend 핵심 기능 구현, 기능 단위 audit, frontend manual audit은 완료 상태다.
 - UI는 desktop sidebar와 `ConversationPage` header까지 진행했고 identity refactor 때문에 잠시 중단했다.
-- **Backend identity 기능/API 전환은 완료**했다.
+- **Backend identity 기능/API 전환과 최종 cleanup은 완료**했다.
   - Auth self payload에 `handle` 포함
   - 공개 User/Profile API를 handle 기반으로 전환
   - Conversation request / participants / otherUser를 handle 기반으로 전환
   - Message REST / WebSocket sender를 `{ id, handle, displayName, profileImage }`로 전환
-  - backend 전체 TypeScript 검사 및 전체 테스트 GREEN 확인
+  - 미사용 `UserSearchResult` export와 `findUserProfileByUsername` test mock 정리 완료
   - backend 최종 audit에서 기능 blocker 없음 확인
-- **다음 즉시 시작점:** backend identity 최종 cleanup 2건
-  1. `api.types.ts`의 미사용 `UserSearchResult` export 삭제
-  2. `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
-- cleanup 후 **Backend 전체 테스트 리팩토링 / cleanup**을 진행한다.
-- 그 다음 기존 Backend TODO를 다음 순서로 진행한다.
-  1. `GET /users?query=...`에서 현재 로그인 사용자 제외
-  2. concurrent `POST /conversations`에서 동일 participant pair 중복 생성 hardening
-  3. Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
+- **Backend 전체 테스트 리팩토링 / cleanup 완료.** 실제 repository + test DB 기반 refresh rotation atomicity 회귀 테스트를 포함해 32개 test files의 192 tests가 모두 GREEN이다. TypeScript 검사, Prettier, `git diff --check`가 통과했고 lint error는 0개이며 최종 audit blocker는 없다.
+- **다음 즉시 시작점:** `GET /users?query=...` 검색 결과에서 현재 로그인 사용자 제외
+- 이후 Backend TODO를 다음 순서로 진행한다.
+  1. concurrent `POST /conversations`에서 동일 participant pair 중복 생성 hardening
+  2. Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
 - 위 backend 정리 이후 Frontend identity refactor로 이동한다.
   - `/users/:handle`
   - auth/user/conversation/message query·mutation 타입과 payload handle 전환

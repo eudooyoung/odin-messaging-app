@@ -1,13 +1,13 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
+import { createTestConversation } from "@/tests/helpers/createTestConversation.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
 import type { GetConversationsResponseBody } from "@/types/api.types.js";
-
-const getBody = <T>(response: Response) => response.body as T;
 
 describe("GET /conversations", () => {
   it("returns conversations belonging to the authenticated user", async () => {
@@ -31,29 +31,17 @@ describe("GET /conversations", () => {
     });
     const firstLastActivityAt = new Date("2026-09-01T01:00:00.000Z");
     const secondLastActivityAt = new Date("2026-09-01T02:00:00.000Z");
-    const firstConversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: firstOtherUser.id }],
-        },
-        lastActivityAt: firstLastActivityAt,
-      },
+    const firstConversation = await createTestConversation({
+      participantIds: [currentUser.id, firstOtherUser.id],
+      lastActivityAt: firstLastActivityAt,
     });
-    const secondConversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: secondOtherUser.id }],
-        },
-        lastActivityAt: secondLastActivityAt,
-      },
+    const secondConversation = await createTestConversation({
+      participantIds: [currentUser.id, secondOtherUser.id],
+      lastActivityAt: secondLastActivityAt,
     });
-    const unrelatedConversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: firstOtherUser.id }, { id: secondOtherUser.id }],
-        },
-        lastActivityAt: new Date("2026-09-01T03:00:00.000Z"),
-      },
+    const unrelatedConversation = await createTestConversation({
+      participantIds: [firstOtherUser.id, secondOtherUser.id],
+      lastActivityAt: new Date("2026-09-01T03:00:00.000Z"),
     });
     const firstLastMessage = await prisma.message.create({
       data: {
@@ -86,7 +74,6 @@ describe("GET /conversations", () => {
 
     const body = getBody<GetConversationsResponseBody>(response);
     expect(body.nextCursor).toBeNull();
-    expect(body.conversations).toHaveLength(2);
     expect(body.conversations).toEqual([
       {
         id: secondConversation.id,
@@ -121,7 +108,6 @@ describe("GET /conversations", () => {
         lastActivityAt: firstConversation.lastActivityAt.toISOString(),
       },
     ]);
-    expect(body.conversations.map(({ id }) => id)).not.toContain(unrelatedConversation.id);
   });
 
   it("returns consecutive pages using the next cursor", async () => {
@@ -144,29 +130,17 @@ describe("GET /conversations", () => {
       username: "third-other-user",
       displayName: "Third Other User",
     });
-    const firstConversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: firstOtherUser.id }],
-        },
-        lastActivityAt: new Date("2026-09-01T01:00:00.000Z"),
-      },
+    const firstConversation = await createTestConversation({
+      participantIds: [currentUser.id, firstOtherUser.id],
+      lastActivityAt: new Date("2026-09-01T01:00:00.000Z"),
     });
-    const secondConversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: secondOtherUser.id }],
-        },
-        lastActivityAt: new Date("2026-09-01T02:00:00.000Z"),
-      },
+    const secondConversation = await createTestConversation({
+      participantIds: [currentUser.id, secondOtherUser.id],
+      lastActivityAt: new Date("2026-09-01T02:00:00.000Z"),
     });
-    const thirdConversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: thirdOtherUser.id }],
-        },
-        lastActivityAt: new Date("2026-09-01T02:00:00.000Z"),
-      },
+    const thirdConversation = await createTestConversation({
+      participantIds: [currentUser.id, thirdOtherUser.id],
+      lastActivityAt: new Date("2026-09-01T02:00:00.000Z"),
     });
     const accessCookie = createAccessTokenCookie(currentUser.id);
     const limit = 2;
@@ -180,7 +154,6 @@ describe("GET /conversations", () => {
 
     const firstPage = getBody<GetConversationsResponseBody>(firstPageResponse);
     const firstPageIds = firstPage.conversations.map(({ id }) => id);
-    expect(firstPage.conversations).toHaveLength(limit);
     expect(firstPageIds).toEqual([thirdConversation.id, secondConversation.id]);
     expect(firstPage.nextCursor).toBe(secondConversation.id);
 
@@ -194,7 +167,6 @@ describe("GET /conversations", () => {
     const secondPage = getBody<GetConversationsResponseBody>(secondPageResponse);
     const secondPageIds = secondPage.conversations.map(({ id }) => id);
     expect(secondPageIds).toEqual([firstConversation.id]);
-    expect(secondPageIds.some((id) => firstPageIds.includes(id))).toBe(false);
     expect(secondPage.nextCursor).toBeNull();
   });
 

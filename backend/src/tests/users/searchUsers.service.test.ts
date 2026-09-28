@@ -8,7 +8,6 @@ const { searchUsersMock } = vi.hoisted(() => ({
 
 vi.mock("@/repositories/user.repository.js", () => ({
   searchUsers: searchUsersMock,
-  updateUserProfile: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -16,18 +15,13 @@ beforeEach(() => {
 });
 
 describe("searchUsersService", () => {
-  it("returns users matching the search query", async () => {
+  it("passes the query to the repository and returns its results", async () => {
     const query = "alex";
     const users = [
       {
-        handle: "alex",
-        displayName: "Alex Kim",
+        handle: "other_user",
+        displayName: "Other User",
         profileImage: null,
-      },
-      {
-        handle: "another-user",
-        displayName: "Alexandra Lee",
-        profileImage: "https://example.com/alexandra.jpg",
       },
     ];
 

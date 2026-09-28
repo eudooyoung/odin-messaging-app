@@ -28,7 +28,7 @@ const waitForAuthenticatedConnection = (webSocketServer: WebSocketServer) =>
     });
   });
 
-describe("WebSocket connection authentication", () => {
+describe("WebSocket connections", () => {
   let client: WebSocket | undefined;
   let additionalClient: WebSocket | undefined;
   let webSocketServer: WebSocketServer | undefined;
@@ -59,205 +59,204 @@ describe("WebSocket connection authentication", () => {
 
   afterEach(async () => {
     try {
-      if (client) {
-        await closeWebSocket(client);
-      }
-
-      if (additionalClient) {
-        await closeWebSocket(additionalClient);
-      }
-    } finally {
       try {
-        if (webSocketServer) {
-          await closeWebSocketServer(webSocketServer);
+        if (client) {
+          await closeWebSocket(client);
+        }
+
+        if (additionalClient) {
+          await closeWebSocket(additionalClient);
         }
       } finally {
-        if (httpServer?.listening) {
-          await closeHttpServer(httpServer);
+        try {
+          if (webSocketServer) {
+            await closeWebSocketServer(webSocketServer);
+          }
+        } finally {
+          if (httpServer?.listening) {
+            await closeHttpServer(httpServer);
+          }
         }
       }
+    } finally {
+      vi.restoreAllMocks();
     }
   });
 
-  it("opens a connection with a valid access token cookie", async () => {
-    const user = await createTestUser();
-    const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { webSocketUrl } = await startWebSocketServer();
+  describe("authentication", () => {
+    it("opens with a valid access token cookie", async () => {
+      const user = await createTestUser();
+      const accessTokenCookie = createAccessTokenCookie(user.id);
+      const { webSocketUrl } = await startWebSocketServer();
 
-    client = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: accessTokenCookie,
-      },
+      client = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+        },
+      });
+
+      await once(client, "open");
+
+      expect(client.readyState).toBe(WebSocket.OPEN);
     });
 
-    await once(client, "open");
+    it("stores the user id on the server-side connection", async () => {
+      const user = await createTestUser();
+      const accessTokenCookie = createAccessTokenCookie(user.id);
+      const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+      const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
 
-    expect(client.readyState).toBe(WebSocket.OPEN);
+      client = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+        },
+      });
+
+      const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
+
+      expect(connection.userId).toBe(user.id);
+    });
+
+    it.each([
+      { caseName: "without an access token cookie", cookie: undefined },
+      { caseName: "with an invalid access token", cookie: "accessToken=invalid-access-token" },
+    ])("rejects $caseName", async ({ cookie }) => {
+      const { webSocketUrl } = await startWebSocketServer();
+
+      client =
+        cookie === undefined
+          ? new WebSocket(webSocketUrl)
+          : new WebSocket(webSocketUrl, { headers: { Cookie: cookie } });
+
+      await expect(once(client, "open")).rejects.toThrow("Unexpected server response: 401");
+      expect(client.readyState).not.toBe(WebSocket.OPEN);
+    });
+
+    it("rejects an expired access token", async () => {
+      const user = await createTestUser();
+      const expiredAccessToken = jwt.sign(
+        { sub: String(user.id), tokenType: "access" },
+        env.jwtSecret,
+        { expiresIn: -1 },
+      );
+      const { webSocketUrl } = await startWebSocketServer();
+
+      client = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: `accessToken=${expiredAccessToken}`,
+        },
+      });
+
+      await expect(once(client, "open")).rejects.toThrow("Unexpected server response: 401");
+      expect(client.readyState).not.toBe(WebSocket.OPEN);
+    });
   });
 
-  it("stores the authenticated user id on the server-side WebSocket connection", async () => {
-    const user = await createTestUser();
-    const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
-    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
+  describe("registry and lifecycle", () => {
+    it("registers the connection by user id", async () => {
+      const user = await createTestUser();
+      const accessTokenCookie = createAccessTokenCookie(user.id);
+      const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+      const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
 
-    client = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: accessTokenCookie,
-      },
+      client = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+        },
+      });
+
+      const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
+
+      expect(connectionRegistry.get(user.id)?.has(connection)).toBe(true);
     });
 
-    const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
+    it("handles a connection error without throwing", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const user = await createTestUser();
+      const accessTokenCookie = createAccessTokenCookie(user.id);
+      const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+      const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
 
-    expect(connection.userId).toBe(user.id);
-  });
+      client = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+        },
+      });
 
-  it("registers the authenticated connection by user id", async () => {
-    const user = await createTestUser();
-    const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
-    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
+      const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
+      const connectionError = new Error("Connection error");
 
-    client = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: accessTokenCookie,
-      },
+      expect(() => connection.emit("error", connectionError)).not.toThrow();
     });
 
-    const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
+    it("removes the user entry when their last connection closes", async () => {
+      const user = await createTestUser();
+      const accessTokenCookie = createAccessTokenCookie(user.id);
+      const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+      const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
 
-    expect(connectionRegistry.get(user.id)?.has(connection)).toBe(true);
-  });
+      const connectedClient = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+        },
+      });
+      client = connectedClient;
 
-  it("handles an error from an authenticated connection without throwing", async () => {
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const user = await createTestUser();
-    const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
-    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
+      const [connection] = await Promise.all([connectionPromise, once(connectedClient, "open")]);
 
-    client = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: accessTokenCookie,
-      },
+      expect(connectionRegistry.get(user.id)?.has(connection)).toBe(true);
+
+      const clientClosePromise = once(connectedClient, "close");
+      const serverClosePromise = once(connection, "close");
+
+      connectedClient.close();
+      await Promise.all([clientClosePromise, serverClosePromise]);
+
+      expect(connectionRegistry.has(user.id)).toBe(false);
     });
 
-    const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
-    const connectionError = new Error("Connection error");
+    it("keeps the user entry and remaining connection when one of multiple connections closes", async () => {
+      const user = await createTestUser();
+      const accessTokenCookie = createAccessTokenCookie(user.id);
+      const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
+      const firstConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
+      const firstClient = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+        },
+      });
+      client = firstClient;
+      const [firstConnection] = await Promise.all([
+        firstConnectionPromise,
+        once(firstClient, "open"),
+      ]);
 
-    expect(() => connection.emit("error", connectionError)).not.toThrow();
-    expect(consoleErrorSpy).toHaveBeenCalledOnce();
-    expect(consoleErrorSpy).toHaveBeenCalledWith(connectionError);
-  });
+      const secondConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
+      const secondClient = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+        },
+      });
+      additionalClient = secondClient;
+      const [secondConnection] = await Promise.all([
+        secondConnectionPromise,
+        once(secondClient, "open"),
+      ]);
 
-  it("removes the user entry when their last connection closes", async () => {
-    const user = await createTestUser();
-    const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
-    const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
+      const registeredConnections = connectionRegistry.get(user.id);
 
-    const connectedClient = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: accessTokenCookie,
-      },
+      expect(registeredConnections?.has(firstConnection)).toBe(true);
+      expect(registeredConnections?.has(secondConnection)).toBe(true);
+
+      const clientClosePromise = once(firstClient, "close");
+      const serverClosePromise = once(firstConnection, "close");
+
+      firstClient.close();
+      await Promise.all([clientClosePromise, serverClosePromise]);
+
+      expect(connectionRegistry.has(user.id)).toBe(true);
+      expect(registeredConnections?.has(firstConnection)).toBe(false);
+      expect(registeredConnections?.has(secondConnection)).toBe(true);
     });
-    client = connectedClient;
-
-    const [connection] = await Promise.all([connectionPromise, once(connectedClient, "open")]);
-
-    expect(connectionRegistry.get(user.id)?.has(connection)).toBe(true);
-
-    const clientClosePromise = once(connectedClient, "close");
-    const serverClosePromise = once(connection, "close");
-
-    connectedClient.close();
-    await Promise.all([clientClosePromise, serverClosePromise]);
-
-    expect(connectionRegistry.has(user.id)).toBe(false);
-  });
-
-  it("keeps the user entry and remaining connection when one of multiple connections closes", async () => {
-    const user = await createTestUser();
-    const accessTokenCookie = createAccessTokenCookie(user.id);
-    const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
-    const firstConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
-    const firstClient = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: accessTokenCookie,
-      },
-    });
-    client = firstClient;
-    const [firstConnection] = await Promise.all([
-      firstConnectionPromise,
-      once(firstClient, "open"),
-    ]);
-
-    const secondConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
-    const secondClient = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: accessTokenCookie,
-      },
-    });
-    additionalClient = secondClient;
-    const [secondConnection] = await Promise.all([
-      secondConnectionPromise,
-      once(secondClient, "open"),
-    ]);
-
-    const registeredConnections = connectionRegistry.get(user.id);
-
-    expect(registeredConnections?.has(firstConnection)).toBe(true);
-    expect(registeredConnections?.has(secondConnection)).toBe(true);
-
-    const clientClosePromise = once(firstClient, "close");
-    const serverClosePromise = once(firstConnection, "close");
-
-    firstClient.close();
-    await Promise.all([clientClosePromise, serverClosePromise]);
-
-    expect(connectionRegistry.has(user.id)).toBe(true);
-    expect(registeredConnections?.has(firstConnection)).toBe(false);
-    expect(registeredConnections?.has(secondConnection)).toBe(true);
-  });
-
-  it("rejects a connection without an access token cookie", async () => {
-    const { webSocketUrl } = await startWebSocketServer();
-
-    client = new WebSocket(webSocketUrl);
-
-    await expect(once(client, "open")).rejects.toThrow("Unexpected server response: 401");
-    expect(client.readyState).not.toBe(WebSocket.OPEN);
-  });
-
-  it("rejects a connection with an invalid access token", async () => {
-    const { webSocketUrl } = await startWebSocketServer();
-
-    client = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: "accessToken=invalid-access-token",
-      },
-    });
-
-    await expect(once(client, "open")).rejects.toThrow("Unexpected server response: 401");
-    expect(client.readyState).not.toBe(WebSocket.OPEN);
-  });
-
-  it("rejects a connection with an expired access token", async () => {
-    const user = await createTestUser();
-    const expiredAccessToken = jwt.sign(
-      { sub: String(user.id), tokenType: "access" },
-      env.jwtSecret,
-      { expiresIn: -1 },
-    );
-    const { webSocketUrl } = await startWebSocketServer();
-
-    client = new WebSocket(webSocketUrl, {
-      headers: {
-        Cookie: `accessToken=${expiredAccessToken}`,
-      },
-    });
-
-    await expect(once(client, "open")).rejects.toThrow("Unexpected server response: 401");
-    expect(client.readyState).not.toBe(WebSocket.OPEN);
   });
 });

@@ -1,13 +1,12 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
 import type { CreateConversationResponseBody } from "@/types/api.types.js";
-
-const getBody = <T>(response: Response) => response.body as T;
 
 describe("POST /conversations", () => {
   it("creates a conversation between the authenticated and target users", async () => {
