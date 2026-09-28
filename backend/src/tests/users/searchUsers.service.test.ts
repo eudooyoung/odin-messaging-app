@@ -15,8 +15,9 @@ beforeEach(() => {
 });
 
 describe("searchUsersService", () => {
-  it("passes the query to the repository and returns its results", async () => {
+  it("passes the query and current user ID to the repository and returns its results", async () => {
     const query = "alex";
+    const currentUserId = 42;
     const users = [
       {
         handle: "other_user",
@@ -27,9 +28,9 @@ describe("searchUsersService", () => {
 
     searchUsersMock.mockResolvedValue(users);
 
-    const result = await searchUsersService(query);
+    const result = await searchUsersService(query, currentUserId);
 
-    expect(searchUsersMock).toHaveBeenCalledWith(query);
+    expect(searchUsersMock).toHaveBeenCalledWith(query, currentUserId);
     expect(result).toEqual(users);
   });
 });

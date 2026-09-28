@@ -22,7 +22,7 @@ export const updateUserProfileController: UpdateUserProfileHandler = async (req,
 };
 
 export const searchUsersController: SearchUsersHandler = async (_req, res) => {
-  const users = await searchUsersService(res.locals.query);
+  const users = await searchUsersService(res.locals.query, res.locals.userId);
 
   res.status(200).json(users);
 };

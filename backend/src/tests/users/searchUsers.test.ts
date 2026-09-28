@@ -60,6 +60,38 @@ describe("GET /users?query=", () => {
     );
   });
 
+  it("excludes the requesting user when both users match the query", async () => {
+    const app = createApp();
+    const requestingUser = await createTestUser({
+      username: "requesting-user",
+      handle: "alex_self",
+      displayName: "Requesting User",
+    });
+    const otherUser = await createTestUser({
+      username: "other-user",
+      handle: "other_handle",
+      displayName: "Alex Other",
+      profileImage: null,
+    });
+    const accessCookie = createAccessTokenCookie(requestingUser.id);
+
+    const response = await request(app)
+      .get("/users")
+      .query({ query: "alex" })
+      .set("Cookie", accessCookie);
+
+    expect(response.status).toBe(200);
+
+    const body = getBody<SearchUsersResponseBody>(response);
+    expect(body).toEqual([
+      {
+        handle: otherUser.handle,
+        displayName: otherUser.displayName,
+        profileImage: otherUser.profileImage,
+      },
+    ]);
+  });
+
   it("returns an empty array when no users match the query", async () => {
     const app = createApp();
     const credentials = {

@@ -713,13 +713,15 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - [x] refresh rotation atomicity 회귀 테스트 추가: 실제 test DB에서 repository의 replacement session 생성이 unique `tokenHash` 충돌로 실패할 때, 기존 session 삭제가 rollback되고 두 기존 session이 그대로 남는 계약 검증
   - [x] 최종 검증: backend 32개 test files, 192 tests 전체 GREEN; TypeScript 검사, Prettier, `git diff --check` 통과; lint error 0
   - [x] 최종 audit blocker 없음
-  - 다음 작업은 아래 Backend TODO의 첫 번째 항목부터 진행
+  - 후속 작업은 아래 Backend TODO 순서대로 진행
 
-- [ ] 사용자 검색에서 현재 로그인 사용자 제외
-  - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
-  - 현재 frontend는 자기 자신의 read-only profile에서 `Message`를 숨기지만 검색 결과 자체는 유지
+- [x] 사용자 검색에서 현재 로그인 사용자 제외
+  - `GET /users?query=...`에서 현재 `userId`를 controller → service → repository로 전달하고 Prisma `user.findMany` 조회에서 제외
+  - 기존 handle / displayName 검색 조건과 응답 shape 유지
+  - integration test에 로그인 사용자와 다른 사용자가 모두 검색어에 일치하는 경우를 추가하고, service의 `query` / `currentUserId` 전달 테스트 보완
+  - 관련 검색 / 대화 생성 테스트 4 files / 29 tests GREEN; 기능 audit blocker 없음
   - `POST /conversations`의 자기 자신과 대화 시작 방지 검증은 그대로 유지
-  - backend 적용 시 frontend의 별도 본인 필터링은 두지 않음
+  - frontend의 별도 본인 필터링은 두지 않음
 
 - [ ] 동일 participant pair의 concurrent Conversation 생성 hardening
   - 현재 `POST /conversations`는 기존 conversation 조회 후 없으면 생성하는 `find → create` 흐름
@@ -761,10 +763,9 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - 미사용 `UserSearchResult` export와 `findUserProfileByUsername` test mock 정리 완료
   - backend 최종 audit에서 기능 blocker 없음 확인
 - **Backend 전체 테스트 리팩토링 / cleanup 완료.** 실제 repository + test DB 기반 refresh rotation atomicity 회귀 테스트를 포함해 32개 test files의 192 tests가 모두 GREEN이다. TypeScript 검사, Prettier, `git diff --check`가 통과했고 lint error는 0개이며 최종 audit blocker는 없다.
-- **다음 즉시 시작점:** `GET /users?query=...` 검색 결과에서 현재 로그인 사용자 제외
-- 이후 Backend TODO를 다음 순서로 진행한다.
-  1. concurrent `POST /conversations`에서 동일 participant pair 중복 생성 hardening
-  2. Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
+- **사용자 검색에서 현재 로그인 사용자 제외 완료.** `GET /users?query=...`에서 현재 `userId`를 controller → service → repository로 전달하고 Prisma 조회에서 제외했다. integration / service 전달 테스트를 보완했고, 관련 검색 / 대화 생성 테스트 4 files / 29 tests GREEN 및 audit blocker 없음을 확인했다.
+- **다음 즉시 시작점:** 동일 participant pair의 concurrent Conversation 생성 hardening
+- 이후 Backend TODO: Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
 - 위 backend 정리 이후 Frontend identity refactor로 이동한다.
   - `/users/:handle`
   - auth/user/conversation/message query·mutation 타입과 payload handle 전환
