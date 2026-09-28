@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma.js";
+import type { Prisma } from "@/generated/prisma/client.js";
 
 export const findConversationById = (conversationId: number) =>
   prisma.conversation.findUnique({
@@ -70,8 +71,11 @@ export const findConversationsByParticipantId = (
     ...(limit === undefined ? {} : { take: limit + 1 }),
   });
 
-export const findConversationByParticipantIds = (participantIds: number[]) =>
-  prisma.conversation.findFirst({
+export const findConversationByParticipantIds = (
+  participantIds: number[],
+  client: Prisma.TransactionClient = prisma,
+) =>
+  client.conversation.findFirst({
     where: {
       AND: [
         ...participantIds.map((id) => ({
@@ -103,8 +107,11 @@ export const findConversationByParticipantIds = (participantIds: number[]) =>
     },
   });
 
-export const createConversation = (participantIds: number[]) =>
-  prisma.conversation.create({
+export const createConversation = (
+  participantIds: number[],
+  client: Prisma.TransactionClient = prisma,
+) =>
+  client.conversation.create({
     data: {
       participants: {
         connect: participantIds.map((id) => ({ id })),
@@ -124,3 +131,22 @@ export const createConversation = (participantIds: number[]) =>
       lastActivityAt: true,
     },
   });
+
+export const findOrCreateConversation = (participantIds: number[]) =>
+  prisma.$transaction(
+    async (transaction) => {
+      const existingConversation = await findConversationByParticipantIds(
+        participantIds,
+        transaction,
+      );
+
+      if (existingConversation) {
+        return { conversation: existingConversation, created: false };
+      }
+
+      const conversation = await createConversation(participantIds, transaction);
+
+      return { conversation, created: true };
+    },
+    { isolationLevel: "Serializable" },
+  );

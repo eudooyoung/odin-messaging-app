@@ -1,12 +1,13 @@
 import { once } from "node:events";
 import { createServer, type Server } from "node:http";
-import request, { type Response } from "supertest";
+import request from "supertest";
 import WebSocket, { type RawData, type WebSocketServer } from "ws";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
-import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
+import { createTestConversation } from "@/tests/helpers/createTestConversation.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import {
   closeHttpServer,
   closeWebSocket,
@@ -21,8 +22,6 @@ import {
   createMessageCreatedPublisher,
   createWebSocketConnectionRegistry,
 } from "@/websocket.js";
-
-const getBody = <T>(response: Response) => response.body as T;
 
 const receiveTextMessage = (webSocket: WebSocket) =>
   new Promise<string>((resolve, reject) => {
@@ -99,12 +98,8 @@ describe("new message WebSocket push", () => {
       username: "other-user",
       displayName: "Other User",
     });
-    const conversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: otherUser.id }],
-        },
-      },
+    const conversation = await createTestConversation({
+      participantIds: [currentUser.id, otherUser.id],
     });
     const currentUserCookie = createAccessTokenCookie(currentUser.id);
     const otherUserCookie = createAccessTokenCookie(otherUser.id);
@@ -152,12 +147,8 @@ describe("new message WebSocket push", () => {
       username: "other-user",
       displayName: "Other User",
     });
-    const conversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: otherUser.id }],
-        },
-      },
+    const conversation = await createTestConversation({
+      participantIds: [currentUser.id, otherUser.id],
     });
     const currentUserCookie = createAccessTokenCookie(currentUser.id);
     const otherUserCookie = createAccessTokenCookie(otherUser.id);
@@ -210,12 +201,8 @@ describe("new message WebSocket push", () => {
       username: "recipient",
       displayName: "Recipient",
     });
-    const conversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: sender.id }, { id: recipient.id }],
-        },
-      },
+    const conversation = await createTestConversation({
+      participantIds: [sender.id, recipient.id],
     });
     const senderCookie = createAccessTokenCookie(sender.id);
     const recipientCookie = createAccessTokenCookie(recipient.id);

@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import NotFoundError from "@/errors/notFoundError.js";
+import type { findUserProfileByHandle } from "@/repositories/user.repository.js";
 import { getUserProfileService } from "@/services/user.service.js";
 
 const { findUserProfileByHandleMock } = vi.hoisted(() => ({
-  findUserProfileByHandleMock: vi.fn(),
+  findUserProfileByHandleMock: vi.fn<typeof findUserProfileByHandle>(),
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
@@ -16,7 +17,7 @@ beforeEach(() => {
 
 describe("getUserProfileService", () => {
   it("returns the user's public profile", async () => {
-    const handle = "existing-user-handle";
+    const handle = "existing_user_handle";
     const userProfile = {
       id: 1,
       handle,

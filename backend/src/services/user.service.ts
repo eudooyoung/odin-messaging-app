@@ -39,8 +39,8 @@ export const updateUserProfileService = async (
   }
 };
 
-export const searchUsersService = async (query: string) => {
-  const users = await searchUsers(query);
+export const searchUsersService = async (query: string, currentUserId: number) => {
+  const users = await searchUsers(query, currentUserId);
 
   return users;
 };

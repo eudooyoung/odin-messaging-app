@@ -646,9 +646,9 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - 신규 frontend 테스트에서는 호출 횟수를 먼저 보장한 뒤 optional chaining 없이 필요한 인자만 검증하도록 `frontend/AGENTS.md`에 규칙 반영 완료
   - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
 
-#### User identity refactor — Backend 전환 완료 / Frontend 대기
+#### User identity refactor — Backend 전환·최종 cleanup 완료 / Frontend 대기
 
-UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환은 완료했고 전체 테스트 GREEN 및 최종 audit에서 기능 blocker 없음**을 확인했다. Frontend 전환 전에 backend cleanup / 테스트 리팩토링 / 기존 TODO를 먼저 처리한다.
+UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환과 최종 cleanup을 완료했고, 전체 테스트 GREEN 및 최종 audit에서 blocker 없음**을 확인했다. Message atomicity까지 보완했으며 다음 작업은 Frontend identity refactor다.
 
 - [x] User model에 `handle` 추가 + migration / 기존 사용자 backfill
   - 최종 상태: required + unique + mutable, 최대 30자
@@ -681,16 +681,17 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - [x] REST sender: `{ id, handle, displayName, profileImage }`
   - [x] WebSocket `message.created.message.sender`도 REST와 동일한 shape
   - [x] sender 제외 / 상대의 모든 connection 전달 계약 유지 및 직접 검증
-- [ ] Backend identity refactor 최종 cleanup
-  - 최종 audit에서 기능 blocker 없음 확인
-  - 전체 TypeScript 검사 및 전체 backend 테스트 GREEN 확인
-  - [ ] 미사용 `UserSearchResult` export 삭제
-  - [ ] `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
+- [x] Backend identity refactor 최종 cleanup
+  - [x] 최종 audit에서 기능 blocker 없음 확인
+  - [x] 전체 TypeScript 검사 및 전체 backend 테스트 GREEN 확인
+  - [x] 미사용 `UserSearchResult` export 삭제
+  - [x] `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
   - `targetUsername`을 400으로 거부하는 legacy request 테스트는 회귀 테스트로 유지
 - [ ] Frontend route / query / mutation / recent-users storage를 handle 계약으로 전환
   - `/users/:handle`
   - 공개 화면의 `@username` → `@handle`
-  - username을 다른 사용자 payload에서 사용하지 않도록 제거
+  - user / conversation / message 관련 공개 payload와 type에서 `username` 제거
+  - recent users storage의 username 기반 key / route를 handle 기반으로 전환
 - [ ] identity refactor 전체 test / audit 완료 후 UI 스타일링 재개
 
 #### Product / Frontend behavior TODO
@@ -708,27 +709,38 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 
 #### Backend refactor TODO
 
-- [ ] Backend 전체 테스트 리팩토링 / cleanup
-  - backend identity 최종 cleanup 이후 기존 테스트 전반의 fixture / 중복 / 구조를 다시 점검
-  - 동작 변경 없이 테스트 가독성·현재 타입 계약 일치·불필요한 legacy 흔적을 정리
-  - 완료 후 아래 backend TODO를 순서대로 진행
+- [x] Backend 전체 테스트 리팩토링 / cleanup
+  - backend identity 최종 cleanup 이후 기존 테스트 전반의 fixture / 중복 / 구조를 점검하고, 동작 변경 없이 테스트 가독성·현재 타입 계약 일치·불필요한 legacy 흔적을 정리
+  - [x] refresh rotation atomicity 회귀 테스트 추가: 실제 test DB에서 repository의 replacement session 생성이 unique `tokenHash` 충돌로 실패할 때, 기존 session 삭제가 rollback되고 두 기존 session이 그대로 남는 계약 검증
+  - [x] 최종 검증: backend 32개 test files, 192 tests 전체 GREEN; TypeScript 검사, Prettier, `git diff --check` 통과; lint error 0
+  - [x] 최종 audit blocker 없음
+  - 후속 작업은 아래 Backend TODO 순서대로 진행
 
-- [ ] 사용자 검색에서 현재 로그인 사용자 제외
-  - `GET /users?query=...`가 대화 상대 탐색 용도로 사용되므로 DB 조회 단계에서 현재 사용자 제외 검토
-  - 현재 frontend는 자기 자신의 read-only profile에서 `Message`를 숨기지만 검색 결과 자체는 유지
+- [x] 사용자 검색에서 현재 로그인 사용자 제외
+  - `GET /users?query=...`에서 현재 `userId`를 controller → service → repository로 전달하고 Prisma `user.findMany` 조회에서 제외
+  - 기존 handle / displayName 검색 조건과 응답 shape 유지
+  - integration test에 로그인 사용자와 다른 사용자가 모두 검색어에 일치하는 경우를 추가하고, service의 `query` / `currentUserId` 전달 테스트 보완
+  - 관련 검색 / 대화 생성 테스트 4 files / 29 tests GREEN; 기능 audit blocker 없음
   - `POST /conversations`의 자기 자신과 대화 시작 방지 검증은 그대로 유지
-  - backend 적용 시 frontend의 별도 본인 필터링은 두지 않음
+  - frontend의 별도 본인 필터링은 두지 않음
 
-- [ ] 동일 participant pair의 concurrent Conversation 생성 hardening
-  - 현재 `POST /conversations`는 기존 conversation 조회 후 없으면 생성하는 `find → create` 흐름
-  - participant pair에 DB-level unique 제약이 없어 여러 탭/동시 요청에서는 중복 conversation 생성 가능성이 있음
-  - frontend의 Message pending 방지는 같은 화면의 중복 클릭만 막으므로 서버 불변조건을 보장하지는 않음
-  - 현재 사용자 흐름의 blocker는 아니며, DB 모델/transaction/unique 전략을 별도 backend 작업으로 검토
+- [x] 동일 participant pair의 concurrent Conversation 생성 hardening
+  - 기존 conversation 조회 → 없으면 생성 과정을 하나의 Serializable transaction으로 묶고, 내부 조회·생성에 동일 transaction client 사용; schema / migration 변경 없음
+  - P2034 또는 adapter `TransactionWriteConflict` 발생 시 transaction 전체를 조회부터 최대 5회 시도하고, 마지막 실패에서는 원래 error를 throw
+  - participant ID 정렬로 A→B / B→A를 같은 pair로 처리
+  - 기존 생성 201 / 재사용 200 / self 400 / target 404 계약 유지
+  - 실제 DB 조회 후 두 요청의 최초 조회를 동기화하는 deterministic concurrent integration test 추가
+  - 관련 테스트 3 files / 22 tests GREEN; 최종 audit blocker 없음
+  - optional follow-up: P2034 retry 5회 소진 시 원래 error를 throw하는 경로 직접 테스트
 
 #### 배포 전 확인
 
-- [ ] Backend Message atomicity
-  - message 저장과 `Conversation.lastActivityAt` 갱신을 하나의 원자적 작업으로 보장할지 검토 및 필요 시 보완
+- [x] Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity
+  - message 생성과 `lastActivityAt` 갱신을 하나의 interactive transaction에서 동일 transaction client로 수행
+  - `lastActivityAt`은 생성된 `message.createdAt`으로 갱신하고, conversation update 실패 시 message 생성도 rollback
+  - 실제 test DB를 사용하는 atomicity integration regression test 추가; 의도한 conversation update failure injection 경로 실행과 rollback 결과 검증
+  - 기존 service unit test의 직접 activity update mock / assertion을 repository transaction 책임에 맞게 정리
+  - 관련 테스트 4 files / 19 tests GREEN; failure injection 보강 후 atomicity / 기존 endpoint 2 files / 13 tests 재확인, audit blocker 없음
 - [ ] WebSocket deployment security
   - cookie 인증 WebSocket upgrade 요청의 허용 `Origin` 검증
 
@@ -751,26 +763,22 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 
 - Backend / Frontend 핵심 기능 구현, 기능 단위 audit, frontend manual audit은 완료 상태다.
 - UI는 desktop sidebar와 `ConversationPage` header까지 진행했고 identity refactor 때문에 잠시 중단했다.
-- **Backend identity 기능/API 전환은 완료**했다.
+- **Backend identity 기능/API 전환과 최종 cleanup은 완료**했다.
   - Auth self payload에 `handle` 포함
   - 공개 User/Profile API를 handle 기반으로 전환
   - Conversation request / participants / otherUser를 handle 기반으로 전환
   - Message REST / WebSocket sender를 `{ id, handle, displayName, profileImage }`로 전환
-  - backend 전체 TypeScript 검사 및 전체 테스트 GREEN 확인
+  - 미사용 `UserSearchResult` export와 `findUserProfileByUsername` test mock 정리 완료
   - backend 최종 audit에서 기능 blocker 없음 확인
-- **다음 즉시 시작점:** backend identity 최종 cleanup 2건
-  1. `api.types.ts`의 미사용 `UserSearchResult` export 삭제
-  2. `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
-- cleanup 후 **Backend 전체 테스트 리팩토링 / cleanup**을 진행한다.
-- 그 다음 기존 Backend TODO를 다음 순서로 진행한다.
-  1. `GET /users?query=...`에서 현재 로그인 사용자 제외
-  2. concurrent `POST /conversations`에서 동일 participant pair 중복 생성 hardening
-  3. Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
-- 위 backend 정리 이후 Frontend identity refactor로 이동한다.
+- **Backend 전체 테스트 리팩토링 / cleanup 완료.** 실제 repository + test DB 기반 refresh rotation atomicity 회귀 테스트를 포함해 32개 test files의 192 tests가 모두 GREEN이다. TypeScript 검사, Prettier, `git diff --check`가 통과했고 lint error는 0개이며 최종 audit blocker는 없다.
+- **사용자 검색에서 현재 로그인 사용자 제외 완료.** `GET /users?query=...`에서 현재 `userId`를 controller → service → repository로 전달하고 Prisma 조회에서 제외했다. integration / service 전달 테스트를 보완했고, 관련 검색 / 대화 생성 테스트 4 files / 29 tests GREEN 및 audit blocker 없음을 확인했다.
+- **동일 participant pair의 concurrent Conversation 생성 hardening 완료.** Serializable transaction과 제한된 충돌 재시도로 중복 생성을 방지한다. deterministic concurrent integration test를 포함한 관련 테스트 3 files / 22 tests GREEN 및 최종 audit blocker 없음을 확인했다.
+- **Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 완료.** 동일 interactive transaction client를 사용하고 `lastActivityAt`은 생성된 `message.createdAt`으로 갱신한다. conversation update 실패 시 message 생성 rollback을 실제 test DB 회귀 테스트로 검증했으며 failure injection 경로 실행도 확인했다. service unit test를 현재 책임에 맞게 정리했고 관련 테스트 GREEN, audit blocker 없음.
+- **다음 즉시 시작점: Frontend identity refactor.**
   - `/users/:handle`
-  - auth/user/conversation/message query·mutation 타입과 payload handle 전환
-  - recent users storage key / route를 username에서 handle로 전환
   - 공개 화면의 `@username` → `@handle`
+  - user / conversation / message 관련 공개 payload와 type에서 `username` 제거 및 handle 전환
+  - recent users storage의 username 기반 key / route를 handle 기반으로 전환
   - 본인/상대/메시지 판별은 안정적인 user `id` 사용
 - Frontend identity refactor 완료 후 UI를 다음 순서로 재개한다.
   1. MessageList bubble / 시간 / loading·empty·pagination 상태

@@ -1,13 +1,14 @@
-import request, { type Response } from "supertest";
+import assert from "node:assert/strict";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
+import { createTestConversation } from "@/tests/helpers/createTestConversation.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
 import type { CreateMessageResponseBody } from "@/types/api.types.js";
-
-const getBody = <T>(response: Response) => response.body as T;
 
 describe("POST /conversations/:id/messages", () => {
   it("creates a message and updates the conversation activity", async () => {
@@ -26,13 +27,9 @@ describe("POST /conversations/:id/messages", () => {
       username: "other-user",
       displayName: "Other User",
     });
-    const conversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: otherUser.id }],
-        },
-        lastActivityAt: new Date("2026-09-01T00:00:00.000Z"),
-      },
+    const conversation = await createTestConversation({
+      participantIds: [currentUser.id, otherUser.id],
+      lastActivityAt: new Date("2026-09-01T00:00:00.000Z"),
     });
     const accessCookie = createAccessTokenCookie(currentUser.id);
     const content = "Hello!";
@@ -58,18 +55,20 @@ describe("POST /conversations/:id/messages", () => {
     const persistedMessage = await prisma.message.findUnique({
       where: { id: body.id },
     });
+    assert.ok(persistedMessage, "Message was not persisted");
     expect(persistedMessage).toMatchObject({
       id: body.id,
       content,
       senderId: currentUser.id,
       conversationId: conversation.id,
     });
-    expect(body.createdAt).toBe(persistedMessage?.createdAt.toISOString());
+    expect(body.createdAt).toBe(persistedMessage.createdAt.toISOString());
 
     const updatedConversation = await prisma.conversation.findUnique({
       where: { id: conversation.id },
     });
-    expect(updatedConversation?.lastActivityAt).toEqual(persistedMessage?.createdAt);
+    assert.ok(updatedConversation, "Conversation was not found after message creation");
+    expect(updatedConversation.lastActivityAt).toEqual(persistedMessage.createdAt);
   });
 
   it("returns 401 when the access token cookie is missing", async () => {
@@ -114,12 +113,8 @@ describe("POST /conversations/:id/messages", () => {
       username: "second-participant",
       displayName: "Second Participant",
     });
-    const conversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: firstParticipant.id }, { id: secondParticipant.id }],
-        },
-      },
+    const conversation = await createTestConversation({
+      participantIds: [firstParticipant.id, secondParticipant.id],
     });
     const accessCookie = createAccessTokenCookie(currentUser.id);
 
@@ -174,12 +169,8 @@ describe("POST /conversations/:id/messages", () => {
       username: "other-user",
       displayName: "Other User",
     });
-    const conversation = await prisma.conversation.create({
-      data: {
-        participants: {
-          connect: [{ id: currentUser.id }, { id: otherUser.id }],
-        },
-      },
+    const conversation = await createTestConversation({
+      participantIds: [currentUser.id, otherUser.id],
     });
     const accessCookie = createAccessTokenCookie(currentUser.id);
 

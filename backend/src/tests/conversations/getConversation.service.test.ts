@@ -9,14 +9,7 @@ const { findConversationByIdMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
-  createConversation: vi.fn(),
   findConversationById: findConversationByIdMock,
-  findConversationByParticipantIds: vi.fn(),
-  findConversationsByParticipantId: vi.fn(),
-}));
-
-vi.mock("@/repositories/user.repository.js", () => ({
-  findUserByUsername: vi.fn(),
 }));
 
 beforeEach(() => {

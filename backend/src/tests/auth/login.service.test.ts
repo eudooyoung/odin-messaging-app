@@ -2,17 +2,12 @@ import * as argon2 from "argon2";
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CustomError from "@/errors/customError.js";
+import type { createRefreshSession } from "@/repositories/refreshSession.repository.js";
 import { findUserByUsername } from "@/repositories/user.repository.js";
 import { loginService } from "@/services/auth.service.js";
 
-type CreateRefreshSessionData = {
-  tokenHash: string;
-  userId: number;
-  expiresAt: Date;
-};
-
 const { createRefreshSessionMock, signMock } = vi.hoisted(() => ({
-  createRefreshSessionMock: vi.fn<(data: CreateRefreshSessionData) => unknown>(),
+  createRefreshSessionMock: vi.fn<typeof createRefreshSession>(),
   signMock: vi.fn(),
 }));
 
@@ -33,7 +28,6 @@ vi.mock("jsonwebtoken", () => ({
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
-  createUser: vi.fn(),
   findUserByUsername: vi.fn(),
 }));
 
@@ -43,6 +37,13 @@ vi.mock("@/repositories/refreshSession.repository.js", () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  createRefreshSessionMock.mockResolvedValue({
+    id: 1,
+    tokenHash: "stored-token-hash",
+    userId: 1,
+    expiresAt: new Date("2026-09-08T00:00:00.000Z"),
+    createdAt: new Date("2026-09-01T00:00:00.000Z"),
+  });
 });
 
 afterEach(() => {
@@ -106,8 +107,6 @@ describe("loginService", () => {
       userId: user.id,
       expiresAt,
     });
-    const persistedSession = createRefreshSessionMock.mock.calls[0]?.[0];
-    expect(Object.values(persistedSession ?? {})).not.toContain(refreshToken);
   });
 
   it("throws an authentication error when the user does not exist", async () => {

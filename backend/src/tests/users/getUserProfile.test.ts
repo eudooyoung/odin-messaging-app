@@ -1,12 +1,11 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
 import type { GetUserProfileResponseBody } from "@/types/api.types";
-
-const getBody = <T>(response: Response) => response.body as T;
 
 describe("GET /users/:handle", () => {
   it("returns the user's public profile for an authenticated user", async () => {
@@ -18,7 +17,7 @@ describe("GET /users/:handle", () => {
     };
     const targetUser = await createTestUser({
       username: "profile-user",
-      handle: "profile-user-handle",
+      handle: "profile_user_handle",
       displayName: "Profile User",
       bio: "Hello, I'm a profile user.",
       profileImage: "https://example.com/profile.jpg",

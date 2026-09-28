@@ -2,6 +2,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import "@/tests/integration.setup.js";
+import { getSetCookie } from "@/tests/helpers/cookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 
 describe("POST /auth/login", () => {
@@ -18,9 +19,9 @@ describe("POST /auth/login", () => {
 
     expect(loginResponse.status).toBe(204);
 
-    const cookies = loginResponse.get("Set-Cookie") ?? [];
-    expect(cookies.some((cookie) => /^accessToken=[^;]+/.test(cookie))).toBe(true);
-    expect(cookies.some((cookie) => /^refreshToken=[^;]+/.test(cookie))).toBe(true);
+    const cookies = loginResponse.get("Set-Cookie");
+    expect(getSetCookie(cookies, "accessToken")).toMatch(/^accessToken=[^;]+/);
+    expect(getSetCookie(cookies, "refreshToken")).toMatch(/^refreshToken=[^;]+/);
   });
 
   it("returns 401 without token cookies when the user does not exist", async () => {
@@ -58,20 +59,12 @@ describe("POST /auth/login", () => {
     expect(cookies.some((cookie) => /^refreshToken=/.test(cookie))).toBe(false);
   });
 
-  it("returns 400 without token cookies when the username is blank", async () => {
-    const response = await request(createApp()).post("/auth/login").send({
+  it.each([
+    {
+      caseName: "the username is blank",
       username: "   ",
       password: "secure-password",
-    });
-
-    expect(response.status).toBe(400);
-
-    const cookies = response.get("Set-Cookie") ?? [];
-    expect(cookies.some((cookie) => /^accessToken=/.test(cookie))).toBe(false);
-    expect(cookies.some((cookie) => /^refreshToken=/.test(cookie))).toBe(false);
-  });
-
-  it.each([
+    },
     {
       caseName: "the username is longer than 30 characters",
       username: "a".repeat(31),
