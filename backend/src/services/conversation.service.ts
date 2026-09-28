@@ -1,13 +1,31 @@
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import BadRequestError from "@/errors/badRequestError.js";
 import ForbiddenError from "@/errors/forbiddenError.js";
 import NotFoundError from "@/errors/notFoundError.js";
 import {
-  createConversation,
   findConversationById,
-  findConversationByParticipantIds,
   findConversationsByParticipantId,
+  findOrCreateConversation,
 } from "@/repositories/conversation.repository.js";
 import { findUserByHandle } from "@/repositories/user.repository.js";
+
+const maxConversationCreationAttempts = 5;
+
+const isConversationWriteConflict = (error: unknown) => {
+  if (error instanceof PrismaClientKnownRequestError) {
+    return error.code === "P2034";
+  }
+
+  // The PostgreSQL adapter can surface commit conflicts without a P2034 wrapper.
+  return (
+    error instanceof Error &&
+    error.name === "DriverAdapterError" &&
+    typeof error.cause === "object" &&
+    error.cause !== null &&
+    "kind" in error.cause &&
+    error.cause.kind === "TransactionWriteConflict"
+  );
+};
 
 export const getConversationService = async (currentUserId: number, conversationId: number) => {
   const conversation = await findConversationById(conversationId);
@@ -62,14 +80,15 @@ export const createConversationService = async (currentUserId: number, targetHan
     );
   }
 
-  const participantIds = [currentUserId, targetUser.id];
-  const existingConversation = await findConversationByParticipantIds(participantIds);
+  const participantIds = [currentUserId, targetUser.id].sort((a, b) => a - b);
 
-  if (existingConversation) {
-    return { conversation: existingConversation, created: false };
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await findOrCreateConversation(participantIds);
+    } catch (error) {
+      if (!isConversationWriteConflict(error) || attempt >= maxConversationCreationAttempts) {
+        throw error;
+      }
+    }
   }
-
-  const conversation = await createConversation(participantIds);
-
-  return { conversation, created: true };
 };

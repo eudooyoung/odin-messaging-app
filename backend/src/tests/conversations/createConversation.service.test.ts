@@ -1,23 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BadRequestError from "@/errors/badRequestError.js";
 import NotFoundError from "@/errors/notFoundError.js";
-import type {
-  createConversation,
-  findConversationByParticipantIds,
-} from "@/repositories/conversation.repository.js";
+import type { findOrCreateConversation } from "@/repositories/conversation.repository.js";
 import type { findUserByHandle } from "@/repositories/user.repository.js";
 import { createConversationService } from "@/services/conversation.service.js";
 
-const { createConversationMock, findConversationByParticipantIdsMock, findUserByHandleMock } =
-  vi.hoisted(() => ({
-    createConversationMock: vi.fn<typeof createConversation>(),
-    findConversationByParticipantIdsMock: vi.fn<typeof findConversationByParticipantIds>(),
-    findUserByHandleMock: vi.fn<typeof findUserByHandle>(),
-  }));
+const { findOrCreateConversationMock, findUserByHandleMock } = vi.hoisted(() => ({
+  findOrCreateConversationMock: vi.fn<typeof findOrCreateConversation>(),
+  findUserByHandleMock: vi.fn<typeof findUserByHandle>(),
+}));
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
-  createConversation: createConversationMock,
-  findConversationByParticipantIds: findConversationByParticipantIdsMock,
+  findOrCreateConversation: findOrCreateConversationMock,
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
@@ -57,13 +51,15 @@ describe("createConversationService", () => {
     };
 
     findUserByHandleMock.mockResolvedValue(targetUser);
-    findConversationByParticipantIdsMock.mockResolvedValue(null);
-    createConversationMock.mockResolvedValue(createdConversation);
+    findOrCreateConversationMock.mockResolvedValue({
+      conversation: createdConversation,
+      created: true,
+    });
 
     const result = await createConversationService(currentUserId, targetHandle);
 
     expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
-    expect(createConversationMock).toHaveBeenCalledWith([currentUserId, targetUser.id]);
+    expect(findOrCreateConversationMock).toHaveBeenCalledWith([currentUserId, targetUser.id]);
     expect(result).toEqual({
       conversation: createdConversation,
       created: true,
@@ -98,16 +94,15 @@ describe("createConversationService", () => {
     };
 
     findUserByHandleMock.mockResolvedValue(targetUser);
-    findConversationByParticipantIdsMock.mockResolvedValue(existingConversation);
+    findOrCreateConversationMock.mockResolvedValue({
+      conversation: existingConversation,
+      created: false,
+    });
 
     const result = await createConversationService(currentUserId, targetHandle);
 
     expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
-    expect(findConversationByParticipantIdsMock).toHaveBeenCalledWith([
-      currentUserId,
-      targetUser.id,
-    ]);
-    expect(createConversationMock).not.toHaveBeenCalled();
+    expect(findOrCreateConversationMock).toHaveBeenCalledWith([currentUserId, targetUser.id]);
     expect(result).toEqual({
       conversation: existingConversation,
       created: false,
@@ -125,8 +120,7 @@ describe("createConversationService", () => {
     expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
     await expect(result).rejects.toMatchObject({ statusCode: 404 });
-    expect(findConversationByParticipantIdsMock).not.toHaveBeenCalled();
-    expect(createConversationMock).not.toHaveBeenCalled();
+    expect(findOrCreateConversationMock).not.toHaveBeenCalled();
   });
 
   it("throws a bad request error when the target user is the current user", async () => {
@@ -144,7 +138,6 @@ describe("createConversationService", () => {
     expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
     await expect(result).rejects.toBeInstanceOf(BadRequestError);
     await expect(result).rejects.toMatchObject({ statusCode: 400 });
-    expect(findConversationByParticipantIdsMock).not.toHaveBeenCalled();
-    expect(createConversationMock).not.toHaveBeenCalled();
+    expect(findOrCreateConversationMock).not.toHaveBeenCalled();
   });
 });

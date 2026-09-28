@@ -723,11 +723,14 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - `POST /conversations`의 자기 자신과 대화 시작 방지 검증은 그대로 유지
   - frontend의 별도 본인 필터링은 두지 않음
 
-- [ ] 동일 participant pair의 concurrent Conversation 생성 hardening
-  - 현재 `POST /conversations`는 기존 conversation 조회 후 없으면 생성하는 `find → create` 흐름
-  - participant pair에 DB-level unique 제약이 없어 여러 탭/동시 요청에서는 중복 conversation 생성 가능성이 있음
-  - frontend의 Message pending 방지는 같은 화면의 중복 클릭만 막으므로 서버 불변조건을 보장하지는 않음
-  - 현재 사용자 흐름의 blocker는 아니며, DB 모델/transaction/unique 전략을 별도 backend 작업으로 검토
+- [x] 동일 participant pair의 concurrent Conversation 생성 hardening
+  - 기존 conversation 조회 → 없으면 생성 과정을 하나의 Serializable transaction으로 묶고, 내부 조회·생성에 동일 transaction client 사용; schema / migration 변경 없음
+  - P2034 또는 adapter `TransactionWriteConflict` 발생 시 transaction 전체를 조회부터 최대 5회 시도하고, 마지막 실패에서는 원래 error를 throw
+  - participant ID 정렬로 A→B / B→A를 같은 pair로 처리
+  - 기존 생성 201 / 재사용 200 / self 400 / target 404 계약 유지
+  - 실제 DB 조회 후 두 요청의 최초 조회를 동기화하는 deterministic concurrent integration test 추가
+  - 관련 테스트 3 files / 22 tests GREEN; 최종 audit blocker 없음
+  - optional follow-up: P2034 retry 5회 소진 시 원래 error를 throw하는 경로 직접 테스트
 
 #### 배포 전 확인
 
@@ -764,8 +767,8 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - backend 최종 audit에서 기능 blocker 없음 확인
 - **Backend 전체 테스트 리팩토링 / cleanup 완료.** 실제 repository + test DB 기반 refresh rotation atomicity 회귀 테스트를 포함해 32개 test files의 192 tests가 모두 GREEN이다. TypeScript 검사, Prettier, `git diff --check`가 통과했고 lint error는 0개이며 최종 audit blocker는 없다.
 - **사용자 검색에서 현재 로그인 사용자 제외 완료.** `GET /users?query=...`에서 현재 `userId`를 controller → service → repository로 전달하고 Prisma 조회에서 제외했다. integration / service 전달 테스트를 보완했고, 관련 검색 / 대화 생성 테스트 4 files / 29 tests GREEN 및 audit blocker 없음을 확인했다.
-- **다음 즉시 시작점:** 동일 participant pair의 concurrent Conversation 생성 hardening
-- 이후 Backend TODO: Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토 / 필요 시 보완
+- **동일 participant pair의 concurrent Conversation 생성 hardening 완료.** Serializable transaction과 제한된 충돌 재시도로 중복 생성을 방지한다. deterministic concurrent integration test를 포함한 관련 테스트 3 files / 22 tests GREEN 및 최종 audit blocker 없음을 확인했다.
+- **다음 즉시 시작점:** Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 검토
 - 위 backend 정리 이후 Frontend identity refactor로 이동한다.
   - `/users/:handle`
   - auth/user/conversation/message query·mutation 타입과 payload handle 전환
