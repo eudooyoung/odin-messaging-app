@@ -9,7 +9,8 @@ type ConversationsPage = {
   conversations: {
     id: number;
     otherUser: {
-      username: string;
+      id: number;
+      handle: string;
       displayName: string;
       profileImage: string | null;
     };

@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
@@ -30,7 +30,8 @@ describe("conversationsQueryOptions", () => {
         {
           id: 1,
           otherUser: {
-            username: "other-user",
+            id: 2,
+            handle: "other-user",
             displayName: "Other User",
             profileImage: null,
           },
@@ -57,6 +58,12 @@ describe("conversationsQueryOptions", () => {
       pages: 2,
     });
 
+    expectTypeOf(result.pages[0]!.conversations[0]!.otherUser).toEqualTypeOf<{
+      id: number;
+      handle: string;
+      displayName: string;
+      profileImage: string | null;
+    }>();
     expect(conversationsQueryOptions.queryKey).toEqual(["conversations"]);
     expect(conversationsQueryOptions.initialPageParam).toBeNull();
     expect(apiFetch).toHaveBeenCalledTimes(2);
