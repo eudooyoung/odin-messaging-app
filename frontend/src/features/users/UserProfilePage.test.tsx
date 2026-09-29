@@ -56,6 +56,7 @@ describe("UserProfilePage", () => {
   const currentUser = {
     id: 1,
     username: "current-user",
+    handle: "current-user",
     displayName: "Current User",
   };
 
@@ -162,12 +163,14 @@ describe("UserProfilePage", () => {
         id: 42,
         participants: [
           {
-            username: currentUser.username,
+            id: currentUser.id,
+            handle: currentUser.handle,
             displayName: currentUser.displayName,
             profileImage: null,
           },
           {
-            username: targetProfile.handle,
+            id: targetProfile.id,
+            handle: targetProfile.handle,
             displayName: targetProfile.displayName,
             profileImage: targetProfile.profileImage,
           },

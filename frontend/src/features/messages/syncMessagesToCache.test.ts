@@ -22,7 +22,8 @@ const latestMessage = {
   id: 10,
   content: "Latest message",
   sender: {
-    username: "other-user",
+    id: 2,
+    handle: "other-user",
     displayName: "Other User",
     profileImage: null,
   },
@@ -33,7 +34,8 @@ const olderMessage = {
   id: 9,
   content: "Older message",
   sender: {
-    username: "other-user",
+    id: 2,
+    handle: "other-user",
     displayName: "Other User",
     profileImage: null,
   },
@@ -44,7 +46,8 @@ const createdMessage = {
   id: 11,
   content: "New message",
   sender: {
-    username: "current-user",
+    id: 1,
+    handle: "current-user",
     displayName: "Current User",
     profileImage: null,
   },

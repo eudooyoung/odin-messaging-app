@@ -80,7 +80,8 @@ describe("ConversationPage", () => {
       id: 10,
       content: "Hello from the conversation",
       sender: {
-        username: "other-user",
+        id: 2,
+        handle: "other-handle",
         displayName: "Other User",
         profileImage: null,
       },
@@ -179,7 +180,8 @@ describe("ConversationPage", () => {
         id: 11,
         content: "Hello!",
         sender: {
-          username: "current-user",
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: "Current User",
           profileImage: null,
         },
@@ -210,7 +212,8 @@ describe("ConversationPage", () => {
         id: 11,
         content: "New message after the load error",
         sender: {
-          username: "current-user",
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: "Current User",
           profileImage: null,
         },
@@ -220,7 +223,8 @@ describe("ConversationPage", () => {
         id: 9,
         content: "An older conversation message",
         sender: {
-          username: "other-user",
+          id: 2,
+          handle: "other-handle",
           displayName: "Other User",
           profileImage: null,
         },

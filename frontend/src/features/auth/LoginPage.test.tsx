@@ -134,6 +134,7 @@ describe("LoginPage", () => {
     const currentUser: AuthUser = {
       id: 1,
       username: "existing-user",
+      handle: "existing-user",
       displayName: "Existing User",
     };
 
