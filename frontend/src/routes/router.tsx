@@ -25,7 +25,7 @@ const routes = [
             element: <ConversationPage />,
           },
           {
-            path: "users/:username",
+            path: "users/:handle",
             element: <UserProfilePage />,
           },
           {
