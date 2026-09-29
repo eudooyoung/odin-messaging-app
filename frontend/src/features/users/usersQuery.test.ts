@@ -33,9 +33,11 @@ describe("usersQueryOptions", () => {
     const queryOptions = usersQueryOptions("other user");
     const result = await queryClient.query(queryOptions);
 
-    expectTypeOf(result).toEqualTypeOf<
-      { handle: string; displayName: string; profileImage: string | null }[]
-    >();
+    expectTypeOf(result[0]!).toEqualTypeOf<{
+      handle: string;
+      displayName: string;
+      profileImage: string | null;
+    }>();
     expect(queryOptions.queryKey).toEqual(["users", "search", "other user"]);
     expect(apiFetch).toHaveBeenCalledWith(expect.any(String), {
       signal: expect.any(AbortSignal),

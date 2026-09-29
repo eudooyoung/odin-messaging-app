@@ -4,7 +4,8 @@ import { UserFacingError } from "@/api/UserFacingError.ts";
 type Conversation = {
   id: number;
   participants: {
-    username: string;
+    id: number;
+    handle: string;
     displayName: string;
     profileImage: string | null;
   }[];
@@ -12,11 +13,11 @@ type Conversation = {
   lastActivityAt: string;
 };
 
-export async function createConversation(targetUsername: string) {
+export async function createConversation(targetHandle: string) {
   const response = await apiFetch("/conversations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ targetUsername }),
+    body: JSON.stringify({ targetHandle }),
   });
 
   if (response.status === 400) {
