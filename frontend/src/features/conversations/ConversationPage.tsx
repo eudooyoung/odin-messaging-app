@@ -40,13 +40,13 @@ export function ConversationPage() {
     ? conversation?.participants.find((participant) => participant.id !== currentUser.id)
     : undefined;
 
-  if (!otherUser) {
+  if (!currentUser || !otherUser) {
     return null;
   }
 
   return (
-    <>
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-neutral-200 bg-white px-6 py-4">
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-6 py-4">
         <Link
           aria-label="Close conversation"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
@@ -75,8 +75,12 @@ export function ConversationPage() {
           <p className="truncate text-sm text-neutral-500">@{otherUser.handle}</p>
         </div>
       </header>
-      <MessageList conversationId={parsedConversationId} />
-      <MessageComposer conversationId={parsedConversationId} />
-    </>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <MessageList conversationId={parsedConversationId} currentUserId={currentUser.id} />
+      </div>
+      <div className="shrink-0">
+        <MessageComposer conversationId={parsedConversationId} />
+      </div>
+    </div>
   );
 }

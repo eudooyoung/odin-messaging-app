@@ -53,7 +53,7 @@ describe("MessageList", () => {
   const renderMessageList = (queryClient: QueryClient, conversationId = 42) =>
     render(
       <QueryClientProvider client={queryClient}>
-        <MessageList conversationId={conversationId} />
+        <MessageList conversationId={conversationId} currentUserId={1} />
       </QueryClientProvider>,
     );
 
@@ -167,6 +167,86 @@ describe("MessageList", () => {
 
       expect(screen.getByText(latestMessage.content)).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("timestamps and date separators", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 8, 29, 22));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("shows one date separator before consecutive messages from the same local day", async () => {
+      const latestToday = {
+        ...latestMessage,
+        createdAt: new Date(2026, 8, 29, 21, 42).toISOString(),
+      };
+      const olderToday = {
+        ...olderMessage,
+        createdAt: new Date(2026, 8, 29, 9, 7).toISOString(),
+      };
+      vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestToday, olderToday], null));
+
+      const { container } = renderMessageList(queryClient);
+
+      await screen.findByText(latestToday.content);
+
+      expect(screen.getAllByText("오늘")).toHaveLength(1);
+      expect(container).toHaveTextContent(/오늘.*Older message.*Latest message/);
+    });
+
+    it("starts a new separator when the local date changes and labels past dates", async () => {
+      const today = {
+        ...latestMessage,
+        createdAt: new Date(2026, 8, 29, 21, 42).toISOString(),
+      };
+      const yesterday = {
+        ...olderMessage,
+        createdAt: new Date(2026, 8, 28, 9, 7).toISOString(),
+      };
+      const earlier = {
+        ...olderMessage,
+        id: 8,
+        content: "Earlier message",
+        createdAt: new Date(2026, 8, 27, 18, 30).toISOString(),
+      };
+      vi.mocked(apiFetch).mockResolvedValue(messagesResponse([today, yesterday, earlier], null));
+
+      const { container } = renderMessageList(queryClient);
+
+      await screen.findByText(today.content);
+
+      expect(container).toHaveTextContent(
+        /2026년 9월 27일.*Earlier message.*어제.*Older message.*오늘.*Latest message/,
+      );
+    });
+
+    it("shows each message's time in Korean local 12-hour format without seconds", async () => {
+      const eveningMessage = {
+        ...latestMessage,
+        createdAt: new Date(2026, 8, 29, 21, 42).toISOString(),
+      };
+      const morningMessage = {
+        ...olderMessage,
+        createdAt: new Date(2026, 8, 29, 9, 7).toISOString(),
+      };
+      vi.mocked(apiFetch).mockResolvedValue(
+        messagesResponse([eveningMessage, morningMessage], null),
+      );
+
+      const { container } = renderMessageList(queryClient);
+
+      await screen.findByText(eveningMessage.content);
+
+      expect(screen.getByText("오전 9:07")).toBeInTheDocument();
+      expect(screen.getByText("오후 9:42")).toBeInTheDocument();
+      expect(container).toHaveTextContent(
+        /Older message.*오전 9:07.*Latest message.*오후 9:42/,
+      );
     });
   });
 
