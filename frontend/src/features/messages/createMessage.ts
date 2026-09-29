@@ -5,7 +5,8 @@ type Message = {
   id: number;
   content: string;
   sender: {
-    username: string;
+    id: number;
+    handle: string;
     displayName: string;
     profileImage: string | null;
   };

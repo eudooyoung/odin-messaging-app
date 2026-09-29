@@ -388,7 +388,7 @@
   - [x] Auth MVP audit 완료 — MVP blocker 없음
 - [x] User Search
   - [x] 검색 query와 주요 상태
-  - [x] 사용자 선택 → read-only profile 이동 — 기존 `/users/:username`, handle refactor 예정
+  - [x] 사용자 선택 → read-only profile 이동 — UserSearch는 `/users/:handle`로 이동하며 router param 전환과 통합 재검증 대기
 - [x] User Profile / Conversation 시작 흐름
   - [x] `UserProfilePage` read-only profile 조회 / loading / 404 / generic error
   - [x] `UserProfileNotFoundError`로 profile 404 상태 구분
@@ -396,7 +396,7 @@
   - [x] Message mutation success / pending / error 상태
   - [x] 현재 사용자 자신의 read-only profile에서는 `Message` 숨김
   - [x] conversation 생성 성공 시 목록 invalidate를 시작하되 refetch 완료를 기다리지 않고 즉시 navigation
-  - [x] read-only profile route를 `MessagingLayout` child protected route로 연결 — 현재 `/users/:username`, `/users/:handle`로 refactor 예정
+  - [x] read-only profile route를 `MessagingLayout` child protected route로 연결 — router 등록은 아직 `/users/:username`, `/users/:handle` 전환 대기
   - [x] 검색 → profile → Message → conversation → persistent sidebar 갱신 router integration
   - [x] 기능 audit / re-audit 완료 — 필수 blocker 없음
 - [x] Conversation
@@ -427,7 +427,7 @@
   - [x] 최종 re-audit 완료 — 필수 WebSocket blocker 없음
 - [x] Profile
   - [x] Profile query
-  - [x] profile path segment 인코딩 — 현재 username 기준, handle 기준으로 refactor 예정
+  - [x] profile path segment 인코딩 — `userProfileQuery`는 handle 기준으로 전환 완료, `/profile` 호출부 전환 대기
   - [x] Profile edit mutation
   - [x] Profile UI / validation / loading / query error / mutation 상태
   - [x] null bio/profileImage 표시 및 submit 변환
@@ -507,12 +507,12 @@ Backend / Frontend의 핵심 기능 구현과 기능 단위 audit은 완료했�
     - [x] 결과가 dropdown viewport를 벗어날 때 active option 자동 스크롤
     - [x] UserSearch 외부 click 시 dropdown close
     - [x] 결과 선택 후 persistent layout에서도 dropdown close + active option reset
-    - [x] reserved-character username의 UserSearch → profile route encode/decode 경계 보완 — handle refactor 시 동일 경계 재적용 예정
+    - [x] UserSearch → profile route encode/decode 경계 테스트를 handle 입력으로 전환
     - [x] 최근 선택 사용자(localStorage, 최대 5명, 중복 시 최신 순) 표시
     - [x] 빈 검색창 focus 시 recent users 표시, 입력 중에는 live search 결과 표시
     - [x] 검색 input + open dropdown을 하나의 combobox surface처럼 보이도록 radius / border 연결
     - [x] result / recent option 사이 separator 제거
-    - [ ] identity refactor 후 recent user 저장 key / route를 username에서 handle로 전환
+    - [x] recent user 저장 객체·중복 판단·route를 handle 기준으로 전환 — `messaging-app:recent-users` key 유지, username만 있는 구형 객체는 복원하지 않음
     - [ ] Profile 및 남은 loading / empty / error 상태 시각 정리
   - [ ] 모바일에서 대화 목록 ↔ 채팅 화면 전환이 가능한 기본 responsive 처리
 - [ ] frontend + backend 실제 브라우저 smoke test
@@ -586,7 +586,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
 - [x] User Search / read-only Profile / Conversation 시작 흐름 manual audit
   - [x] `usersQuery.ts` / test — queryKey, URL query encoding, signal, 400/generic HTTP error, transport passthrough 정리
   - [x] `UserSearch.tsx` / test — trim된 검색값과 원본 input 분리, whitespace-only query 비활성화
-  - [x] 사용자 선택 책임을 conversation 생성에서 encoded profile navigation으로 변경 — 당시 `/users/:username`, handle refactor 예정
+  - [x] 사용자 선택 책임을 conversation 생성에서 encoded profile navigation으로 변경 — 현재 UserSearch는 `/users/:handle`로 이동
   - [x] mouse click / Enter 선택 시 persistent layout에서도 dropdown close + active option reset
   - [x] auto-scroll / click-outside / reserved-character route 경계 회귀 테스트 보완
   - [x] `UserProfilePage` — read-only profile loading / success / 404 / generic error 상태
@@ -598,7 +598,7 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - [x] `createConversation.ts` / test — 200/201 success, 400/404 status-specific error, generic HTTP error, transport passthrough 유지
   - [x] 최종 re-audit 완료 — 필수 frontend blocker 없음
 - [x] Profile query / mutation / page 흐름 manual audit
-  - [x] `userProfileQuery.ts` / test — queryKey, path encoding, signal, 404/generic HTTP error, transport passthrough 정리 — 현재 username 기반, handle refactor 예정
+  - [x] `userProfileQuery.ts` / test — queryKey, path encoding, signal, 404/generic HTTP error, transport passthrough 정리 — 공개 profile 계약은 handle 기반으로 전환 완료
   - [x] `updateUserProfile.ts` / test — PATCH 계약, 400/generic HTTP error, transport passthrough 정리
   - [x] `ProfilePage.tsx` — input field에 기존 `FormField` 재사용, profile cache 동기화 helper로 성공 lifecycle 가독성 개선
   - [x] profile form의 `bio` / `profileImage` 빈 문자열 → `null` 변환을 명시적으로 정리
@@ -646,9 +646,9 @@ CSS 작업 전에 프론트 전체 흐름을 코드 기준으로 다시 이해�
   - 신규 frontend 테스트에서는 호출 횟수를 먼저 보장한 뒤 optional chaining 없이 필요한 인자만 검증하도록 `frontend/AGENTS.md`에 규칙 반영 완료
   - 단순히 assertion 실패를 TypeError로 바꾸는 식의 기계적 제거는 하지 않고 테스트의 실제 계약 기준으로 판단
 
-#### User identity refactor — Backend 전환·최종 cleanup 완료 / Frontend 대기
+#### User identity refactor — Backend 완료 / Frontend 단계적 전환 중
 
-UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환과 최종 cleanup을 완료했고, 전체 테스트 GREEN 및 최종 audit에서 blocker 없음**을 확인했다. Message atomicity까지 보완했으며 다음 작업은 Frontend identity refactor다.
+UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시 중단했다. 공개 `username`을 제거하는 identity / API refactor 중 **backend의 기능/API 전환과 최종 cleanup을 완료했고, 전체 테스트 GREEN 및 최종 audit에서 blocker 없음**을 확인했다. Message atomicity까지 보완했다. Frontend는 기능 단위로 전환 중이며, 아직 연결하지 않은 호출부와 fixture 때문에 전체 TypeScript 검사는 GREEN이 아니다.
 
 - [x] User model에 `handle` 추가 + migration / 기존 사용자 backfill
   - 최종 상태: required + unique + mutable, 최대 30자
@@ -687,11 +687,21 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
   - [x] 미사용 `UserSearchResult` export 삭제
   - [x] `searchUsers.service.test.ts`의 미사용 `findUserProfileByUsername` mock 삭제
   - `targetUsername`을 400으로 거부하는 legacy request 테스트는 회귀 테스트로 유지
-- [ ] Frontend route / query / mutation / recent-users storage를 handle 계약으로 전환
-  - `/users/:handle`
-  - 공개 화면의 `@username` → `@handle`
-  - user / conversation / message 관련 공개 payload와 type에서 `username` 제거
-  - recent users storage의 username 기반 key / route를 handle 기반으로 전환
+- [ ] Frontend route / query / mutation / recent-users storage를 handle 계약으로 전환 — 진행 중
+  - [x] `usersQuery`: 검색 사용자 `{ handle, displayName, profileImage }`, 공개 타입에서 `username` 제거
+  - [x] `UserSearch`: `@handle`, `/users/:handle` 이동, recent users 저장·중복 판단·route를 handle 기준으로 전환. `messaging-app:recent-users` key는 유지하고 username만 있는 구형 객체는 복원하지 않음
+  - [x] `userProfileQuery`: `/users/:handle`, 공개 profile `{ id, handle, displayName, bio, profileImage }`
+  - [x] `UserProfilePage`: handle route param·표시·대화 시작 인자, 본인 판단은 user `id` 비교
+  - [x] `createConversation`: `targetHandle` 요청과 handle 기반 participants `{ id, handle, displayName, profileImage }`
+  - [x] `conversationQuery`: participants `{ id, handle, displayName, profileImage }`
+  - [x] `conversationsQuery`: `otherUser` `{ id, handle, displayName, profileImage }`
+  - [x] `messagesQuery`: sender `{ id, handle, displayName, profileImage }`
+  - 완료한 각 기능 단위는 관련 테스트 RED → GREEN을 확인했다. identity 타입 테스트는 전체 응답을 복제하지 않고 변경된 공개 사용자 경계만 검증한다.
+  - [ ] `createMessage`의 sender 공개 계약을 handle 기반으로 전환 — 다음 즉시 시작점
+  - [ ] WebSocket `message.created` sender runtime validation과 관련 cache sync·fixture를 REST sender 계약에 맞춤
+  - [ ] `ConversationList`·`ConversationPage`·`MessageList`의 공개 `@handle` 표시와 `ConversationPage`의 user `id` 상대 판단
+  - [ ] `auth/me` self `handle`, `/profile` 조회·수정·cache 동기화를 handle 계약에 연결
+  - [ ] router의 `users/:handle` 등록, integration tests 및 남은 공개 payload fixture 전환
 - [ ] identity refactor 전체 test / audit 완료 후 UI 스타일링 재개
 
 #### Product / Frontend behavior TODO
@@ -753,6 +763,7 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 ### 작업 방식
 
 - 공통 개발 흐름, TDD, 테스트, 리팩토링 규칙은 루트 `AGENTS.md`와 `frontend/AGENTS.md` / `backend/AGENTS.md`를 기준으로 한다.
+- 루트 `AGENTS.md`에 단계적 refactor 검증 규칙을 추가했다. 관련 테스트 결과를 우선 보고하고, 미전환 파일의 전체 TypeScript 오류를 임시 `tsconfig`나 별도 isolated type-check 환경으로 우회하지 않는다. 사용자가 명시적으로 요청한 경우만 예외다.
 - Graft repo context graph를 도입했고 Codex MCP / hooks도 연결했다. 코드 탐색 시 루트 `AGENTS.md`의 Graft 지침을 따른다. `graft/`는 재생성 가능한 로컬 cache이며 Graft의 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값이 아닌 참고 추정치로 본다.
   - 2026-09-23 기준 Graft `0.19.0`, `graft check`에서 wiring graph와 코드 동기화 `OK` 확인
   - deep layer는 아직 build하지 않았으며 현재 wiring graph를 source of truth로 사용
@@ -774,12 +785,10 @@ UI 스타일링은 `ConversationPage` header까지 진행한 상태에서 잠시
 - **사용자 검색에서 현재 로그인 사용자 제외 완료.** `GET /users?query=...`에서 현재 `userId`를 controller → service → repository로 전달하고 Prisma 조회에서 제외했다. integration / service 전달 테스트를 보완했고, 관련 검색 / 대화 생성 테스트 4 files / 29 tests GREEN 및 audit blocker 없음을 확인했다.
 - **동일 participant pair의 concurrent Conversation 생성 hardening 완료.** Serializable transaction과 제한된 충돌 재시도로 중복 생성을 방지한다. deterministic concurrent integration test를 포함한 관련 테스트 3 files / 22 tests GREEN 및 최종 audit blocker 없음을 확인했다.
 - **Message 저장 + `Conversation.lastActivityAt` 갱신 atomicity 완료.** 동일 interactive transaction client를 사용하고 `lastActivityAt`은 생성된 `message.createdAt`으로 갱신한다. conversation update 실패 시 message 생성 rollback을 실제 test DB 회귀 테스트로 검증했으며 failure injection 경로 실행도 확인했다. service unit test를 현재 책임에 맞게 정리했고 관련 테스트 GREEN, audit blocker 없음.
-- **다음 즉시 시작점: Frontend identity refactor.**
-  - `/users/:handle`
-  - 공개 화면의 `@username` → `@handle`
-  - user / conversation / message 관련 공개 payload와 type에서 `username` 제거 및 handle 전환
-  - recent users storage의 username 기반 key / route를 handle 기반으로 전환
-  - 본인/상대/메시지 판별은 안정적인 user `id` 사용
+- **Frontend identity refactor 진행 중.** `usersQuery`, `UserSearch` / recent users, `userProfileQuery`, `UserProfilePage`, `createConversation`, `conversationQuery`, `conversationsQuery`, `messagesQuery`를 기능 단위 RED → GREEN으로 전환했다. 전체 TypeScript 검사는 미전환 호출부와 fixture 때문에 아직 실패한다.
+- **다음 즉시 시작점: `createMessage`의 sender 공개 계약을 `{ id, handle, displayName, profileImage }`로 전환.**
+  - 이후 WebSocket `message.created` 검증·cache sync, 대화/메시지 공개 표시와 상대 `id` 판단, self profile/auth cache, router `users/:handle` 및 integration tests를 연결한다.
+  - 남은 공개 payload fixture를 정리하고 전체 test / TypeScript 검사 및 identity 기능 audit을 마친다.
 - Frontend identity refactor 완료 후 UI를 다음 순서로 재개한다.
   1. MessageList bubble / 시간 / loading·empty·pagination 상태
   2. MessageComposer 입력 / Send 영역
