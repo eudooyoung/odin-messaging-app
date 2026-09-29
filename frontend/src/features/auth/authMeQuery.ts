@@ -7,6 +7,7 @@ export const AUTH_QUERY_ERROR_MESSAGE = "Failed to fetch current user";
 export type AuthUser = {
   id: number;
   username: string;
+  handle: string;
   displayName: string;
 };
 

@@ -38,7 +38,7 @@ const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conve
 
 describe("ConversationPage", () => {
   describe("successful rendering", () => {
-    const currentUser: AuthUser & { handle: string } = {
+    const currentUser: AuthUser = {
       id: 1,
       username: "current-user",
       handle: "current-handle",
