@@ -10,7 +10,7 @@ const MAX_RECENT_USERS = 5;
 const getUserSearchOptionId = (index: number) => `user-search-option-${index}`;
 
 type UserSearchOption = {
-  username: string;
+  handle: string;
   displayName: string;
   profileImage: string | null;
 };
@@ -23,7 +23,7 @@ const isUserSearchOption = (value: unknown): value is UserSearchOption => {
   const user = value as Record<string, unknown>;
 
   return (
-    typeof user.username === "string" &&
+    typeof user.handle === "string" &&
     typeof user.displayName === "string" &&
     (typeof user.profileImage === "string" || user.profileImage === null)
   );
@@ -109,14 +109,14 @@ export function UserSearch() {
   const selectUser = (user: UserSearchOption) => {
     const updatedRecentUsers = [
       user,
-      ...recentUsers.filter((recentUser) => recentUser.username !== user.username),
+      ...recentUsers.filter((recentUser) => recentUser.handle !== user.handle),
     ].slice(0, MAX_RECENT_USERS);
 
     setRecentUsers(updatedRecentUsers);
     storeRecentUsers(updatedRecentUsers);
     setIsDropdownOpen(false);
     setActiveOptionIndex(-1);
-    navigate(`/users/${encodeURIComponent(user.username)}`);
+    navigate(`/users/${encodeURIComponent(user.handle)}`);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -198,9 +198,9 @@ export function UserSearch() {
             {isListboxOpen && (
               <ul id={USER_SEARCH_LISTBOX_ID} role="listbox">
                 {visibleUsers?.map((user, index) => (
-                  <li key={user.username} role="presentation">
+                  <li key={user.handle} role="presentation">
                     <button
-                      aria-label={`${user.displayName} @${user.username}`}
+                      aria-label={`${user.displayName} @${user.handle}`}
                       aria-selected={activeOptionIndex === index}
                       className={`flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none focus-visible:ring-inset ${activeOptionIndex === index ? "bg-neutral-100" : ""}`}
                       id={getUserSearchOptionId(index)}
@@ -218,7 +218,7 @@ export function UserSearch() {
                         {user.displayName}
                       </span>
                       <span className="min-w-0 truncate text-xs text-neutral-500">
-                        @{user.username}
+                        @{user.handle}
                       </span>
                     </button>
                   </li>
