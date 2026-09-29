@@ -4,6 +4,7 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
+import type { PublicUserIdentity } from "@/features/users/user.type.ts";
 import { conversationQueryOptions } from "./conversationQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -46,12 +47,7 @@ describe("conversationQueryOptions", () => {
 
     const result = await queryClient.query(queryOptions);
 
-    expectTypeOf(result.participants[0]!).toEqualTypeOf<{
-      id: number;
-      handle: string;
-      displayName: string;
-      profileImage: string | null;
-    }>();
+    expectTypeOf(result.participants[0]!).toEqualTypeOf<PublicUserIdentity>();
     expect(queryOptions.queryKey).toEqual(["conversations", 42]);
     expect(apiFetch).toHaveBeenCalledWith("/conversations/42", {
       signal: expect.any(AbortSignal),

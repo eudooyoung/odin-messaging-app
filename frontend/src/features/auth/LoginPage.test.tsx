@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-import { authMeQueryOptions, type AuthUser } from "./authMeQuery.ts";
+import { authMeQueryOptions } from "./authMeQuery.ts";
+import type { AuthUser } from "./auth.type.ts";
 import { login } from "./login.ts";
 import { LoginPage } from "./LoginPage.tsx";
 

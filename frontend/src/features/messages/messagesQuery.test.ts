@@ -4,6 +4,7 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
+import type { PublicUserIdentity } from "@/features/users/user.type.ts";
 import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -43,12 +44,7 @@ describe("messagesQueryOptions", () => {
 
     const result = await queryClient.infiniteQuery(queryOptions);
 
-    expectTypeOf(result.pages[0]!.messages[0]!.sender).toEqualTypeOf<{
-      id: number;
-      handle: string;
-      displayName: string;
-      profileImage: string | null;
-    }>();
+    expectTypeOf(result.pages[0]!.messages[0]!.sender).toEqualTypeOf<PublicUserIdentity>();
     expect(queryOptions.queryKey).toEqual(["conversations", 42, "messages"]);
     expect(queryOptions.initialPageParam).toBeNull();
     expect(apiFetch).toHaveBeenCalledOnce();

@@ -11,11 +11,7 @@ import { createConversation } from "@/features/conversations/createConversation.
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { UserProfilePage } from "./UserProfilePage.tsx";
-import {
-  USER_PROFILE_QUERY_ERROR_MESSAGE,
-  UserProfileNotFoundError,
-  type UserProfile,
-} from "./userProfileQuery.ts";
+import { USER_PROFILE_QUERY_ERROR_MESSAGE, UserProfileNotFoundError } from "./userProfileQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
@@ -95,7 +91,7 @@ describe("UserProfilePage", () => {
         displayName: "Profile User",
         bio: "Hello, I'm a profile user.",
         profileImage: "https://example.com/profile-user.jpg",
-      } satisfies UserProfile;
+      };
       vi.mocked(apiFetch).mockResolvedValue(jsonResponse(profile));
 
       renderUserProfilePage(profile.handle);
@@ -115,7 +111,7 @@ describe("UserProfilePage", () => {
         displayName: "Profile User",
         bio: "Hello, I'm a profile user.",
         profileImage: null,
-      } satisfies UserProfile;
+      };
       vi.mocked(apiFetch).mockResolvedValue(jsonResponse(profile));
       const user = userEvent.setup();
 
@@ -133,7 +129,7 @@ describe("UserProfilePage", () => {
         displayName: currentUser.displayName,
         bio: "Current user bio",
         profileImage: null,
-      } satisfies UserProfile;
+      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       vi.mocked(apiFetch).mockResolvedValue(jsonResponse(profile));
 
@@ -154,7 +150,7 @@ describe("UserProfilePage", () => {
       displayName: "Target User",
       bio: "Target user bio",
       profileImage: null,
-    } satisfies UserProfile;
+    };
 
     beforeEach(() => {
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);

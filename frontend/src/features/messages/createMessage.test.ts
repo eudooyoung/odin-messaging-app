@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { PublicUserIdentity } from "@/features/users/user.type.ts";
 import { createMessage } from "./createMessage.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -29,12 +30,7 @@ describe("createMessage", () => {
 
     const result = await createMessage(42, "Hello!");
 
-    expectTypeOf(result.sender).toEqualTypeOf<{
-      id: number;
-      handle: string;
-      displayName: string;
-      profileImage: string | null;
-    }>();
+    expectTypeOf(result.sender).toEqualTypeOf<PublicUserIdentity>();
     expect(apiFetch).toHaveBeenCalledOnce();
     expect(apiFetch).toHaveBeenCalledWith("/conversations/42/messages", {
       method: "POST",

@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
-import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import type { AuthUser } from "@/features/auth/auth.type.ts";
 import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
 import { createConversation } from "@/features/conversations/createConversation.ts";
 import {

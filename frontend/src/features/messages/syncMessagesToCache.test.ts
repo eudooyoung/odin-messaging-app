@@ -5,7 +5,8 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { createDeferred } from "@/tests/createDeferred.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
-import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
+import type { MessagesPage } from "./message.type.ts";
+import { messagesQueryOptions } from "./messagesQuery.ts";
 import { syncMessageToCache } from "./syncMessagesToCache.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({

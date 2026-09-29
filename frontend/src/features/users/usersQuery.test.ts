@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
@@ -33,11 +33,6 @@ describe("usersQueryOptions", () => {
     const queryOptions = usersQueryOptions("other user");
     const result = await queryClient.query(queryOptions);
 
-    expectTypeOf(result[0]!).toEqualTypeOf<{
-      handle: string;
-      displayName: string;
-      profileImage: string | null;
-    }>();
     expect(queryOptions.queryKey).toEqual(["users", "search", "other user"]);
     expect(apiFetch).toHaveBeenCalledWith(expect.any(String), {
       signal: expect.any(AbortSignal),

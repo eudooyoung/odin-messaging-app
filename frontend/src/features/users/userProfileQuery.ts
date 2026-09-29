@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { UserProfile } from "./user.type.ts";
 
 export const USER_PROFILE_QUERY_ERROR_MESSAGE = "Failed to load profile";
 
@@ -9,14 +10,6 @@ export class UserProfileNotFoundError extends UserFacingError {
     super("Profile not found");
   }
 }
-
-export type UserProfile = {
-  id: number;
-  handle: string;
-  displayName: string;
-  bio: string | null;
-  profileImage: string | null;
-};
 
 export const userProfileQueryOptions = (handle: string) =>
   queryOptions({

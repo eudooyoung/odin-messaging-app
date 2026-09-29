@@ -6,12 +6,14 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import type { AuthUser } from "@/features/auth/auth.type.ts";
 import { createDeferred } from "@/tests/createDeferred.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { ProfilePage } from "./ProfilePage.tsx";
-import { type UserProfile, userProfileQueryOptions } from "./userProfileQuery.ts";
+import type { UserProfile } from "./user.type.ts";
+import { userProfileQueryOptions } from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({

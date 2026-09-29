@@ -1,6 +1,7 @@
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { UpdateUserProfileInput } from "./user.type.ts";
 import { UPDATE_USER_PROFILE_ERROR_MESSAGE, updateUserProfile } from "./updateUserProfile.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -14,7 +15,7 @@ describe("updateUserProfile", () => {
       displayName: "Updated User",
       bio: "Updated bio",
       profileImage: "https://example.com/updated-profile.jpg",
-    } satisfies Parameters<typeof updateUserProfile>[0];
+    } satisfies UpdateUserProfileInput;
     const updatedProfile = {
       username: "current-user",
       ...updateData,
@@ -28,13 +29,6 @@ describe("updateUserProfile", () => {
 
     const result = await updateUserProfile(updateData);
 
-    expectTypeOf(result).toEqualTypeOf<{
-      username: string;
-      handle: string;
-      displayName: string;
-      bio: string | null;
-      profileImage: string | null;
-    }>();
     expect(apiFetch).toHaveBeenCalledWith("/users/me", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

@@ -5,12 +5,10 @@ import { Link } from "react-router";
 import { z } from "zod";
 import { FormField } from "@/components/FormField.tsx";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
-import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
-import {
-  USER_PROFILE_QUERY_ERROR_MESSAGE,
-  type UserProfile,
-  userProfileQueryOptions,
-} from "./userProfileQuery.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import type { AuthUser } from "@/features/auth/auth.type.ts";
+import type { UserProfile } from "./user.type.ts";
+import { USER_PROFILE_QUERY_ERROR_MESSAGE, userProfileQueryOptions } from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
 
 const profileSchema = z.object({

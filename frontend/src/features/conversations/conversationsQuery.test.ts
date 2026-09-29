@@ -4,6 +4,7 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
+import type { PublicUserIdentity } from "@/features/users/user.type.ts";
 import {
   CONVERSATIONS_QUERY_ERROR_MESSAGE,
   conversationsQueryOptions,
@@ -58,12 +59,7 @@ describe("conversationsQueryOptions", () => {
       pages: 2,
     });
 
-    expectTypeOf(result.pages[0]!.conversations[0]!.otherUser).toEqualTypeOf<{
-      id: number;
-      handle: string;
-      displayName: string;
-      profileImage: string | null;
-    }>();
+    expectTypeOf(result.pages[0]!.conversations[0]!.otherUser).toEqualTypeOf<PublicUserIdentity>();
     expect(conversationsQueryOptions.queryKey).toEqual(["conversations"]);
     expect(conversationsQueryOptions.initialPageParam).toBeNull();
     expect(apiFetch).toHaveBeenCalledTimes(2);

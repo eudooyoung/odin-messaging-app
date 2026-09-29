@@ -1,17 +1,6 @@
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-
-type Conversation = {
-  id: number;
-  participants: {
-    id: number;
-    handle: string;
-    displayName: string;
-    profileImage: string | null;
-  }[];
-  createdAt: string;
-  lastActivityAt: string;
-};
+import type { ConversationDetail } from "./conversation.type.ts";
 
 export async function createConversation(targetHandle: string) {
   const response = await apiFetch("/conversations", {
@@ -32,5 +21,5 @@ export async function createConversation(targetHandle: string) {
     throw new UserFacingError("Failed to create conversation");
   }
 
-  return response.json() as Promise<Conversation>;
+  return response.json() as Promise<ConversationDetail>;
 }

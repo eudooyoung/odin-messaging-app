@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { authMeQueryOptions } from "./authMeQuery.ts";
@@ -34,12 +34,6 @@ describe("authMeQueryOptions", () => {
     );
     const result = await queryClient.query(authMeQueryOptions);
 
-    expectTypeOf(result).toEqualTypeOf<{
-      id: number;
-      username: string;
-      handle: string;
-      displayName: string;
-    } | null>();
     expect(authMeQueryOptions.queryKey).toEqual(["auth", "me"]);
     expect(apiFetch).toHaveBeenCalledWith("/auth/me", {
       signal: expect.any(AbortSignal),

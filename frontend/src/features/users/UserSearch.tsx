@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
+import type { UserSearchResult } from "./user.type.ts";
 import { USERS_QUERY_ERROR_MESSAGE, usersQueryOptions } from "./usersQuery.ts";
 
 const USER_SEARCH_LISTBOX_ID = "user-search-results";
@@ -9,13 +10,7 @@ const RECENT_USERS_STORAGE_KEY = "messaging-app:recent-users";
 const MAX_RECENT_USERS = 5;
 const getUserSearchOptionId = (index: number) => `user-search-option-${index}`;
 
-type UserSearchOption = {
-  handle: string;
-  displayName: string;
-  profileImage: string | null;
-};
-
-const isUserSearchOption = (value: unknown): value is UserSearchOption => {
+const isUserSearchOption = (value: unknown): value is UserSearchResult => {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -29,7 +24,7 @@ const isUserSearchOption = (value: unknown): value is UserSearchOption => {
   );
 };
 
-const loadRecentUsers = (): UserSearchOption[] => {
+const loadRecentUsers = (): UserSearchResult[] => {
   try {
     const storedUsers = localStorage.getItem(RECENT_USERS_STORAGE_KEY);
     if (!storedUsers) {
@@ -46,7 +41,7 @@ const loadRecentUsers = (): UserSearchOption[] => {
   }
 };
 
-const storeRecentUsers = (users: UserSearchOption[]) => {
+const storeRecentUsers = (users: UserSearchResult[]) => {
   try {
     localStorage.setItem(RECENT_USERS_STORAGE_KEY, JSON.stringify(users));
   } catch {
@@ -56,7 +51,7 @@ const storeRecentUsers = (users: UserSearchOption[]) => {
 
 export function UserSearch() {
   const [query, setQuery] = useState("");
-  const [recentUsers, setRecentUsers] = useState<UserSearchOption[]>(loadRecentUsers);
+  const [recentUsers, setRecentUsers] = useState<UserSearchResult[]>(loadRecentUsers);
   const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -106,7 +101,7 @@ export function UserSearch() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [isDropdownOpen]);
 
-  const selectUser = (user: UserSearchOption) => {
+  const selectUser = (user: UserSearchResult) => {
     const updatedRecentUsers = [
       user,
       ...recentUsers.filter((recentUser) => recentUser.handle !== user.handle),

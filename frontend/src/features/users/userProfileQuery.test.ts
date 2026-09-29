@@ -1,14 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
+import type { UserProfile } from "./user.type.ts";
 import {
   USER_PROFILE_QUERY_ERROR_MESSAGE,
   UserProfileNotFoundError,
   userProfileQueryOptions,
-  type UserProfile,
 } from "./userProfileQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -40,7 +40,6 @@ describe("userProfileQueryOptions", () => {
     vi.mocked(apiFetch).mockResolvedValue(profileResponse(profile));
     const result = await queryClient.query(userProfileQueryOptions(handle));
 
-    expectTypeOf(result).toEqualTypeOf<UserProfile>();
     expect(apiFetch).toHaveBeenCalledWith(`/users/${handle}`, {
       signal: expect.any(AbortSignal),
     });

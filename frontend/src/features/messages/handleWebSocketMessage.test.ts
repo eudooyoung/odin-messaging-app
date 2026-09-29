@@ -1,7 +1,8 @@
 import { type InfiniteData, QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { handleWebSocketMessage } from "./handleWebSocketMessage.ts";
-import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
+import type { MessagesPage } from "./message.type.ts";
+import { messagesQueryOptions } from "./messagesQuery.ts";
 
 const existingMessage = {
   id: 10,
