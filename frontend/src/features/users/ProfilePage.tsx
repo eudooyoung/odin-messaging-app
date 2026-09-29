@@ -7,7 +7,7 @@ import { FormField } from "@/components/FormField.tsx";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import type { AuthUser } from "@/features/auth/auth.type.ts";
-import type { UserProfile } from "./user.type.ts";
+import type { UpdatedUserProfile, UserProfile } from "./user.type.ts";
 import { USER_PROFILE_QUERY_ERROR_MESSAGE, userProfileQueryOptions } from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
 
@@ -25,34 +25,49 @@ type ProfileInput = z.infer<typeof profileSchema>;
 
 const syncUpdatedProfileToCache = async (
   queryClient: QueryClient,
-  username: string,
-  updatedProfile: UserProfile,
+  previousHandle: string,
+  updatedProfile: UpdatedUserProfile,
 ) => {
-  const profileQueryKey = userProfileQueryOptions(username).queryKey;
+  const previousProfileQueryKey = userProfileQueryOptions(previousHandle).queryKey;
+  const updatedProfileQueryKey = userProfileQueryOptions(updatedProfile.handle).queryKey;
 
-  await queryClient.cancelQueries({ queryKey: profileQueryKey, exact: true });
+  await queryClient.cancelQueries({ queryKey: previousProfileQueryKey, exact: true });
   await queryClient.cancelQueries({
     queryKey: authMeQueryOptions.queryKey,
     exact: true,
   });
-  queryClient.setQueryData(profileQueryKey, updatedProfile);
-  queryClient.setQueryData<AuthUser | null>(authMeQueryOptions.queryKey, (user) =>
-    user ? { ...user, displayName: updatedProfile.displayName } : user,
-  );
+  const currentUser = queryClient.getQueryData<AuthUser | null>(authMeQueryOptions.queryKey);
+  if (!currentUser) {
+    return;
+  }
+
+  const publicProfile: UserProfile = {
+    id: currentUser.id,
+    handle: updatedProfile.handle,
+    displayName: updatedProfile.displayName,
+    bio: updatedProfile.bio,
+    profileImage: updatedProfile.profileImage,
+  };
+  queryClient.setQueryData(updatedProfileQueryKey, publicProfile);
+  queryClient.setQueryData<AuthUser>(authMeQueryOptions.queryKey, {
+    ...currentUser,
+    handle: updatedProfile.handle,
+    displayName: updatedProfile.displayName,
+  });
 };
 
 export function ProfilePage() {
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData<AuthUser>(authMeQueryOptions.queryKey);
-  const username = currentUser?.username ?? "";
+  const handle = currentUser?.handle ?? "";
   const {
     data: profile,
     isPending,
     isError,
     error,
   } = useQuery({
-    ...userProfileQueryOptions(username),
-    enabled: username.length > 0,
+    ...userProfileQueryOptions(handle),
+    enabled: handle.length > 0,
   });
   const {
     register,
@@ -78,7 +93,7 @@ export function ProfilePage() {
         profileImage: input.profileImage || null,
       }),
     onSuccess: async (updatedProfile) => {
-      await syncUpdatedProfileToCache(queryClient, username, updatedProfile);
+      await syncUpdatedProfileToCache(queryClient, handle, updatedProfile);
       reset(
         {
           displayName: updatedProfile.displayName,
@@ -89,7 +104,6 @@ export function ProfilePage() {
       );
     },
   });
-
   if (isPending) {
     return <p role="status">Loading profile...</p>;
   }

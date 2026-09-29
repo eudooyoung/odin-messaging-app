@@ -12,7 +12,7 @@ import { createDeferred } from "@/tests/createDeferred.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { ProfilePage } from "./ProfilePage.tsx";
-import type { UserProfile } from "./user.type.ts";
+import type { UpdatedUserProfile, UserProfile } from "./user.type.ts";
 import { userProfileQueryOptions } from "./userProfileQuery.ts";
 import { updateUserProfile } from "./updateUserProfile.ts";
 
@@ -37,17 +37,19 @@ afterEach(() => {
 const currentUser: AuthUser = {
   id: 1,
   username: "current-user",
+  handle: "current-handle",
   displayName: "Current User",
 };
 
 const baseProfile: UserProfile = {
-  username: currentUser.username,
+  id: currentUser.id,
+  handle: currentUser.handle,
   displayName: "Current User",
   bio: "Current bio",
   profileImage: null,
 };
 
-const profileQueryKey = userProfileQueryOptions(currentUser.username).queryKey;
+const profileQueryKey = userProfileQueryOptions(currentUser.handle).queryKey;
 
 const profileResponse = (profile: UserProfile) => jsonResponse(profile);
 
@@ -122,7 +124,7 @@ const submitProfileChanges = async (
 };
 
 const ProfileQueryObserver = () => {
-  const { data: profile } = useQuery(userProfileQueryOptions(currentUser.username));
+  const { data: profile } = useQuery(userProfileQueryOptions(currentUser.handle));
 
   return <output data-testid="profile-query-display-name">{profile?.displayName}</output>;
 };
@@ -149,6 +151,9 @@ describe("ProfilePage", () => {
       renderProfilePage(queryClient);
 
       expect(screen.getByRole("status")).toHaveTextContent("Loading profile...");
+      expect(apiFetch).toHaveBeenCalledWith(`/users/${currentUser.handle}`, {
+        signal: expect.any(AbortSignal),
+      });
     });
 
     it("shows the current profile values as the initial form values", async () => {
@@ -279,8 +284,9 @@ describe("ProfilePage", () => {
 
   describe("successful update", () => {
     it("updates the profile and related caches after a successful submission", async () => {
-      const updatedProfile = {
-        ...baseProfile,
+      const updatedProfile: UpdatedUserProfile = {
+        username: currentUser.username,
+        handle: currentUser.handle,
         displayName: "Updated User",
         bio: null,
         profileImage: null,
@@ -308,7 +314,12 @@ describe("ProfilePage", () => {
         bio: null,
         profileImage: null,
       });
-      expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
+      expect(queryClient.getQueryData(profileQueryKey)).toEqual({
+        ...baseProfile,
+        displayName: updatedProfile.displayName,
+        bio: updatedProfile.bio,
+        profileImage: updatedProfile.profileImage,
+      });
       expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
         ...currentUser,
         displayName: "Updated User",
@@ -317,19 +328,88 @@ describe("ProfilePage", () => {
       expect(bioInput).toHaveValue(updatedProfile.bio ?? "");
       expect(profileImageInput).toHaveValue(updatedProfile.profileImage ?? "");
     });
+
+    it("updates auth and public profile caches using the new handle", async () => {
+      const updatedProfile: UpdatedUserProfile = {
+        username: currentUser.username,
+        handle: "new-handle",
+        displayName: "Updated User",
+        bio: "Updated bio",
+        profileImage: "https://example.com/updated-user.jpg",
+      };
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === `/users/${currentUser.handle}`) {
+          return Promise.resolve(profileResponse(baseProfile));
+        }
+
+        if (input === `/users/${updatedProfile.handle}`) {
+          return Promise.resolve(
+            profileResponse({
+              id: currentUser.id,
+              handle: updatedProfile.handle,
+              displayName: updatedProfile.displayName,
+              bio: updatedProfile.bio,
+              profileImage: updatedProfile.profileImage,
+            }),
+          );
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      vi.mocked(updateUserProfile).mockResolvedValue(updatedProfile);
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient);
+      await submitProfileChanges(user, {
+        displayName: updatedProfile.displayName,
+        bio: updatedProfile.bio ?? "",
+        profileImage: updatedProfile.profileImage ?? "",
+      });
+
+      expect(await screen.findByText("Profile updated")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(apiFetch).toHaveBeenCalledWith(`/users/${updatedProfile.handle}`, {
+          signal: expect.any(AbortSignal),
+        });
+      });
+      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
+        ...currentUser,
+        handle: updatedProfile.handle,
+        displayName: updatedProfile.displayName,
+      });
+      expect(
+        queryClient.getQueryData(userProfileQueryOptions(updatedProfile.handle).queryKey),
+      ).toEqual({
+        id: currentUser.id,
+        handle: updatedProfile.handle,
+        displayName: updatedProfile.displayName,
+        bio: updatedProfile.bio,
+        profileImage: updatedProfile.profileImage,
+      });
+    });
   });
 
   describe("update lifecycle", () => {
-    it("keeps the saved profile when an older profile refetch finishes afterward", async () => {
-      const updatedProfile = {
-        ...baseProfile,
+    it("keeps the new-handle profile when an old-handle refetch finishes afterward", async () => {
+      const updatedProfile: UpdatedUserProfile = {
+        username: currentUser.username,
+        handle: "new-handle",
         displayName: "Saved User",
         bio: "Saved bio",
+        profileImage: baseProfile.profileImage,
+      };
+      const newProfileQueryKey = userProfileQueryOptions(updatedProfile.handle).queryKey;
+      const savedPublicProfile: UserProfile = {
+        id: currentUser.id,
+        handle: updatedProfile.handle,
+        displayName: updatedProfile.displayName,
+        bio: updatedProfile.bio,
+        profileImage: updatedProfile.profileImage,
       };
       let profileGetCount = 0;
       const pendingProfileRefetch = createDeferred<Response>();
       vi.mocked(apiFetch).mockImplementation((input) => {
-        if (input === "/users/current-user") {
+        if (input === `/users/${currentUser.handle}`) {
           profileGetCount += 1;
 
           if (profileGetCount === 1) {
@@ -339,12 +419,16 @@ describe("ProfilePage", () => {
           return pendingProfileRefetch.promise;
         }
 
+        if (input === `/users/${updatedProfile.handle}`) {
+          return Promise.resolve(profileResponse(savedPublicProfile));
+        }
+
         return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
       });
       vi.mocked(updateUserProfile).mockResolvedValue(updatedProfile);
       const user = userEvent.setup();
 
-      renderProfilePage(queryClient, <ProfileQueryObserver />);
+      renderProfilePage(queryClient);
 
       const displayNameInput = await screen.findByRole("textbox", {
         name: "Display name",
@@ -366,10 +450,12 @@ describe("ProfilePage", () => {
       await user.click(screen.getByRole("button", { name: "Save profile" }));
 
       expect(await screen.findByText("Profile updated")).toBeInTheDocument();
-      await waitFor(() => {
-        expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
+      expect(queryClient.getQueryData(newProfileQueryKey)).toEqual(savedPublicProfile);
+      expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
+        ...currentUser,
+        handle: updatedProfile.handle,
+        displayName: updatedProfile.displayName,
       });
-      expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
 
       await act(async () => {
         pendingProfileRefetch.resolve(profileResponse(baseProfile));
@@ -377,26 +463,32 @@ describe("ProfilePage", () => {
       });
 
       await waitFor(() => {
-        expect(queryClient.getQueryData(profileQueryKey)).toEqual(updatedProfile);
-        expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Saved User");
+        expect(queryClient.getQueryData(newProfileQueryKey)).toEqual(savedPublicProfile);
       });
       expect(displayNameInput).toHaveValue("Saved User");
       expect(bioInput).toHaveValue("Saved bio");
     });
 
-    it("keeps the saved display name when an older auth refetch finishes afterward", async () => {
+    it("keeps the saved handle and display name when an older auth refetch finishes afterward", async () => {
       const AuthQueryObserver = () => {
         const { data: user } = useQuery(authMeQueryOptions);
 
-        return <output data-testid="auth-me-display-name">{user?.displayName}</output>;
+        return (
+          <output data-testid="auth-me-identity">
+            {user?.handle} {user?.displayName}
+          </output>
+        );
       };
       const profile = {
         ...baseProfile,
         bio: null,
       };
-      const updatedProfile = {
-        ...profile,
+      const updatedProfile: UpdatedUserProfile = {
+        username: currentUser.username,
+        handle: "new-handle",
         displayName: "Saved User",
+        bio: profile.bio,
+        profileImage: profile.profileImage,
       };
       const pendingAuthRefetch = createDeferred<Response>();
       vi.mocked(apiFetch).mockImplementation((input) => {
@@ -404,8 +496,18 @@ describe("ProfilePage", () => {
           return pendingAuthRefetch.promise;
         }
 
-        if (input === "/users/current-user") {
+        if (input === `/users/${currentUser.handle}`) {
           return Promise.resolve(profileResponse(profile));
+        }
+
+        if (input === `/users/${updatedProfile.handle}`) {
+          return Promise.resolve(
+            profileResponse({
+              ...profile,
+              handle: updatedProfile.handle,
+              displayName: updatedProfile.displayName,
+            }),
+          );
         }
 
         return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
@@ -426,9 +528,10 @@ describe("ProfilePage", () => {
       await waitFor(() => {
         expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
           ...currentUser,
+          handle: updatedProfile.handle,
           displayName: "Saved User",
         });
-        expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
+        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new-handle Saved User");
       });
 
       await act(async () => {
@@ -450,9 +553,10 @@ describe("ProfilePage", () => {
         expect(queryClient.getQueryState(authMeQueryOptions.queryKey)?.fetchStatus).toBe("idle");
         expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
           ...currentUser,
+          handle: updatedProfile.handle,
           displayName: "Saved User",
         });
-        expect(screen.getByTestId("auth-me-display-name")).toHaveTextContent("Saved User");
+        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new-handle Saved User");
       });
     });
 
