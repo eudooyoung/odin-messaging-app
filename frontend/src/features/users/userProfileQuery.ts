@@ -11,17 +11,18 @@ export class UserProfileNotFoundError extends UserFacingError {
 }
 
 export type UserProfile = {
-  username: string;
+  id: number;
+  handle: string;
   displayName: string;
   bio: string | null;
   profileImage: string | null;
 };
 
-export const userProfileQueryOptions = (username: string) =>
+export const userProfileQueryOptions = (handle: string) =>
   queryOptions({
-    queryKey: ["users", "profile", username] as const,
+    queryKey: ["users", "profile", handle] as const,
     queryFn: async ({ signal }): Promise<UserProfile> => {
-      const response = await apiFetch(`/users/${encodeURIComponent(username)}`, {
+      const response = await apiFetch(`/users/${encodeURIComponent(handle)}`, {
         signal,
       });
 
