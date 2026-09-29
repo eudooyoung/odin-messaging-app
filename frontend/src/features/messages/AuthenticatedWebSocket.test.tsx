@@ -60,7 +60,8 @@ class WebSocketStub {
 }
 
 const otherUserSender = {
-  username: "other-user",
+  id: 2,
+  handle: "other-user",
   displayName: "Other User",
   profileImage: null,
 };
@@ -117,7 +118,8 @@ describe("AuthenticatedWebSocket", () => {
       // Arrange
       vi.stubGlobal("WebSocket", WebSocketStub);
       const currentUserSender = {
-        username: "current-user",
+        id: 1,
+        handle: "current-user",
         displayName: "Current User",
         profileImage: null,
       };
@@ -222,6 +224,7 @@ describe("AuthenticatedWebSocket", () => {
         JSON.stringify({
           id: 1,
           username: "user",
+          handle: "user",
           displayName: "User",
         }),
         {
@@ -343,6 +346,7 @@ describe("AuthenticatedWebSocket", () => {
       const currentUser = {
         id: 1,
         username: "current-user",
+        handle: "current-user",
         displayName: "Current User",
       };
       const queryClient = new QueryClient({

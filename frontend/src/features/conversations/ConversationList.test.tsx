@@ -19,7 +19,8 @@ describe("ConversationList", () => {
   const firstConversation = {
     id: 1,
     otherUser: {
-      username: "first-user",
+      id: 2,
+      handle: "first-handle",
       displayName: "First User",
       profileImage: null,
     },
@@ -35,7 +36,8 @@ describe("ConversationList", () => {
   const secondConversation = {
     id: 2,
     otherUser: {
-      username: "second-user",
+      id: 3,
+      handle: "second-handle",
       displayName: "Second User",
       profileImage: null,
     },
@@ -100,7 +102,7 @@ describe("ConversationList", () => {
 
       expect(firstConversationLink).toHaveAttribute("href", "/conversations/1");
       expect(firstConversationLink).toHaveTextContent("First User");
-      expect(firstConversationLink).toHaveTextContent("@first-user");
+      expect(firstConversationLink).toHaveTextContent("@first-handle");
       expect(firstConversationLink).toHaveTextContent("Latest message");
       expect(firstConversationLink.querySelector("time")).toHaveAttribute(
         "datetime",
@@ -108,7 +110,7 @@ describe("ConversationList", () => {
       );
       expect(secondConversationLink).toHaveAttribute("href", "/conversations/2");
       expect(secondConversationLink).toHaveTextContent("Second User");
-      expect(secondConversationLink).toHaveTextContent("@second-user");
+      expect(secondConversationLink).toHaveTextContent("@second-handle");
       expect(secondConversationLink.querySelector("time")).toHaveAttribute(
         "datetime",
         secondConversation.lastActivityAt,

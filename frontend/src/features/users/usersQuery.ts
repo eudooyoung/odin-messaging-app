@@ -1,14 +1,9 @@
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { UserSearchResult } from "./user.type.ts";
 
 export const USERS_QUERY_ERROR_MESSAGE = "Failed to search users";
-
-type UserSearchResult = {
-  username: string;
-  displayName: string;
-  profileImage: string | null;
-};
 
 export const usersQueryOptions = (query: string) =>
   queryOptions({

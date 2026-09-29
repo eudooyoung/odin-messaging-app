@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { PublicUserIdentity } from "@/features/users/user.type.ts";
 import { createConversation } from "./createConversation.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -12,12 +13,14 @@ describe("createConversation", () => {
     id: 42,
     participants: [
       {
-        username: "current-user",
+        id: 1,
+        handle: "current-user",
         displayName: "Current User",
         profileImage: null,
       },
       {
-        username: "target-user",
+        id: 2,
+        handle: "target-user",
         displayName: "Target User",
         profileImage: "https://example.com/target-user.jpg",
       },
@@ -36,10 +39,11 @@ describe("createConversation", () => {
 
     const result = await createConversation("target-user");
 
+    expectTypeOf(result.participants[0]!).toEqualTypeOf<PublicUserIdentity>();
     expect(apiFetch).toHaveBeenCalledWith("/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ targetUsername: "target-user" }),
+      body: JSON.stringify({ targetHandle: "target-user" }),
     });
     expect(result).toEqual(conversation);
   });

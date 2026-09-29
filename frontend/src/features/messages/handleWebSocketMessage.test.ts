@@ -1,13 +1,15 @@
 import { type InfiniteData, QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { handleWebSocketMessage } from "./handleWebSocketMessage.ts";
-import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
+import type { MessagesPage } from "./message.type.ts";
+import { messagesQueryOptions } from "./messagesQuery.ts";
 
 const existingMessage = {
   id: 10,
   content: "Existing message",
   sender: {
-    username: "current-user",
+    id: 1,
+    handle: "current-user",
     displayName: "Current User",
     profileImage: null,
   },
@@ -18,7 +20,8 @@ const receivedMessage = {
   id: 11,
   content: "Hello from the other user",
   sender: {
-    username: "other-user",
+    id: 2,
+    handle: "other-user",
     displayName: "Other User",
     profileImage: null,
   },
@@ -173,7 +176,7 @@ describe("handleWebSocketMessage", () => {
         },
       },
     },
-    ...(["username", "displayName", "profileImage"] as const).map((missingSenderField) => ({
+    ...(["id", "handle", "displayName", "profileImage"] as const).map((missingSenderField) => ({
       caseName: `the sender ${missingSenderField} is missing`,
       receivedEvent: {
         type: "message.created",

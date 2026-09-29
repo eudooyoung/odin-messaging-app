@@ -1,16 +1,6 @@
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-
-type Message = {
-  id: number;
-  content: string;
-  sender: {
-    username: string;
-    displayName: string;
-    profileImage: string | null;
-  };
-  createdAt: string;
-};
+import type { Message } from "./message.type.ts";
 
 export async function createMessage(conversationId: number, content: string) {
   const response = await apiFetch(`/conversations/${conversationId}/messages`, {

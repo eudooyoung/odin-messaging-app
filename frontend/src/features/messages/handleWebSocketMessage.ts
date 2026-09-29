@@ -10,7 +10,8 @@ const messageCreatedEventSchema = z.object({
       id: z.number().int().positive(),
       content: z.string(),
       sender: z.object({
-        username: z.string(),
+        id: z.number().int().positive(),
+        handle: z.string(),
         displayName: z.string(),
         profileImage: z.string().nullable(),
       }),

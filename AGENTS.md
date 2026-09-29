@@ -107,6 +107,8 @@ Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외�
 새 테스트는 주변 테스트 코드의 기존 패턴을 따른다.
 검증이 필요하면 Codex가 테스트를 직접 실행할 수 있다. 리팩토링, audit, cleanup 작업에서는 관련 테스트를 실행하고, 작업 범위상 필요하면 전체 test suite도 실행할 수 있다.
 현재 변경과 직접 관련된 테스트를 우선 실행하고, 불필요하게 전체 test suite를 반복 실행하지 않는다.
+검증에는 기존 프로젝트 설정을 사용한다. 사용자가 명시적으로 isolated type-check나 별도 검증 환경을 요청하지 않는 한, 다른 영역의 오류를 우회하거나 현재 변경만 통과시키기 위한 임시 `tsconfig`·별도 TypeScript project·임시 설정 파일을 만들지 않는다.
+단계적 refactor에서 관련 테스트가 GREEN이고 전체 TypeScript 검사나 전체 test suite가 아직 전환하지 않은 파일 때문에 실패하면, 해당 단위의 테스트 결과를 우선 보고하고 전체 검사에서 나온 기존 오류도 그대로 보고한다.
 사용자가 명시적으로 테스트를 실행하지 말라고 한 경우에는 실행하지 않는다.
 
 ---
@@ -172,7 +174,16 @@ Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외�
 
 ---
 
-## 9. 우선순위
+## 9. 프로젝트 문서 관리
+
+- `docs/messaging-app-project-plan.md`는 장기 project plan 및 제품·설계·roadmap의 SSOT다. 제품 요구사항과 MVP 범위, 확정된 서비스 규칙, 주요 데이터 모델·API·architecture 계약, 기술 스택·배포 정책, 큰 기능 단위의 완료 상태와 남은 MVP·deploy·post-MVP TODO를 기록한다. 완료 작업은 milestone 수준으로 요약하며, RED → GREEN 과정, 개별 테스트·fixture·assertion·mock·helper 수정, 일회성 테스트 수치, audit 작업 로그, 반복된 완료 설명, 세션별 이력은 기록하지 않는다.
+- `docs/project-status.md`는 현재 작업 상태의 SSOT이자 GPT·Codex의 세션 간 handoff 문서다. 현재 branch와 phase, 다음 작업에 직접 필요한 구현·계약 맥락, 최근 완료된 큰 작업, 최신 검증 상태, 진행 중인 작업, 다음 즉시 시작점, 알려진 deferred issue·blocker를 기록한다. 시간순 worklog로 누적하지 않고 상태가 바뀌면 오래된 내용을 교체한다.
+- GPT 또는 Codex 세션 교체 전과 현재 phase 또는 다음 시작점이 크게 바뀔 때 `project-status.md`를 최신화한다. 제품 요구사항, API 계약, architecture 결정, roadmap이 바뀌면 project plan도 함께 갱신한다.
+- 새 세션에서는 루트·관련 하위 `AGENTS.md`, project plan, project status를 기준으로 현재 작업을 파악한다.
+
+---
+
+## 10. 우선순위
 
 지시가 충돌할 경우 다음 우선순위를 따른다.
 
@@ -188,9 +199,9 @@ Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외�
 - Graft만으로 필요한 정보를 충분히 확인할 수 없을 때 직접 파일 검색/열기를 보조적으로 사용한다.
 - 단일 파일의 작은 수정처럼 Graft 탐색 이점이 거의 없는 작업에서는 직접 편집 도구를 사용할 수 있다.
 - `graft/`는 재생성 가능한 로컬 cache로 취급한다.
-- Graft가 출력하는 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값으로 보지 않으며 작업 보고에 포함하지 않는다.
 
 <!-- graft:start -->
+
 ## Graft — repo context graph
 
 This repo is indexed in `graft/`: small linked markdown nodes that explain each
@@ -230,4 +241,5 @@ re-read whole files.
 
 After big code changes, refresh the graph with `graft build` (deterministic,
 no API key, $0).
+
 <!-- graft:end -->

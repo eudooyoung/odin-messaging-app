@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
-import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import type { AuthUser } from "@/features/auth/auth.type.ts";
 import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
 import { createConversation } from "@/features/conversations/createConversation.ts";
 import {
@@ -11,13 +12,13 @@ import {
 } from "./userProfileQuery.ts";
 
 export function UserProfilePage() {
-  const { username = "" } = useParams<{ username: string }>();
+  const { handle = "" } = useParams<{ handle: string }>();
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData<AuthUser | null>(authMeQueryOptions.queryKey);
   const navigate = useNavigate();
   const { data: profile, isPending, isError, error } = useQuery({
-    ...userProfileQueryOptions(username),
-    enabled: username.length > 0,
+    ...userProfileQueryOptions(handle),
+    enabled: handle.length > 0,
   });
   const createConversationMutation = useMutation({
     mutationFn: createConversation,
@@ -48,7 +49,7 @@ export function UserProfilePage() {
     return null;
   }
 
-  const isCurrentUserProfile = currentUser?.username === profile.username;
+  const isCurrentUserProfile = currentUser?.id === profile.id;
 
   return (
     <main>
@@ -59,14 +60,14 @@ export function UserProfilePage() {
         <img src={profile.profileImage} alt={`${profile.displayName} profile`} />
       )}
       <h1>{profile.displayName}</h1>
-      <p>@{profile.username}</p>
+      <p>@{profile.handle}</p>
       <p>{profile.bio}</p>
       {!isCurrentUserProfile && (
         <>
           <button
             type="button"
             disabled={createConversationMutation.isPending}
-            onClick={() => createConversationMutation.mutate(profile.username)}
+            onClick={() => createConversationMutation.mutate(profile.handle)}
           >
             Message
           </button>

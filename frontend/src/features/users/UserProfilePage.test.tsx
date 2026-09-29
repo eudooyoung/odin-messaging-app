@@ -11,11 +11,7 @@ import { createConversation } from "@/features/conversations/createConversation.
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { UserProfilePage } from "./UserProfilePage.tsx";
-import {
-  USER_PROFILE_QUERY_ERROR_MESSAGE,
-  UserProfileNotFoundError,
-  type UserProfile,
-} from "./userProfileQuery.ts";
+import { USER_PROFILE_QUERY_ERROR_MESSAGE, UserProfileNotFoundError } from "./userProfileQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
@@ -41,15 +37,12 @@ function ConversationRoute() {
   return <h1>Conversation {conversationId}</h1>;
 }
 
-const renderUserProfilePage = (
-  username: string,
-  initialEntries = [`/users/${username}`],
-) =>
+const renderUserProfilePage = (handle: string, initialEntries = [`/users/${handle}`]) =>
   render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
-          <Route path="/users/:username" element={<UserProfilePage />} />
+          <Route path="/users/:handle" element={<UserProfilePage />} />
           <Route path="/conversations/:conversationId" element={<ConversationRoute />} />
           <Route path="/profile" element={<h1>Edit profile</h1>} />
           <Route path="/" element={<h1>Messages</h1>} />
@@ -63,6 +56,7 @@ describe("UserProfilePage", () => {
   const currentUser = {
     id: 1,
     username: "current-user",
+    handle: "current-user",
     displayName: "Current User",
   };
 
@@ -93,17 +87,18 @@ describe("UserProfilePage", () => {
 
     it("shows the requested user's profile as read-only information", async () => {
       const profile = {
-        username: "profile-user",
+        id: 2,
+        handle: "profile-user",
         displayName: "Profile User",
         bio: "Hello, I'm a profile user.",
         profileImage: "https://example.com/profile-user.jpg",
-      } satisfies UserProfile;
+      };
       vi.mocked(apiFetch).mockResolvedValue(jsonResponse(profile));
 
-      renderUserProfilePage(profile.username);
+      renderUserProfilePage(profile.handle);
 
       expect(await screen.findByRole("heading", { name: profile.displayName })).toBeInTheDocument();
-      expect(screen.getByText(`@${profile.username}`)).toBeInTheDocument();
+      expect(screen.getByText(`@${profile.handle}`)).toBeInTheDocument();
       expect(screen.getByText(profile.bio)).toBeInTheDocument();
       expect(screen.getByRole("img")).toHaveAttribute("src", profile.profileImage);
       expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
@@ -112,15 +107,16 @@ describe("UserProfilePage", () => {
 
     it("navigates explicitly to messages from a read-only profile", async () => {
       const profile = {
-        username: "profile-user",
+        id: 2,
+        handle: "profile-user",
         displayName: "Profile User",
         bio: "Hello, I'm a profile user.",
         profileImage: null,
-      } satisfies UserProfile;
+      };
       vi.mocked(apiFetch).mockResolvedValue(jsonResponse(profile));
       const user = userEvent.setup();
 
-      renderUserProfilePage(profile.username, ["/previous", `/users/${profile.username}`]);
+      renderUserProfilePage(profile.handle, ["/previous", `/users/${profile.handle}`]);
 
       await user.click(await screen.findByRole("link", { name: "Close profile" }));
 
@@ -129,18 +125,19 @@ describe("UserProfilePage", () => {
 
     it("shows the current user's profile without a Message button or redirecting to edit", async () => {
       const profile = {
-        username: currentUser.username,
+        id: currentUser.id,
+        handle: "changed-handle",
         displayName: currentUser.displayName,
         bio: "Current user bio",
         profileImage: null,
-      } satisfies UserProfile;
+      };
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       vi.mocked(apiFetch).mockResolvedValue(jsonResponse(profile));
 
-      renderUserProfilePage(profile.username);
+      renderUserProfilePage(profile.handle);
 
       expect(await screen.findByRole("heading", { name: profile.displayName })).toBeInTheDocument();
-      expect(screen.getByText(`@${profile.username}`)).toBeInTheDocument();
+      expect(screen.getByText(`@${profile.handle}`)).toBeInTheDocument();
       expect(screen.getByText(profile.bio)).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Message" })).not.toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Edit profile" })).not.toBeInTheDocument();
@@ -149,11 +146,12 @@ describe("UserProfilePage", () => {
 
   describe("messaging", () => {
     const targetProfile = {
-      username: "target-user",
+      id: 2,
+      handle: "target-user",
       displayName: "Target User",
       bio: "Target user bio",
       profileImage: null,
-    } satisfies UserProfile;
+    };
 
     beforeEach(() => {
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
@@ -165,12 +163,14 @@ describe("UserProfilePage", () => {
         id: 42,
         participants: [
           {
-            username: currentUser.username,
+            id: currentUser.id,
+            handle: currentUser.handle,
             displayName: currentUser.displayName,
             profileImage: null,
           },
           {
-            username: targetProfile.username,
+            id: targetProfile.id,
+            handle: targetProfile.handle,
             displayName: targetProfile.displayName,
             profileImage: targetProfile.profileImage,
           },
@@ -185,7 +185,7 @@ describe("UserProfilePage", () => {
       vi.mocked(createConversation).mockResolvedValue(conversation);
       const user = userEvent.setup();
 
-      renderUserProfilePage(targetProfile.username);
+      renderUserProfilePage(targetProfile.handle);
 
       await user.click(await screen.findByRole("button", { name: "Message" }));
 
@@ -193,8 +193,8 @@ describe("UserProfilePage", () => {
         await screen.findByRole("heading", { name: `Conversation ${conversation.id}` }),
       ).toBeInTheDocument();
       expect(createConversation).toHaveBeenCalledTimes(1);
-      const [targetUsername] = vi.mocked(createConversation).mock.calls[0]!;
-      expect(targetUsername).toBe(targetProfile.username);
+      const [targetHandle] = vi.mocked(createConversation).mock.calls[0]!;
+      expect(targetHandle).toBe(targetProfile.handle);
       expect(queryClient.getQueryState(conversationsQueryOptions.queryKey)?.isInvalidated).toBe(
         true,
       );
@@ -204,7 +204,7 @@ describe("UserProfilePage", () => {
       vi.mocked(createConversation).mockReturnValue(new Promise<never>(() => undefined));
       const user = userEvent.setup();
 
-      renderUserProfilePage(targetProfile.username);
+      renderUserProfilePage(targetProfile.handle);
 
       const messageButton = await screen.findByRole("button", { name: "Message" });
       await user.click(messageButton);
@@ -234,7 +234,7 @@ describe("UserProfilePage", () => {
         vi.mocked(createConversation).mockRejectedValue(mutationError);
         const user = userEvent.setup();
 
-        renderUserProfilePage(targetProfile.username);
+        renderUserProfilePage(targetProfile.handle);
 
         const messageButton = await screen.findByRole("button", { name: "Message" });
         await user.click(messageButton);
@@ -243,7 +243,7 @@ describe("UserProfilePage", () => {
         expect(
           screen.getByRole("heading", { name: targetProfile.displayName }),
         ).toBeInTheDocument();
-        expect(screen.getByText(`@${targetProfile.username}`)).toBeInTheDocument();
+        expect(screen.getByText(`@${targetProfile.handle}`)).toBeInTheDocument();
         expect(messageButton).toBeEnabled();
       },
     );

@@ -13,12 +13,12 @@ vi.mock("@/api/apiFetch.ts", () => ({
 }));
 
 function UserProfileRoute() {
-  const { username } = useParams<{ username: string }>();
+  const { handle } = useParams<{ handle: string }>();
   const { pathname } = useLocation();
 
   return (
     <>
-      <h1>Profile @{username}</h1>
+      <h1>Profile @{handle}</h1>
       <p>Current path: {pathname}</p>
     </>
   );
@@ -59,7 +59,7 @@ describe("UserSearch", () => {
         <MemoryRouter initialEntries={["/"]}>
           <Routes>
             <Route path="/" element={<UserSearch />} />
-            <Route path="/users/:username" element={<UserProfileRoute />} />
+            <Route path="/users/:handle" element={<UserProfileRoute />} />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
@@ -71,7 +71,7 @@ describe("UserSearch", () => {
         <MemoryRouter initialEntries={["/"]}>
           <Routes>
             <Route path="/" element={<PersistentUserSearchLayout />}>
-              <Route path="users/:username" element={<UserProfileRoute />} />
+              <Route path="users/:handle" element={<UserProfileRoute />} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -84,12 +84,12 @@ describe("UserSearch", () => {
         Promise.resolve(
           usersResponse([
             {
-              username: "first-user",
+              handle: "first-user",
               displayName: "First User",
               profileImage: null,
             },
             {
-              username: "second-user",
+              handle: "second-user",
               displayName: "Second User",
               profileImage: "https://example.com/second-user.jpg",
             },
@@ -188,12 +188,12 @@ describe("UserSearch", () => {
         Promise.resolve(
           usersResponse([
             {
-              username: "first-user",
+              handle: "first-user",
               displayName: "First User",
               profileImage: null,
             },
             {
-              username: "second-user",
+              handle: "second-user",
               displayName: "Second User",
               profileImage: null,
             },
@@ -239,12 +239,12 @@ describe("UserSearch", () => {
         Promise.resolve(
           usersResponse([
             {
-              username: "first-user",
+              handle: "first-user",
               displayName: "First User",
               profileImage: null,
             },
             {
-              username: "second-user",
+              handle: "second-user",
               displayName: "Second User",
               profileImage: null,
             },
@@ -280,12 +280,12 @@ describe("UserSearch", () => {
         Promise.resolve(
           usersResponse([
             {
-              username: "first-user",
+              handle: "first-user",
               displayName: "First User",
               profileImage: null,
             },
             {
-              username: "second-user",
+              handle: "second-user",
               displayName: "Second User",
               profileImage: null,
             },
@@ -320,7 +320,7 @@ describe("UserSearch", () => {
 
     it("scrolls the active option into view when keyboard navigation moves beyond the visible results", async () => {
       const searchResults = Array.from({ length: 8 }, (_, index) => ({
-        username: `user-${index + 1}`,
+        handle: `user-${index + 1}`,
         displayName: `User ${index + 1}`,
         profileImage: null,
       }));
@@ -364,7 +364,7 @@ describe("UserSearch", () => {
         Promise.resolve(
           usersResponse([
             {
-              username: "target-user",
+              handle: "target-user",
               displayName: "Target User",
               profileImage: null,
             },
@@ -400,8 +400,9 @@ describe("UserSearch", () => {
   });
 
   describe("recent users", () => {
+    const storageKey = "messaging-app:recent-users";
     const recentUsers = Array.from({ length: 6 }, (_, index) => ({
-      username: `user-${index + 1}`,
+      handle: `user-${index + 1}`,
       displayName: `User ${index + 1}`,
       profileImage: null,
     }));
@@ -410,20 +411,16 @@ describe("UserSearch", () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         const requestUrl = new URL(input.toString(), "http://localhost");
         const query = requestUrl.searchParams.get("query");
-        const matchingUser = users.find((user) => user.username === query);
+        const matchingUser = users.find((user) => user.handle === query);
 
         return Promise.resolve(usersResponse(matchingUser ? [matchingUser] : []));
       });
     };
 
-    const expectUserInLocalStorage = (username: string) => {
-      const storedValues = Array.from({ length: localStorage.length }, (_, index) => {
-        const key = localStorage.key(index);
+    const expectUserInLocalStorage = (selectedUser: (typeof recentUsers)[number]) => {
+      const storedUsers: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
 
-        return key ? localStorage.getItem(key) : null;
-      });
-
-      expect(storedValues.some((value) => value?.includes(username))).toBe(true);
+      expect(storedUsers).toContainEqual(selectedUser);
     };
 
     const selectSearchResult = async (
@@ -432,17 +429,17 @@ describe("UserSearch", () => {
     ) => {
       const combobox = screen.getByRole("combobox", { name: "Search users" });
       await user.clear(combobox);
-      await user.type(combobox, selectedUser.username);
+      await user.type(combobox, selectedUser.handle);
       await user.click(
         await screen.findByRole("option", {
-          name: `${selectedUser.displayName} @${selectedUser.username}`,
+          name: `${selectedUser.displayName} @${selectedUser.handle}`,
         }),
       );
     };
 
     it("does not show an empty dropdown and persists a clicked user for encoded recent navigation", async () => {
       const escapedUser = {
-        username: "recent/user?#name",
+        handle: "recent/user?#name",
         displayName: "Recent User",
         profileImage: null,
       };
@@ -455,13 +452,13 @@ describe("UserSearch", () => {
 
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
 
-      await user.type(combobox, escapedUser.username);
+      await user.type(combobox, escapedUser.handle);
       await user.click(
         await screen.findByRole("option", {
-          name: `${escapedUser.displayName} @${escapedUser.username}`,
+          name: `${escapedUser.displayName} @${escapedUser.handle}`,
         }),
       );
-      expectUserInLocalStorage(escapedUser.username);
+      expectUserInLocalStorage(escapedUser);
       firstRender.unmount();
 
       renderPersistentUserSearch(queryClient);
@@ -470,13 +467,13 @@ describe("UserSearch", () => {
       await user.click(emptyCombobox);
       await user.click(
         await screen.findByRole("option", {
-          name: `${escapedUser.displayName} @${escapedUser.username}`,
+          name: `${escapedUser.displayName} @${escapedUser.handle}`,
         }),
       );
 
       expect(
         await screen.findByRole("heading", {
-          name: `Profile @${escapedUser.username}`,
+          name: `Profile @${escapedUser.handle}`,
         }),
       ).toBeInTheDocument();
       expect(screen.getByText("Current path: /users/recent%2Fuser%3F%23name")).toBeInTheDocument();
@@ -489,12 +486,12 @@ describe("UserSearch", () => {
       const firstRender = renderPersistentUserSearch(queryClient);
 
       const combobox = screen.getByRole("combobox", { name: "Search users" });
-      await user.type(combobox, recentUser.username);
+      await user.type(combobox, recentUser.handle);
       await screen.findByRole("option", {
-        name: `${recentUser.displayName} @${recentUser.username}`,
+        name: `${recentUser.displayName} @${recentUser.handle}`,
       });
       await user.keyboard("{ArrowDown}{Enter}");
-      expectUserInLocalStorage(recentUser.username);
+      expectUserInLocalStorage(recentUser);
       firstRender.unmount();
 
       renderPersistentUserSearch(queryClient);
@@ -503,20 +500,20 @@ describe("UserSearch", () => {
       await user.click(emptyCombobox);
       expect(
         await screen.findByRole("option", {
-          name: `${recentUser.displayName} @${recentUser.username}`,
+          name: `${recentUser.displayName} @${recentUser.handle}`,
         }),
       ).toBeInTheDocument();
 
-      await user.type(emptyCombobox, liveSearchUser.username);
+      await user.type(emptyCombobox, liveSearchUser.handle);
 
       expect(
         await screen.findByRole("option", {
-          name: `${liveSearchUser.displayName} @${liveSearchUser.username}`,
+          name: `${liveSearchUser.displayName} @${liveSearchUser.handle}`,
         }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("option", {
-          name: `${recentUser.displayName} @${recentUser.username}`,
+          name: `${recentUser.displayName} @${recentUser.handle}`,
         }),
       ).not.toBeInTheDocument();
 
@@ -524,12 +521,12 @@ describe("UserSearch", () => {
 
       expect(
         await screen.findByRole("option", {
-          name: `${recentUser.displayName} @${recentUser.username}`,
+          name: `${recentUser.displayName} @${recentUser.handle}`,
         }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("option", {
-          name: `${liveSearchUser.displayName} @${liveSearchUser.username}`,
+          name: `${liveSearchUser.displayName} @${liveSearchUser.handle}`,
         }),
       ).not.toBeInTheDocument();
     });
@@ -559,11 +556,52 @@ describe("UserSearch", () => {
         "User 2 @user-2",
       ]);
     });
+
+    it("keeps users with the same display name separate by handle", async () => {
+      const usersWithSharedName = [
+        { handle: "first-user", displayName: "Shared User", profileImage: null },
+        { handle: "second-user", displayName: "Shared User", profileImage: null },
+      ];
+      mockSearchResults(usersWithSharedName);
+      const user = userEvent.setup();
+      const firstRender = renderPersistentUserSearch(queryClient);
+
+      await selectSearchResult(user, usersWithSharedName[0]);
+      await selectSearchResult(user, usersWithSharedName[1]);
+      firstRender.unmount();
+
+      renderPersistentUserSearch(queryClient);
+      await user.click(screen.getByRole("combobox", { name: "Search users" }));
+
+      expect(screen.getByRole("option", { name: "Shared User @first-user" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Shared User @second-user" })).toBeInTheDocument();
+      expect(screen.getAllByRole("option")).toHaveLength(2);
+    });
+
+    it("ignores stored users without a handle while restoring recent users", async () => {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify([
+          { username: "legacy-user", displayName: "Legacy User", profileImage: null },
+          { handle: "current-user", displayName: "Current User", profileImage: null },
+        ]),
+      );
+      const user = userEvent.setup();
+
+      renderUserSearch(queryClient);
+      await user.click(screen.getByRole("combobox", { name: "Search users" }));
+
+      expect(
+        screen.getByRole("option", { name: "Current User @current-user" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: /Legacy User/ })).not.toBeInTheDocument();
+      expect(screen.getAllByRole("option")).toHaveLength(1);
+    });
   });
 
   describe("user selection", () => {
     const targetUser = {
-      username: "target-user",
+      handle: "target-user",
       displayName: "Target User",
       profileImage: null,
     };
@@ -582,9 +620,9 @@ describe("UserSearch", () => {
       ).toBeInTheDocument();
     });
 
-    it("encodes the selected username in the route and restores it as the route param", async () => {
+    it("encodes the selected handle in the route and restores it as the route param", async () => {
       const escapedTargetUser = {
-        username: "target/user?#name",
+        handle: "target/user?#name",
         displayName: "Escaped Target User",
         profileImage: null,
       };
@@ -598,13 +636,13 @@ describe("UserSearch", () => {
       await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
       await user.click(
         await screen.findByRole("option", {
-          name: `Escaped Target User @${escapedTargetUser.username}`,
+          name: `Escaped Target User @${escapedTargetUser.handle}`,
         }),
       );
 
       expect(
         await screen.findByRole("heading", {
-          name: `Profile @${escapedTargetUser.username}`,
+          name: `Profile @${escapedTargetUser.handle}`,
         }),
       ).toBeInTheDocument();
       expect(screen.getByText("Current path: /users/target%2Fuser%3F%23name")).toBeInTheDocument();

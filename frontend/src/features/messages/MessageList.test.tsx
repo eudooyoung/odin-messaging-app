@@ -19,7 +19,8 @@ describe("MessageList", () => {
     id: 10,
     content: "Latest message",
     sender: {
-      username: "other-user",
+      id: 2,
+      handle: "other-handle",
       displayName: "Other User",
       profileImage: null,
     },
@@ -30,7 +31,8 @@ describe("MessageList", () => {
     id: 9,
     content: "Older message",
     sender: {
-      username: "current-user",
+      id: 1,
+      handle: "current-handle",
       displayName: "Current User",
       profileImage: null,
     },
@@ -72,10 +74,10 @@ describe("MessageList", () => {
 
       expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
       expect(screen.getByText(latestMessage.sender.displayName)).toBeInTheDocument();
-      expect(screen.getByText(`@${latestMessage.sender.username}`)).toBeInTheDocument();
+      expect(screen.getByText(`@${latestMessage.sender.handle}`)).toBeInTheDocument();
       expect(screen.getByText(olderMessage.content)).toBeInTheDocument();
       expect(screen.getByText(olderMessage.sender.displayName)).toBeInTheDocument();
-      expect(screen.getByText(`@${olderMessage.sender.username}`)).toBeInTheDocument();
+      expect(screen.getByText(`@${olderMessage.sender.handle}`)).toBeInTheDocument();
     });
 
     it("renders messages from oldest to latest when the query data is newest first", async () => {

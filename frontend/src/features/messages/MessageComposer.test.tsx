@@ -58,7 +58,8 @@ describe("MessageComposer", () => {
         id: 10,
         content: "Hello!",
         sender: {
-          username: "current-user",
+          id: 1,
+          handle: "current-user",
           displayName: "Current User",
           profileImage: null,
         },

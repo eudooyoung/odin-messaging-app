@@ -5,7 +5,8 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { createDeferred } from "@/tests/createDeferred.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
-import { type MessagesPage, messagesQueryOptions } from "./messagesQuery.ts";
+import type { MessagesPage } from "./message.type.ts";
+import { messagesQueryOptions } from "./messagesQuery.ts";
 import { syncMessageToCache } from "./syncMessagesToCache.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -21,7 +22,8 @@ const latestMessage = {
   id: 10,
   content: "Latest message",
   sender: {
-    username: "other-user",
+    id: 2,
+    handle: "other-user",
     displayName: "Other User",
     profileImage: null,
   },
@@ -32,7 +34,8 @@ const olderMessage = {
   id: 9,
   content: "Older message",
   sender: {
-    username: "other-user",
+    id: 2,
+    handle: "other-user",
     displayName: "Other User",
     profileImage: null,
   },
@@ -43,7 +46,8 @@ const createdMessage = {
   id: 11,
   content: "New message",
   sender: {
-    username: "current-user",
+    id: 1,
+    handle: "current-user",
     displayName: "Current User",
     profileImage: null,
   },

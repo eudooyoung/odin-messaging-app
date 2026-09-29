@@ -48,7 +48,7 @@ export function MessageList({ conversationId }: MessageListProps) {
         {messages.map((message) => (
           <li key={message.id}>
             <p>{message.sender.displayName}</p>
-            <p>@{message.sender.username}</p>
+            <p>@{message.sender.handle}</p>
             <p>{message.content}</p>
           </li>
         ))}
