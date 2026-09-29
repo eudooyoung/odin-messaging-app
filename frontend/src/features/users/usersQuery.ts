@@ -5,7 +5,7 @@ import { UserFacingError } from "@/api/UserFacingError.ts";
 export const USERS_QUERY_ERROR_MESSAGE = "Failed to search users";
 
 type UserSearchResult = {
-  username: string;
+  handle: string;
   displayName: string;
   profileImage: string | null;
 };

@@ -188,9 +188,9 @@ Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외�
 - Graft만으로 필요한 정보를 충분히 확인할 수 없을 때 직접 파일 검색/열기를 보조적으로 사용한다.
 - 단일 파일의 작은 수정처럼 Graft 탐색 이점이 거의 없는 작업에서는 직접 편집 도구를 사용할 수 있다.
 - `graft/`는 재생성 가능한 로컬 cache로 취급한다.
-- Graft가 출력하는 `tokens saved` 수치는 실제 Codex context 사용량과 동일한 측정값으로 보지 않으며 작업 보고에 포함하지 않는다.
 
 <!-- graft:start -->
+
 ## Graft — repo context graph
 
 This repo is indexed in `graft/`: small linked markdown nodes that explain each
@@ -230,4 +230,5 @@ re-read whole files.
 
 After big code changes, refresh the graph with `graft build` (deterministic,
 no API key, $0).
+
 <!-- graft:end -->
