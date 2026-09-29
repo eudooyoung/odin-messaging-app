@@ -9,7 +9,8 @@ const CONVERSATION_NOT_FOUND_ERROR_MESSAGE = "Conversation not found";
 type Conversation = {
   id: number;
   participants: {
-    username: string;
+    id: number;
+    handle: string;
     displayName: string;
     profileImage: string | null;
   }[];
