@@ -9,7 +9,7 @@ import { CONVERSATION_QUERY_ERROR_MESSAGE, conversationQueryOptions } from "./co
 export function ConversationPage() {
   const { conversationId } = useParams();
   const queryClient = useQueryClient();
-  const currentUser = queryClient.getQueryData<{ username: string }>(authMeQueryOptions.queryKey);
+  const currentUser = queryClient.getQueryData<{ id: number }>(authMeQueryOptions.queryKey);
   const parsedConversationId = Number(conversationId);
   const isValidConversationId = Number.isInteger(parsedConversationId) && parsedConversationId > 0;
   const {
@@ -37,9 +37,7 @@ export function ConversationPage() {
   }
 
   const otherUser = currentUser
-    ? conversation?.participants.find(
-        (participant) => participant.username !== currentUser.username,
-      )
+    ? conversation?.participants.find((participant) => participant.id !== currentUser.id)
     : undefined;
 
   if (!otherUser) {
@@ -74,7 +72,7 @@ export function ConversationPage() {
           <h1 className="truncate font-heading text-base font-semibold text-neutral-900">
             {otherUser.displayName}
           </h1>
-          <p className="truncate text-sm text-neutral-500">@{otherUser.username}</p>
+          <p className="truncate text-sm text-neutral-500">@{otherUser.handle}</p>
         </div>
       </header>
       <MessageList conversationId={parsedConversationId} />

@@ -38,16 +38,18 @@ const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conve
 
 describe("ConversationPage", () => {
   describe("successful rendering", () => {
-    const currentUser: AuthUser = {
+    const currentUser: AuthUser & { handle: string } = {
       id: 1,
       username: "current-user",
+      handle: "current-handle",
       displayName: "Current User",
     };
 
     const defaultConversation: {
       id: number;
       participants: {
-        username: string;
+        id: number;
+        handle: string;
         displayName: string;
         profileImage: string | null;
       }[];
@@ -57,12 +59,14 @@ describe("ConversationPage", () => {
       id: 42,
       participants: [
         {
-          username: "current-user",
+          id: 1,
+          handle: "current-handle",
           displayName: "Current User",
           profileImage: null,
         },
         {
-          username: "other-user",
+          id: 2,
+          handle: "other-handle",
           displayName: "Other User",
           profileImage: null,
         },
@@ -133,7 +137,7 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
-      expect(screen.getByText("@other-user")).toBeInTheDocument();
+      expect(screen.getByText("@other-handle")).toBeInTheDocument();
       expect(
         screen.queryByRole("img", { name: "Other User profile" }),
       ).not.toBeInTheDocument();
@@ -145,7 +149,7 @@ describe("ConversationPage", () => {
         conversation: {
           ...defaultConversation,
           participants: defaultConversation.participants.map((participant) =>
-            participant.username === "other-user" ? { ...participant, profileImage } : participant,
+            participant.id === 2 ? { ...participant, profileImage } : participant,
           ),
         },
       });
@@ -310,19 +314,17 @@ describe("ConversationPage", () => {
       expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
     });
 
-    it("identifies the other participant by the current user's username", async () => {
-      arrangeConversationPageRequests({
-        conversation: {
-          ...defaultConversation,
-          participants: [...defaultConversation.participants].reverse(),
-        },
+    it("identifies the other participant by id even when the current user's username differs", async () => {
+      arrangeConversationPageRequests();
+      queryClient.setQueryData<typeof currentUser>(authMeQueryOptions.queryKey, {
+        ...currentUser,
+        username: "other-handle",
       });
-      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
-      expect(screen.getByText("@other-user")).toBeInTheDocument();
+      expect(screen.getByText("@other-handle")).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Current User" })).not.toBeInTheDocument();
     });
   });
