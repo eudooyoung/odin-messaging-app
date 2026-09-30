@@ -75,7 +75,7 @@ export function ConversationPage() {
           <p className="truncate text-sm text-neutral-500">@{otherUser.handle}</p>
         </div>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col">
         <MessageList conversationId={parsedConversationId} currentUserId={currentUser.id} />
       </div>
       <div className="shrink-0">

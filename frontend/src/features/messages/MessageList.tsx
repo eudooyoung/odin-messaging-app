@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
@@ -10,8 +11,19 @@ type MessageListProps = {
 };
 
 export function MessageList({ conversationId, currentUserId }: MessageListProps) {
+  const scrollRegionRef = useRef<HTMLElement>(null);
+  const initialScroll = useRef({ conversationId, complete: false });
+  const previousList = useRef<{
+    conversationId: number;
+    latestMessageId: number | undefined;
+    messageCount: number;
+    pageCount: number;
+    scrollHeight: number;
+    clientHeight: number;
+  } | null>(null);
   const {
     data,
+    fetchStatus,
     isPending,
     isLoadingError,
     error,
@@ -21,6 +33,60 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
     isFetchNextPageError,
   } = useInfiniteQuery(messagesQueryOptions(conversationId));
   const messages = data?.pages.flatMap((page) => page.messages).reverse();
+  const hasMessages = Boolean(messages?.length);
+  const messageCount = messages?.length ?? 0;
+  const latestMessageId = data?.pages[0]?.messages[0]?.id;
+  const pageCount = data?.pages.length ?? 0;
+
+  useLayoutEffect(() => {
+    if (initialScroll.current.conversationId !== conversationId) {
+      initialScroll.current = { conversationId, complete: false };
+    }
+    if (
+      initialScroll.current.complete ||
+      !hasMessages ||
+      fetchStatus !== "idle" ||
+      isFetchingNextPage
+    ) {
+      return;
+    }
+
+    const scrollRegion = scrollRegionRef.current;
+    if (!scrollRegion) return;
+
+    scrollRegion.scrollTop = scrollRegion.scrollHeight;
+    initialScroll.current.complete = true;
+  }, [conversationId, fetchStatus, hasMessages, isFetchingNextPage]);
+
+  useLayoutEffect(() => {
+    const scrollRegion = scrollRegionRef.current;
+    if (!scrollRegion || !hasMessages) {
+      previousList.current = null;
+      return;
+    }
+
+    const previous = previousList.current;
+    if (
+      initialScroll.current.complete &&
+      previous?.conversationId === conversationId &&
+      previous.pageCount === pageCount &&
+      previous.messageCount < messageCount &&
+      previous.latestMessageId !== latestMessageId &&
+      !isFetchingNextPage &&
+      scrollRegion.scrollTop >= previous.scrollHeight - previous.clientHeight
+    ) {
+      scrollRegion.scrollTop = scrollRegion.scrollHeight;
+    }
+
+    previousList.current = {
+      conversationId,
+      latestMessageId,
+      messageCount,
+      pageCount,
+      scrollHeight: scrollRegion.scrollHeight,
+      clientHeight: scrollRegion.clientHeight,
+    };
+  }, [conversationId, data, hasMessages, isFetchingNextPage, latestMessageId, messageCount, pageCount]);
 
   if (isPending) {
     return <p role="status">Loading messages...</p>;
@@ -43,7 +109,7 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
   yesterday.setDate(today.getDate() - 1);
 
   return (
-    <>
+    <section ref={scrollRegionRef} aria-label="Messages" className="min-h-0 flex-1 overflow-y-auto">
       {hasNextPage && (
         <button type="button" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>
           Load older messages
@@ -93,6 +159,6 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
         })}
       </ul>
       {isFetchNextPageError && <p role="alert">{LOAD_OLDER_MESSAGES_ERROR_MESSAGE}</p>}
-    </>
+    </section>
   );
 }

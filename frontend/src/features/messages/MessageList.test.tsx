@@ -1,5 +1,5 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
@@ -93,6 +93,56 @@ describe("MessageList", () => {
       ]);
     });
 
+    it("waits for a cached conversation's background refetch before the initial bottom scroll", async () => {
+      const queryKey = ["conversations", 42, "messages"] as const;
+      queryClient.setQueryData(queryKey, {
+        pages: [{ messages: [olderMessage], nextCursor: null }],
+        pageParams: [null],
+      });
+      let resolveRefetch!: (response: Response) => void;
+      vi.mocked(apiFetch).mockReturnValue(
+        new Promise<Response>((resolve) => {
+          resolveRefetch = resolve;
+        }),
+      );
+      const scrollHeight = vi
+        .spyOn(Element.prototype, "scrollHeight", "get")
+        .mockImplementation(function (this: Element) {
+          if (this.getAttribute("aria-label") !== "Messages") return 0;
+          return this.querySelectorAll("li").length === 1 ? 600 : 1432;
+        });
+      const clientHeight = vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.getAttribute("aria-label") === "Messages" ? 200 : 0;
+        });
+
+      try {
+        renderMessageList(queryClient);
+
+        const scrollRegion = screen.getByRole("region", { name: "Messages" });
+        expect(screen.getByText(olderMessage.content)).toBeInTheDocument();
+        await waitFor(() => {
+          expect(apiFetch).toHaveBeenCalledOnce();
+        });
+        expect(scrollRegion.scrollHeight).toBe(600);
+        expect(scrollRegion.scrollTop).toBe(0);
+
+        await act(async () => {
+          resolveRefetch(messagesResponse([latestMessage, olderMessage], null));
+        });
+
+        expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+        expect(scrollRegion.scrollHeight).toBe(1432);
+        expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+      } finally {
+        scrollHeight.mockRestore();
+        clientHeight.mockRestore();
+      }
+    });
+
     it("shows an empty state when the first query page has no messages", async () => {
       vi.mocked(apiFetch).mockResolvedValue(messagesResponse([], null));
 
@@ -170,6 +220,107 @@ describe("MessageList", () => {
     });
   });
 
+  describe("new messages", () => {
+    it("follows a new message when the reader is at the bottom", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestMessage], null));
+      const newMessage = {
+        ...latestMessage,
+        id: 11,
+        content: "New message",
+        createdAt: "2026-09-07T03:00:00.000Z",
+      };
+      const scrollHeight = vi
+        .spyOn(Element.prototype, "scrollHeight", "get")
+        .mockImplementation(function (this: Element) {
+          if (this.getAttribute("aria-label") !== "Messages") return 0;
+          return this.querySelectorAll("li").length === 1 ? 600 : 900;
+        });
+      const clientHeight = vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.getAttribute("aria-label") === "Messages" ? 200 : 0;
+        });
+
+      try {
+        renderMessageList(queryClient);
+
+        expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+        const scrollRegion = screen.getByRole("region", { name: "Messages" });
+        expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+        scrollRegion.scrollTop = scrollRegion.scrollHeight - scrollRegion.clientHeight;
+        expect(scrollRegion.scrollTop).toBe(400);
+
+        await act(async () => {
+          queryClient.setQueryData(["conversations", 42, "messages"], {
+            pages: [{ messages: [newMessage, latestMessage], nextCursor: null }],
+            pageParams: [null],
+          });
+        });
+
+        expect(await screen.findByText(newMessage.content)).toBeInTheDocument();
+        expect(scrollRegion.scrollHeight).toBe(900);
+        expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+      } finally {
+        scrollHeight.mockRestore();
+        clientHeight.mockRestore();
+      }
+    });
+
+    it("keeps the scroll position when the reader has scrolled up", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestMessage], null));
+      const newMessage = {
+        ...latestMessage,
+        id: 11,
+        content: "New message",
+        createdAt: "2026-09-07T03:00:00.000Z",
+      };
+      const scrollHeight = vi
+        .spyOn(Element.prototype, "scrollHeight", "get")
+        .mockImplementation(function (this: Element) {
+          if (this.getAttribute("aria-label") !== "Messages") return 0;
+          return this.querySelectorAll("li").length === 1 ? 600 : 900;
+        });
+      const clientHeight = vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.getAttribute("aria-label") === "Messages" ? 200 : 0;
+        });
+
+      try {
+        renderMessageList(queryClient);
+
+        expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+        const scrollRegion = screen.getByRole("region", { name: "Messages" });
+        expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+        scrollRegion.scrollTop = 100;
+        fireEvent.scroll(scrollRegion);
+        expect(scrollRegion.scrollTop).toBeLessThan(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+
+        await act(async () => {
+          queryClient.setQueryData(["conversations", 42, "messages"], {
+            pages: [{ messages: [newMessage, latestMessage], nextCursor: null }],
+            pageParams: [null],
+          });
+        });
+
+        expect(await screen.findByText(newMessage.content)).toBeInTheDocument();
+        expect(scrollRegion.scrollHeight).toBe(900);
+        expect(scrollRegion.scrollTop).toBe(100);
+      } finally {
+        scrollHeight.mockRestore();
+        clientHeight.mockRestore();
+      }
+    });
+  });
+
   describe("timestamps and date separators", () => {
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ["Date"] });
@@ -244,9 +395,7 @@ describe("MessageList", () => {
 
       expect(screen.getByText("오전 9:07")).toBeInTheDocument();
       expect(screen.getByText("오후 9:42")).toBeInTheDocument();
-      expect(container).toHaveTextContent(
-        /Older message.*오전 9:07.*Latest message.*오후 9:42/,
-      );
+      expect(container).toHaveTextContent(/Older message.*오전 9:07.*Latest message.*오후 9:42/);
     });
   });
 
