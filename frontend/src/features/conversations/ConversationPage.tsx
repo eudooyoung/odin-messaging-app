@@ -78,7 +78,7 @@ export function ConversationPage() {
       <div className="flex min-h-0 flex-1 flex-col">
         <MessageList conversationId={parsedConversationId} currentUserId={currentUser.id} />
       </div>
-      <div className="shrink-0">
+      <div className="shrink-0 border-t border-neutral-200 bg-neutral-50 px-6 py-4">
         <MessageComposer conversationId={parsedConversationId} />
       </div>
     </div>
