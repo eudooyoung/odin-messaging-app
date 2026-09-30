@@ -428,6 +428,100 @@ describe("MessageList", () => {
       vi.unstubAllGlobals();
     });
 
+    it("waits for a cached conversation's background refetch and initial scroll before loading older messages", async () => {
+      const conversationId = 43;
+      const olderPagePath = `/conversations/${conversationId}/messages?cursor=8&limit=20`;
+      const oldestMessage = {
+        ...olderMessage,
+        id: 8,
+        content: "Oldest message",
+        createdAt: "2026-09-07T00:00:00.000Z",
+      };
+      queryClient.setQueryData(["conversations", conversationId, "messages"], {
+        pages: [{ messages: [olderMessage], nextCursor: 8 }],
+        pageParams: [null],
+      });
+      let resolveRefetch!: (response: Response) => void;
+      const refetchResponse = new Promise<Response>((resolve) => {
+        resolveRefetch = resolve;
+      });
+      vi.mocked(apiFetch).mockImplementation((path) => {
+        if (path === "/conversations/42/messages?limit=20") {
+          return Promise.resolve(messagesResponse([latestMessage], null));
+        }
+        if (path === `/conversations/${conversationId}/messages?limit=20`) {
+          return refetchResponse;
+        }
+        if (path === olderPagePath) {
+          return Promise.resolve(messagesResponse([oldestMessage], null));
+        }
+        throw new Error(`Unexpected messages request: ${path}`);
+      });
+      const showTopSentinel = stubTopIntersection();
+      const scrollHeight = vi
+        .spyOn(Element.prototype, "scrollHeight", "get")
+        .mockImplementation(function (this: Element) {
+          if (this.getAttribute("aria-label") !== "Messages") return 0;
+          return this.querySelectorAll("li").length * 300;
+        });
+      const clientHeight = vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.getAttribute("aria-label") === "Messages" ? 200 : 0;
+        });
+
+      try {
+        const view = renderMessageList(queryClient);
+        expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+
+        view.rerender(
+          <QueryClientProvider client={queryClient}>
+            <MessageList conversationId={conversationId} currentUserId={1} />
+          </QueryClientProvider>,
+        );
+
+        const scrollRegion = screen.getByRole("region", { name: "Messages" });
+        expect(screen.getByText(olderMessage.content)).toBeInTheDocument();
+        await waitFor(() => {
+          expect(apiFetch).toHaveBeenCalledWith(
+            `/conversations/${conversationId}/messages?limit=20`,
+            expect.anything(),
+          );
+        });
+        scrollRegion.scrollTop = 0;
+        fireEvent.scroll(scrollRegion);
+
+        await act(async () => {
+          showTopSentinel();
+        });
+
+        expect(apiFetch).not.toHaveBeenCalledWith(olderPagePath, expect.anything());
+        expect(scrollRegion.scrollTop).toBe(0);
+
+        await act(async () => {
+          resolveRefetch(messagesResponse([latestMessage, olderMessage], 8));
+        });
+
+        expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+        expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+
+        scrollRegion.scrollTop = 0;
+        fireEvent.scroll(scrollRegion);
+        await act(async () => {
+          showTopSentinel();
+        });
+
+        expect(await screen.findByText(oldestMessage.content)).toBeInTheDocument();
+        expect(apiFetch).toHaveBeenCalledWith(olderPagePath, expect.anything());
+      } finally {
+        scrollHeight.mockRestore();
+        clientHeight.mockRestore();
+        vi.mocked(apiFetch).mockReset();
+      }
+    });
+
     it("loads older messages and preserves the viewport when the top becomes visible", async () => {
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(messagesResponse([latestMessage], 10))

@@ -141,6 +141,9 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
       !scrollRegion ||
       !sentinel ||
       !hasNextPage ||
+      fetchStatus !== "idle" ||
+      initialScroll.current.conversationId !== conversationId ||
+      !initialScroll.current.complete ||
       isFetchingNextPage ||
       isFetchNextPageError ||
       typeof IntersectionObserver === "undefined"
@@ -151,7 +154,15 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
     let active = true;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (active && entry?.isIntersecting && !isFetchingNextPage && !isFetchNextPageError) {
+        if (
+          active &&
+          entry?.isIntersecting &&
+          fetchStatus === "idle" &&
+          initialScroll.current.conversationId === conversationId &&
+          initialScroll.current.complete &&
+          !isFetchingNextPage &&
+          !isFetchNextPageError
+        ) {
           handleLoadOlderMessages();
         }
       },
@@ -163,7 +174,14 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
       active = false;
       observer.disconnect();
     };
-  }, [handleLoadOlderMessages, hasNextPage, isFetchingNextPage, isFetchNextPageError]);
+  }, [
+    conversationId,
+    fetchStatus,
+    handleLoadOlderMessages,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  ]);
 
   if (isPending) {
     return (
