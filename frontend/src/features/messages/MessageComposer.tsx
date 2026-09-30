@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -25,10 +25,12 @@ type MessageComposerProps = {
 
 export function MessageComposer({ conversationId }: MessageComposerProps) {
   const queryClient = useQueryClient();
+  const activeConversationId = useRef(conversationId);
   const {
     register,
     handleSubmit,
     reset,
+    resetField,
     setFocus,
     formState: { errors },
   } = useForm<MessageInput>({
@@ -40,9 +42,20 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
       createMessage(conversationId, content),
     onSuccess: (message, { conversationId }) => {
       syncMessageToCache(queryClient, conversationId, message);
-      reset();
+      if (activeConversationId.current === conversationId) {
+        reset();
+      }
     },
   });
+  const resetMutation = createMessageMutation.reset;
+
+  useLayoutEffect(() => {
+    if (activeConversationId.current !== conversationId) {
+      activeConversationId.current = conversationId;
+      resetMutation();
+      resetField("content");
+    }
+  }, [conversationId, resetMutation, resetField]);
 
   useEffect(() => {
     setFocus("content");

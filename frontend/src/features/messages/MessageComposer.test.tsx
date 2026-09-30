@@ -34,6 +34,55 @@ describe("MessageComposer", () => {
     );
 
   describe("sending", () => {
+    it("keeps the new conversation's composer usable while a previous send is pending", async () => {
+      const pendingSend = createDeferred<Awaited<ReturnType<typeof createMessage>>>();
+      vi.mocked(createMessage).mockClear().mockReturnValue(pendingSend.promise);
+      const sentMessage = {
+        id: 10,
+        content: "Sent in A",
+        sender: {
+          id: 1,
+          handle: "current-user",
+          displayName: "Current User",
+          profileImage: null,
+        },
+        createdAt: "2026-09-08T01:00:00.000Z",
+      };
+      const user = userEvent.setup();
+
+      const { rerender } = renderMessageComposer(queryClient, 42);
+      await user.type(screen.getByRole("textbox", { name: "Message" }), sentMessage.content);
+      await user.click(screen.getByRole("button", { name: "Send" }));
+
+      expect(createMessage).toHaveBeenCalledWith(42, sentMessage.content);
+      await waitFor(() => {
+        expect(screen.getByRole("textbox", { name: "Message" })).toBeDisabled();
+      });
+
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <MessageComposer conversationId={43} />
+        </QueryClientProvider>,
+      );
+
+      const messageInput = screen.getByRole("textbox", { name: "Message" });
+      expect(messageInput).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+      expect(messageInput).toHaveValue("");
+
+      await user.type(messageInput, "Draft in B");
+      await act(async () => {
+        pendingSend.resolve(sentMessage);
+      });
+
+      expect(
+        queryClient.getQueryData<InfiniteData<MessagesPage, number | null>>(
+          messagesQueryOptions(42).queryKey,
+        )?.pages[0]?.messages,
+      ).toEqual([sentMessage]);
+      expect(messageInput).toHaveValue("Draft in B");
+    });
+
     it("keeps a pending send in its original conversation after switching conversations", async () => {
       const pendingSend = createDeferred<Awaited<ReturnType<typeof createMessage>>>();
       vi.mocked(createMessage).mockClear().mockReturnValue(pendingSend.promise);
