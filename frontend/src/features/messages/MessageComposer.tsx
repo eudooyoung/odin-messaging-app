@@ -36,8 +36,9 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
     defaultValues: { content: "" },
   });
   const createMessageMutation = useMutation({
-    mutationFn: (content: string) => createMessage(conversationId, content),
-    onSuccess: (message) => {
+    mutationFn: ({ conversationId, content }: { conversationId: number; content: string }) =>
+      createMessage(conversationId, content),
+    onSuccess: (message, { conversationId }) => {
       syncMessageToCache(queryClient, conversationId, message);
       reset();
     },
@@ -57,7 +58,9 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
     <>
       <form
         className="flex items-center gap-3"
-        onSubmit={handleSubmit(({ content }) => createMessageMutation.mutate(content))}
+        onSubmit={handleSubmit(({ content }) =>
+          createMessageMutation.mutate({ conversationId, content }),
+        )}
       >
         <div className="min-w-0 flex-1 [&>label]:sr-only [&>p]:mt-1 [&>p]:text-xs [&>p]:text-danger-700">
           <FormField

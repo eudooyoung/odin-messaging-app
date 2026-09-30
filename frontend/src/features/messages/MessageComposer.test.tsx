@@ -1,10 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { type InfiniteData, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import { createDeferred } from "@/tests/createDeferred.ts";
 import { createMessage } from "./createMessage.ts";
 import { MessageComposer } from "./MessageComposer.tsx";
+import type { MessagesPage } from "./message.type.ts";
+import { messagesQueryOptions } from "./messagesQuery.ts";
 
 vi.mock("./createMessage.ts", () => ({
   createMessage: vi.fn(),
@@ -31,6 +34,56 @@ describe("MessageComposer", () => {
     );
 
   describe("sending", () => {
+    it("keeps a pending send in its original conversation after switching conversations", async () => {
+      const pendingSend = createDeferred<Awaited<ReturnType<typeof createMessage>>>();
+      vi.mocked(createMessage).mockClear().mockReturnValue(pendingSend.promise);
+      const sentMessage = {
+        id: 10,
+        content: "Sent in A",
+        sender: {
+          id: 1,
+          handle: "current-user",
+          displayName: "Current User",
+          profileImage: null,
+        },
+        createdAt: "2026-09-08T01:00:00.000Z",
+      };
+      const aQueryKey = messagesQueryOptions(42).queryKey;
+      const bQueryKey = messagesQueryOptions(43).queryKey;
+      const emptyMessages = { pages: [{ messages: [], nextCursor: null }], pageParams: [null] };
+      queryClient.setQueryData(aQueryKey, emptyMessages);
+      queryClient.setQueryData(bQueryKey, emptyMessages);
+      const user = userEvent.setup();
+
+      const { rerender } = renderMessageComposer(queryClient, 42);
+      await user.type(screen.getByRole("textbox", { name: "Message" }), sentMessage.content);
+      await user.click(screen.getByRole("button", { name: "Send" }));
+
+      expect(createMessage).toHaveBeenCalledWith(42, sentMessage.content);
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+      });
+
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <MessageComposer conversationId={43} />
+        </QueryClientProvider>,
+      );
+
+      await act(async () => {
+        pendingSend.resolve(sentMessage);
+      });
+
+      expect({
+        conversationA: queryClient.getQueryData<InfiniteData<MessagesPage, number | null>>(
+          aQueryKey,
+        )?.pages[0]?.messages,
+        conversationB: queryClient.getQueryData<InfiniteData<MessagesPage, number | null>>(
+          bQueryKey,
+        )?.pages[0]?.messages,
+      }).toEqual({ conversationA: [sentMessage], conversationB: [] });
+    });
+
     it("keeps the textarea focused after a successful Enter send", async () => {
       vi.mocked(createMessage).mockResolvedValue({
         id: 10,
