@@ -21,6 +21,12 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
     scrollHeight: number;
     clientHeight: number;
   } | null>(null);
+  const paginationScroll = useRef<{
+    conversationId: number;
+    pageCount: number;
+    scrollTop: number;
+    scrollHeight: number;
+  } | null>(null);
   const {
     data,
     fetchStatus,
@@ -88,6 +94,36 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
     };
   }, [conversationId, data, hasMessages, isFetchingNextPage, latestMessageId, messageCount, pageCount]);
 
+  useLayoutEffect(() => {
+    const previous = paginationScroll.current;
+    if (!previous) return;
+    if (previous.conversationId !== conversationId || isFetchNextPageError) {
+      paginationScroll.current = null;
+      return;
+    }
+    if (pageCount <= previous.pageCount) return;
+
+    const scrollRegion = scrollRegionRef.current;
+    if (scrollRegion) {
+      scrollRegion.scrollTop =
+        previous.scrollTop + scrollRegion.scrollHeight - previous.scrollHeight;
+    }
+    paginationScroll.current = null;
+  }, [conversationId, isFetchNextPageError, pageCount]);
+
+  const handleLoadOlderMessages = () => {
+    const scrollRegion = scrollRegionRef.current;
+    if (scrollRegion) {
+      paginationScroll.current = {
+        conversationId,
+        pageCount,
+        scrollTop: scrollRegion.scrollTop,
+        scrollHeight: scrollRegion.scrollHeight,
+      };
+    }
+    void fetchNextPage();
+  };
+
   if (isPending) {
     return <p role="status">Loading messages...</p>;
   }
@@ -111,7 +147,7 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
   return (
     <section ref={scrollRegionRef} aria-label="Messages" className="min-h-0 flex-1 overflow-y-auto">
       {hasNextPage && (
-        <button type="button" disabled={isFetchingNextPage} onClick={() => void fetchNextPage()}>
+        <button type="button" disabled={isFetchingNextPage} onClick={handleLoadOlderMessages}>
           Load older messages
         </button>
       )}

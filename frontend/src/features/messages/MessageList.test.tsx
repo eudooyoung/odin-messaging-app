@@ -418,6 +418,64 @@ describe("MessageList", () => {
       expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
     });
 
+    it("preserves the visible messages when older messages are prepended", async () => {
+      let resolveNextPage!: (response: Response) => void;
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(messagesResponse([latestMessage], 10))
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            resolveNextPage = resolve;
+          }),
+        );
+      const scrollHeight = vi
+        .spyOn(Element.prototype, "scrollHeight", "get")
+        .mockImplementation(function (this: Element) {
+          if (this.getAttribute("aria-label") !== "Messages") return 0;
+          return this.querySelectorAll("li").length === 1 ? 600 : 900;
+        });
+      const clientHeight = vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.getAttribute("aria-label") === "Messages" ? 200 : 0;
+        });
+      const user = userEvent.setup();
+
+      try {
+        renderMessageList(queryClient);
+
+        expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+        const scrollRegion = screen.getByRole("region", { name: "Messages" });
+        expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+        scrollRegion.scrollTop = 100;
+        fireEvent.scroll(scrollRegion);
+        const previousScrollTop = scrollRegion.scrollTop;
+        const previousScrollHeight = scrollRegion.scrollHeight;
+
+        await user.click(screen.getByRole("button", { name: "Load older messages" }));
+        expect(scrollRegion.scrollTop).toBe(previousScrollTop);
+
+        await act(async () => {
+          resolveNextPage(messagesResponse([olderMessage], null));
+        });
+
+        expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
+        expect(screen.getByText(latestMessage.content)).toBeInTheDocument();
+        expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+          expect.stringContaining(olderMessage.content),
+          expect.stringContaining(latestMessage.content),
+        ]);
+        expect(scrollRegion.scrollHeight).toBe(900);
+        expect(scrollRegion.scrollTop).toBe(
+          previousScrollTop + scrollRegion.scrollHeight - previousScrollHeight,
+        );
+      } finally {
+        scrollHeight.mockRestore();
+        clientHeight.mockRestore();
+      }
+    });
+
     it("keeps existing messages and prevents duplicate requests while loading", async () => {
       let resolveNextPage: (response: Response) => void = () => undefined;
       const nextPageResponse = new Promise<Response>((resolve) => {
