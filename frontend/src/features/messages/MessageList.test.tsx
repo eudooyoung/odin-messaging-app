@@ -143,6 +143,56 @@ describe("MessageList", () => {
       }
     });
 
+    it("does not show cached messages before the background refetch and initial bottom scroll complete", async () => {
+      queryClient.setQueryData(["conversations", 42, "messages"], {
+        pages: [{ messages: [olderMessage], nextCursor: null }],
+        pageParams: [null],
+      });
+      let resolveRefetch!: (response: Response) => void;
+      vi.mocked(apiFetch).mockReturnValue(
+        new Promise<Response>((resolve) => {
+          resolveRefetch = resolve;
+        }),
+      );
+      const scrollHeight = vi
+        .spyOn(Element.prototype, "scrollHeight", "get")
+        .mockImplementation(function (this: Element) {
+          if (this.getAttribute("aria-label") !== "Messages") return 0;
+          return this.querySelectorAll("li").length === 1 ? 600 : 1432;
+        });
+      const clientHeight = vi
+        .spyOn(Element.prototype, "clientHeight", "get")
+        .mockImplementation(function (this: Element) {
+          return this.getAttribute("aria-label") === "Messages" ? 200 : 0;
+        });
+
+      try {
+        renderMessageList(queryClient);
+
+        await waitFor(() => {
+          expect(apiFetch).toHaveBeenCalledOnce();
+        });
+        const cachedMessage = screen.queryByText(olderMessage.content);
+        if (cachedMessage) {
+          expect(cachedMessage).not.toBeVisible();
+        }
+
+        await act(async () => {
+          resolveRefetch(messagesResponse([latestMessage, olderMessage], null));
+        });
+
+        expect(await screen.findByText(latestMessage.content)).toBeVisible();
+        expect(screen.getByText(olderMessage.content)).toBeVisible();
+        const scrollRegion = screen.getByRole("region", { name: "Messages" });
+        expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
+          scrollRegion.scrollHeight - scrollRegion.clientHeight,
+        );
+      } finally {
+        scrollHeight.mockRestore();
+        clientHeight.mockRestore();
+      }
+    });
+
     it("shows an empty state when the first query page has no messages", async () => {
       vi.mocked(apiFetch).mockResolvedValue(messagesResponse([], null));
 

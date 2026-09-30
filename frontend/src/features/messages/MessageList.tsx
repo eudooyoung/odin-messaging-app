@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
@@ -16,6 +16,7 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
   const scrollRegionRef = useRef<HTMLElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const initialScroll = useRef({ conversationId, complete: false });
+  const [visibleConversationId, setVisibleConversationId] = useState<number | null>(null);
   const previousList = useRef<{
     conversationId: number;
     latestMessageId: number | undefined;
@@ -46,10 +47,12 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
   const messageCount = messages?.length ?? 0;
   const latestMessageId = data?.pages[0]?.messages[0]?.id;
   const pageCount = data?.pages.length ?? 0;
+  const showMessages = visibleConversationId === conversationId;
 
   useLayoutEffect(() => {
     if (initialScroll.current.conversationId !== conversationId) {
       initialScroll.current = { conversationId, complete: false };
+      setVisibleConversationId(null);
     }
     if (
       initialScroll.current.complete ||
@@ -65,6 +68,7 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
 
     scrollRegion.scrollTop = scrollRegion.scrollHeight;
     initialScroll.current.complete = true;
+    setVisibleConversationId(conversationId);
   }, [conversationId, fetchStatus, hasMessages, isFetchingNextPage]);
 
   useLayoutEffect(() => {
@@ -208,7 +212,11 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
   yesterday.setDate(today.getDate() - 1);
 
   return (
-    <section ref={scrollRegionRef} aria-label="Messages" className="min-h-0 flex-1 overflow-y-auto">
+    <section
+      ref={scrollRegionRef}
+      aria-label="Messages"
+      className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {hasNextPage && !isFetchNextPageError && (
         <div ref={topSentinelRef} aria-hidden="true" className="h-0" />
       )}
@@ -234,7 +242,10 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
           )}
         </div>
       )}
-      <ul className="flex flex-col gap-4 px-6 py-6">
+      <ul
+        className="flex flex-col gap-4 px-6 py-6"
+        style={{ visibility: showMessages ? "visible" : "hidden" }}
+      >
         {messages.map((message, index) => {
           const isOwnMessage = message.sender.id === currentUserId;
           const messageDate = new Date(message.createdAt);
