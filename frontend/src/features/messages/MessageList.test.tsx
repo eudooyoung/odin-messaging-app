@@ -400,33 +400,57 @@ describe("MessageList", () => {
   });
 
   describe("pagination", () => {
-    it("loads older messages using the next cursor", async () => {
+    const stubTopIntersection = () => {
+      let showTopSentinel: () => void = () => undefined;
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          constructor(callback: IntersectionObserverCallback) {
+            this.observe = (target: Element) => {
+              showTopSentinel = () =>
+                callback(
+                  [{ isIntersecting: true, target } as IntersectionObserverEntry],
+                  this as unknown as IntersectionObserver,
+                );
+            };
+
+          }
+
+          observe(_target: Element) {}
+          disconnect() {}
+          unobserve() {}
+        },
+      );
+      return () => showTopSentinel();
+    };
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("loads older messages and preserves the viewport when the top becomes visible", async () => {
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(messagesResponse([latestMessage], 10))
         .mockResolvedValueOnce(messagesResponse([olderMessage], null));
-      const user = userEvent.setup();
+      let showTopSentinel: () => void = () => undefined;
+      vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+          constructor(callback: IntersectionObserverCallback) {
+            this.observe = (target: Element) => {
+              showTopSentinel = () =>
+                callback(
+                  [{ isIntersecting: true, target } as IntersectionObserverEntry],
+                  this as unknown as IntersectionObserver,
+                );
+            };
+          }
 
-      renderMessageList(queryClient);
-
-      expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
-      const loadOlderButton = screen.getByRole("button", {
-        name: "Load older messages",
-      });
-
-      await user.click(loadOlderButton);
-
-      expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
-    });
-
-    it("preserves the visible messages when older messages are prepended", async () => {
-      let resolveNextPage!: (response: Response) => void;
-      vi.mocked(apiFetch)
-        .mockResolvedValueOnce(messagesResponse([latestMessage], 10))
-        .mockReturnValueOnce(
-          new Promise<Response>((resolve) => {
-            resolveNextPage = resolve;
-          }),
-        );
+          observe(_target: Element) {}
+          disconnect() {}
+          unobserve() {}
+        },
+      );
       const scrollHeight = vi
         .spyOn(Element.prototype, "scrollHeight", "get")
         .mockImplementation(function (this: Element) {
@@ -438,7 +462,6 @@ describe("MessageList", () => {
         .mockImplementation(function (this: Element) {
           return this.getAttribute("aria-label") === "Messages" ? 200 : 0;
         });
-      const user = userEvent.setup();
 
       try {
         renderMessageList(queryClient);
@@ -448,16 +471,13 @@ describe("MessageList", () => {
         expect(scrollRegion.scrollTop).toBeGreaterThanOrEqual(
           scrollRegion.scrollHeight - scrollRegion.clientHeight,
         );
-        scrollRegion.scrollTop = 100;
+        scrollRegion.scrollTop = 0;
         fireEvent.scroll(scrollRegion);
         const previousScrollTop = scrollRegion.scrollTop;
         const previousScrollHeight = scrollRegion.scrollHeight;
 
-        await user.click(screen.getByRole("button", { name: "Load older messages" }));
-        expect(scrollRegion.scrollTop).toBe(previousScrollTop);
-
         await act(async () => {
-          resolveNextPage(messagesResponse([olderMessage], null));
+          showTopSentinel();
         });
 
         expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
@@ -473,6 +493,8 @@ describe("MessageList", () => {
       } finally {
         scrollHeight.mockRestore();
         clientHeight.mockRestore();
+        vi.unstubAllGlobals();
+        vi.mocked(apiFetch).mockReset();
       }
     });
 
@@ -484,32 +506,30 @@ describe("MessageList", () => {
       vi.mocked(apiFetch)
         .mockResolvedValueOnce(messagesResponse([latestMessage], 10))
         .mockReturnValueOnce(nextPageResponse);
-      const user = userEvent.setup();
+      const showTopSentinel = stubTopIntersection();
 
       renderMessageList(queryClient);
 
-      const loadOlderButton = await screen.findByRole("button", {
-        name: "Load older messages",
+      expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+
+      await act(async () => {
+        showTopSentinel();
       });
 
-      await user.click(loadOlderButton);
-
       await waitFor(() => {
-        expect(loadOlderButton).toBeDisabled();
+        expect(apiFetch).toHaveBeenCalledTimes(2);
       });
       expect(screen.getByText(latestMessage.content)).toBeInTheDocument();
 
-      await user.click(loadOlderButton);
+      await act(async () => {
+        showTopSentinel();
+      });
 
       expect(apiFetch).toHaveBeenCalledTimes(2);
 
-      resolveNextPage(messagesResponse([], null));
+      resolveNextPage(messagesResponse([olderMessage], null));
 
-      await waitFor(() => {
-        expect(
-          screen.queryByRole("button", { name: "Load older messages" }),
-        ).not.toBeInTheDocument();
-      });
+      expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
     });
 
     it("keeps existing messages and allows retrying after a load error", async () => {
@@ -518,12 +538,15 @@ describe("MessageList", () => {
         .mockResolvedValueOnce(new Response(null, { status: 500 }))
         .mockResolvedValueOnce(messagesResponse([olderMessage], null));
       const user = userEvent.setup();
+      const showTopSentinel = stubTopIntersection();
 
       renderMessageList(queryClient);
 
       expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
 
-      await user.click(screen.getByRole("button", { name: "Load older messages" }));
+      await act(async () => {
+        showTopSentinel();
+      });
 
       expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load older messages");
       expect(screen.getByText(latestMessage.content)).toBeInTheDocument();
@@ -539,12 +562,17 @@ describe("MessageList", () => {
       expect(apiFetch).toHaveBeenCalledTimes(3);
     });
 
-    it("does not show the load-older UI on the last page", async () => {
+    it("does not load more when the last page is visible", async () => {
       vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestMessage], null));
+      const showTopSentinel = stubTopIntersection();
 
       renderMessageList(queryClient);
 
       expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
+      await act(async () => {
+        showTopSentinel();
+      });
+      expect(apiFetch).toHaveBeenCalledOnce();
       expect(screen.queryByRole("button", { name: "Load older messages" })).not.toBeInTheDocument();
     });
   });
