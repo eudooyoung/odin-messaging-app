@@ -274,8 +274,6 @@ export function MessageList({ conversationId, currentUserId }: MessageListProps)
                   <span aria-hidden="true" className="h-px flex-1 bg-neutral-200" />
                 </div>
               )}
-              <p className="text-sm font-semibold text-neutral-900">{message.sender.displayName}</p>
-              <p className="text-xs text-neutral-500">@{message.sender.handle}</p>
               <p
                 className={`max-w-[75%] rounded-2xl px-4 py-2.5 wrap-anywhere whitespace-pre-wrap ${isOwnMessage ? "bg-primary-600 text-white" : "bg-neutral-100 text-neutral-900"}`}
               >
