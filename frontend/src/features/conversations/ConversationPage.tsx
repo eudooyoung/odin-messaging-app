@@ -68,12 +68,15 @@ export function ConversationPage() {
             {otherUser.displayName.charAt(0)}
           </span>
         )}
-        <div className="min-w-0">
-          <h1 className="truncate font-heading text-base font-semibold text-neutral-900">
+        <Link
+          className="group min-w-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+          to={`/users/${encodeURIComponent(otherUser.handle)}`}
+        >
+          <h1 className="truncate font-heading text-base font-semibold text-neutral-900 transition-colors group-hover:text-primary-700 group-focus-visible:text-primary-700">
             {otherUser.displayName}
           </h1>
           <p className="truncate text-sm text-neutral-500">@{otherUser.handle}</p>
-        </div>
+        </Link>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
         <MessageList conversationId={parsedConversationId} currentUserId={currentUser.id} />

@@ -32,6 +32,7 @@ const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conve
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/conversations/:conversationId" element={<ConversationPage />} />
+          <Route path="/users/other-handle" element={<h1>Other User public profile</h1>} />
           <Route path="/" element={<h1>Conversations</h1>} />
         </Routes>
       </MemoryRouter>
@@ -144,6 +145,23 @@ describe("ConversationPage", () => {
       expect(
         screen.queryByRole("img", { name: "Other User profile" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("opens the other participant's public profile from the header identity", async () => {
+      arrangeConversationPageRequests();
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient);
+
+      const identityLink = await screen.findByRole("link", {
+        name: /Other User\s+@other-handle/,
+      });
+      await user.click(identityLink);
+
+      expect(
+        await screen.findByRole("heading", { name: "Other User public profile" }),
+      ).toBeInTheDocument();
     });
 
     it("focuses the message textarea when the conversation opens", async () => {
