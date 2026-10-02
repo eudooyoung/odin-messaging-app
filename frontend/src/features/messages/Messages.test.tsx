@@ -6,13 +6,13 @@ import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
-import { MessageList } from "./MessageList.tsx";
+import { Messages } from "./Messages.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
   apiFetch: vi.fn(),
 }));
 
-describe("MessageList", () => {
+describe("Messages", () => {
   let queryClient: QueryClient;
 
   const latestMessage = {
@@ -53,7 +53,7 @@ describe("MessageList", () => {
   const renderMessageList = (queryClient: QueryClient, conversationId = 42) =>
     render(
       <QueryClientProvider client={queryClient}>
-        <MessageList conversationId={conversationId} currentUserId={1} />
+        <Messages conversationId={conversationId} currentUserId={1} />
       </QueryClientProvider>,
     );
 
@@ -463,7 +463,6 @@ describe("MessageList", () => {
                   this as unknown as IntersectionObserver,
                 );
             };
-
           }
 
           observe(_target: Element) {}
@@ -526,7 +525,7 @@ describe("MessageList", () => {
 
         view.rerender(
           <QueryClientProvider client={queryClient}>
-            <MessageList conversationId={conversationId} currentUserId={1} />
+            <Messages conversationId={conversationId} currentUserId={1} />
           </QueryClientProvider>,
         );
 

@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { MessageComposer } from "@/features/messages/MessageComposer.tsx";
-import { MessageList } from "@/features/messages/MessageList.tsx";
+import { Messages } from "@/features/messages/Messages.tsx";
 import { CONVERSATION_QUERY_ERROR_MESSAGE, conversationQueryOptions } from "./conversationQuery.ts";
 
 export function ConversationPage() {
@@ -79,7 +79,7 @@ export function ConversationPage() {
         </Link>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
-        <MessageList conversationId={parsedConversationId} currentUserId={currentUser.id} />
+        <Messages conversationId={parsedConversationId} currentUserId={currentUser.id} />
       </div>
       <div className="shrink-0 border-t border-neutral-200 bg-neutral-50 px-6 py-4">
         <MessageComposer conversationId={parsedConversationId} />
