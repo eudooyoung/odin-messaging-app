@@ -67,17 +67,17 @@ describe("MessageList", () => {
       expect(screen.getByRole("status")).toHaveTextContent("Loading messages...");
     });
 
-    it("renders messages and their senders from the conversation messages query", async () => {
+    it("renders message content without repeating sender identity", async () => {
       vi.mocked(apiFetch).mockResolvedValue(messagesResponse([latestMessage, olderMessage], null));
 
       renderMessageList(queryClient);
 
       expect(await screen.findByText(latestMessage.content)).toBeInTheDocument();
-      expect(screen.getByText(latestMessage.sender.displayName)).toBeInTheDocument();
-      expect(screen.getByText(`@${latestMessage.sender.handle}`)).toBeInTheDocument();
       expect(screen.getByText(olderMessage.content)).toBeInTheDocument();
-      expect(screen.getByText(olderMessage.sender.displayName)).toBeInTheDocument();
-      expect(screen.getByText(`@${olderMessage.sender.handle}`)).toBeInTheDocument();
+      expect(screen.queryByText(latestMessage.sender.displayName)).not.toBeInTheDocument();
+      expect(screen.queryByText(`@${latestMessage.sender.handle}`)).not.toBeInTheDocument();
+      expect(screen.queryByText(olderMessage.sender.displayName)).not.toBeInTheDocument();
+      expect(screen.queryByText(`@${olderMessage.sender.handle}`)).not.toBeInTheDocument();
     });
 
     it("renders messages from oldest to latest when the query data is newest first", async () => {
