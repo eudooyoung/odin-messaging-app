@@ -117,10 +117,34 @@ export const AuthenticatedWebSocket = () => {
       }
     };
 
+    const unsubscribeAuthRecovery = queryClient.getQueryCache().subscribe((event) => {
+      if (
+        authRecoveryRetryTimerId === undefined ||
+        event.type !== "updated" ||
+        event.action.type !== "success" ||
+        event.action.manual ||
+        event.query !==
+          queryClient.getQueryCache().find({
+            queryKey: authMeQueryOptions.queryKey,
+            exact: true,
+          })
+      ) {
+        return;
+      }
+
+      // A successful auth refetch completes recovery before its scheduled retry.
+      clearTimeout(authRecoveryRetryTimerId);
+      authRecoveryRetryTimerId = undefined;
+      if (event.action.data && shouldReconnect) {
+        startConnection();
+      }
+    });
+
     startConnection();
 
     return () => {
       shouldReconnect = false;
+      unsubscribeAuthRecovery();
       if (authRecoveryRetryTimerId !== undefined) {
         clearTimeout(authRecoveryRetryTimerId);
       }

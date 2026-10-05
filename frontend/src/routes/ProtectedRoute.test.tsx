@@ -168,9 +168,15 @@ describe("ProtectedRoute", () => {
       expect(screen.getByRole("status")).toHaveTextContent("Loading...");
     });
 
-    it("shows an auth error without rendering or redirecting when the query fails", () => {
+    it.each([
+      { caseName: "without cached auth data", data: undefined },
+      {
+        caseName: "with a cached authenticated user",
+        data: { id: 1, username: "current-user", displayName: "Current User" },
+      },
+    ])("shows an auth error without rendering or redirecting $caseName", ({ data }) => {
       vi.mocked(useQuery).mockReturnValue({
-        data: undefined,
+        data,
         isPending: false,
         isError: true,
         error: new Error("Failed to check authentication"),
@@ -189,7 +195,8 @@ describe("ProtectedRoute", () => {
 
       expect(screen.queryByRole("heading", { name: "Protected content" })).not.toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Login" })).not.toBeInTheDocument();
-      expect(screen.getByRole("alert")).toHaveTextContent("Failed to check authentication");
+      expect(screen.getByRole("alert")).toHaveTextContent("Unable to connect to the server");
+      expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     });
   });
 

@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/api/apiFetch.ts";
 import type { AuthUser } from "./auth.type.ts";
 
-export const AUTH_QUERY_FALLBACK_MESSAGE = "Failed to check authentication";
+export const AUTH_QUERY_FALLBACK_MESSAGE = "Unable to connect to the server";
 export const AUTH_QUERY_ERROR_MESSAGE = "Failed to fetch current user";
 
 export const authMeQueryOptions = queryOptions({

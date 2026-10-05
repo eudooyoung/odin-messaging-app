@@ -4,7 +4,6 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import {
   AUTH_QUERY_ERROR_MESSAGE,
-  AUTH_QUERY_FALLBACK_MESSAGE,
   authMeQueryOptions,
 } from "@/features/auth/authMeQuery.ts";
 import { GuestOnlyRoute } from "./GuestOnlyRoute.tsx";
@@ -87,6 +86,7 @@ describe("GuestOnlyRoute", () => {
 
     expect(screen.queryByRole("heading", { name: "Guest content" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(AUTH_QUERY_FALLBACK_MESSAGE);
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to connect to the server");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });

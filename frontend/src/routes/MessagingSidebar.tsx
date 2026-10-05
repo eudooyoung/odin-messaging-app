@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import leavesLogoMark from "@/assets/leaves-logo-mark.svg";
+import sidebarCollapseIcon from "@/assets/sidebar-collapse.svg";
+import sidebarExpandIcon from "@/assets/sidebar-expand.svg";
 import { LogoutButton } from "@/features/auth/LogoutButton.tsx";
 import { ConversationList } from "@/features/conversations/ConversationList.tsx";
 import { UserSearch } from "@/features/users/UserSearch.tsx";
@@ -9,11 +12,20 @@ export function MessagingSidebar() {
   const sidebarToggleButton = (
     <button
       aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${isSidebarCollapsed ? "self-center" : ""}`}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 transition-colors hover:border-primary-100 hover:bg-primary-50 hover:text-primary-700 focus-visible:border-primary-500 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${isSidebarCollapsed ? "self-center" : ""}`}
       type="button"
       onClick={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
     >
-      <span aria-hidden="true">{isSidebarCollapsed ? "›" : "‹"}</span>
+      <span
+        aria-hidden="true"
+        className="h-5 w-5 bg-current"
+        style={{
+          maskImage: `url("${isSidebarCollapsed ? sidebarExpandIcon : sidebarCollapseIcon}")`,
+          maskPosition: "center",
+          maskRepeat: "no-repeat",
+          maskSize: "contain",
+        }}
+      />
     </button>
   );
 
@@ -27,8 +39,14 @@ export function MessagingSidebar() {
         <>
           <header className="flex shrink-0 items-center justify-between border-b border-neutral-200 pb-3">
             <div className="flex items-center gap-2">
-              <h1 className="font-heading text-lg font-semibold tracking-tight text-neutral-900">
-                Messages
+              <h1 className="font-heading text-xl font-bold tracking-tight text-primary-700">
+                <Link
+                  className="flex items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+                  to="/"
+                >
+                  <img className="h-6 w-6 shrink-0" src={leavesLogoMark} alt="" />
+                  Leaves
+                </Link>
               </h1>
             </div>
             {sidebarToggleButton}

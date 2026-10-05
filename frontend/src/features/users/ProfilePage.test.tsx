@@ -37,7 +37,7 @@ afterEach(() => {
 const currentUser: AuthUser = {
   id: 1,
   username: "current-user",
-  handle: "current-handle",
+  handle: "current_handle",
   displayName: "Current User",
 };
 
@@ -131,7 +131,7 @@ const ProfileQueryObserver = () => {
 
 describe("ProfilePage", () => {
   describe("navigation", () => {
-    it("navigates explicitly to messages from the profile editor", async () => {
+    it("returns to the previous history entry from the profile editor", async () => {
       vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
       const user = userEvent.setup();
 
@@ -139,7 +139,7 @@ describe("ProfilePage", () => {
 
       await user.click(await screen.findByRole("link", { name: "Close profile" }));
 
-      expect(await screen.findByRole("heading", { name: "Messages" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Previous page" })).toBeInTheDocument();
     });
   });
 
@@ -173,6 +173,7 @@ describe("ProfilePage", () => {
       expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue(
         "https://example.com/current-user.jpg",
       );
+      expect(screen.getByRole("textbox", { name: "Profile ID" })).toHaveValue(baseProfile.handle);
     });
 
     it("shows empty inputs when the profile bio and profile image are null", async () => {
@@ -209,9 +210,12 @@ describe("ProfilePage", () => {
         name: "Display name",
       });
       const bioInput = screen.getByRole("textbox", { name: "Bio" });
+      const handleInput = screen.getByRole("textbox", { name: "Profile ID" });
       expect(displayNameInput).toHaveValue("Current User");
       expect(bioInput).toHaveValue("Current bio");
 
+      await user.clear(handleInput);
+      await user.type(handleInput, "unsaved_handle");
       await user.clear(displayNameInput);
       await user.type(displayNameInput, "Unsaved User");
       await user.clear(bioInput);
@@ -225,6 +229,7 @@ describe("ProfilePage", () => {
         expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Server User");
       });
       expect(queryClient.getQueryData(profileQueryKey)).toEqual(refreshedProfile);
+      expect(handleInput).toHaveValue("unsaved_handle");
       expect(displayNameInput).toHaveValue("Unsaved User");
       expect(bioInput).toHaveValue("Unsaved bio");
     });
@@ -240,6 +245,43 @@ describe("ProfilePage", () => {
 
   describe("validation", () => {
     it.each([
+      {
+        caseName: "the handle is shorter than 3 characters",
+        fieldName: "Profile ID",
+        value: "ab",
+        expectedMessage: "Handle must be at least 3 characters",
+      },
+      {
+        caseName: "the handle is longer than 30 characters after trimming",
+        fieldName: "Profile ID",
+        value: ` ${"a".repeat(31)} `,
+        expectedMessage: "Handle must be at most 30 characters",
+      },
+      {
+        caseName: "the handle contains disallowed characters",
+        fieldName: "Profile ID",
+        value: "Invalid-Handle",
+        expectedMessage:
+          "Handle can only contain lowercase letters, numbers, underscores, and periods",
+      },
+      {
+        caseName: "the handle starts with a period",
+        fieldName: "Profile ID",
+        value: ".invalid",
+        expectedMessage: "Handle cannot start or end with a period",
+      },
+      {
+        caseName: "the handle ends with a period",
+        fieldName: "Profile ID",
+        value: "invalid.",
+        expectedMessage: "Handle cannot start or end with a period",
+      },
+      {
+        caseName: "the handle contains consecutive periods",
+        fieldName: "Profile ID",
+        value: "invalid..handle",
+        expectedMessage: "Handle cannot contain consecutive periods",
+      },
       {
         caseName: "the display name is blank after trimming",
         fieldName: "Display name",
@@ -261,12 +303,7 @@ describe("ProfilePage", () => {
     ])(
       "shows a validation error and does not update the profile when $caseName",
       async ({ fieldName, value, expectedMessage }) => {
-        vi.mocked(apiFetch).mockResolvedValue(
-          profileResponse({
-            ...baseProfile,
-            profileImage: "https://example.com/current-user.jpg",
-          }),
-        );
+        vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
         const user = userEvent.setup();
 
         renderProfilePage(queryClient);
@@ -286,21 +323,35 @@ describe("ProfilePage", () => {
     it("updates the profile and related caches after a successful submission", async () => {
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: currentUser.handle,
+        handle: "updated_handle",
         displayName: "Updated User",
         bio: null,
         profileImage: null,
       };
-      vi.mocked(apiFetch).mockResolvedValue(
-        profileResponse({
-          ...baseProfile,
-          profileImage: "https://example.com/current-user.jpg",
-        }),
-      );
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(
+          profileResponse({
+            ...baseProfile,
+            profileImage: "https://example.com/current-user.jpg",
+          }),
+        )
+        .mockResolvedValue(
+          profileResponse({
+            id: currentUser.id,
+            handle: updatedProfile.handle,
+            displayName: updatedProfile.displayName,
+            bio: updatedProfile.bio,
+            profileImage: updatedProfile.profileImage,
+          }),
+        );
       vi.mocked(updateUserProfile).mockResolvedValue(updatedProfile);
       const user = userEvent.setup();
 
       renderProfilePage(queryClient);
+
+      const handleInput = await screen.findByRole("textbox", { name: "Profile ID" });
+      await user.clear(handleInput);
+      await user.type(handleInput, updatedProfile.handle);
 
       const { displayNameInput, bioInput, profileImageInput } = await submitProfileChanges(user, {
         displayName: " Updated User ",
@@ -310,20 +361,26 @@ describe("ProfilePage", () => {
 
       expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
       expect(updateUserProfile).toHaveBeenCalledWith({
+        handle: updatedProfile.handle,
         displayName: "Updated User",
         bio: null,
         profileImage: null,
       });
-      expect(queryClient.getQueryData(profileQueryKey)).toEqual({
+      expect(
+        queryClient.getQueryData(userProfileQueryOptions(updatedProfile.handle).queryKey),
+      ).toEqual({
         ...baseProfile,
+        handle: updatedProfile.handle,
         displayName: updatedProfile.displayName,
         bio: updatedProfile.bio,
         profileImage: updatedProfile.profileImage,
       });
       expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
         ...currentUser,
+        handle: updatedProfile.handle,
         displayName: "Updated User",
       });
+      expect(handleInput).toHaveValue(updatedProfile.handle);
       expect(displayNameInput).toHaveValue(updatedProfile.displayName);
       expect(bioInput).toHaveValue(updatedProfile.bio ?? "");
       expect(profileImageInput).toHaveValue(updatedProfile.profileImage ?? "");
@@ -332,7 +389,7 @@ describe("ProfilePage", () => {
     it("updates auth and public profile caches using the new handle", async () => {
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: "new-handle",
+        handle: "new_handle",
         displayName: "Updated User",
         bio: "Updated bio",
         profileImage: "https://example.com/updated-user.jpg",
@@ -393,7 +450,7 @@ describe("ProfilePage", () => {
     it("keeps the new-handle profile when an old-handle refetch finishes afterward", async () => {
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: "new-handle",
+        handle: "new_handle",
         displayName: "Saved User",
         bio: "Saved bio",
         profileImage: baseProfile.profileImage,
@@ -485,7 +542,7 @@ describe("ProfilePage", () => {
       };
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: "new-handle",
+        handle: "new_handle",
         displayName: "Saved User",
         bio: profile.bio,
         profileImage: profile.profileImage,
@@ -531,7 +588,7 @@ describe("ProfilePage", () => {
           handle: updatedProfile.handle,
           displayName: "Saved User",
         });
-        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new-handle Saved User");
+        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new_handle Saved User");
       });
 
       await act(async () => {
@@ -556,7 +613,7 @@ describe("ProfilePage", () => {
           handle: updatedProfile.handle,
           displayName: "Saved User",
         });
-        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new-handle Saved User");
+        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new_handle Saved User");
       });
     });
 
@@ -593,6 +650,10 @@ describe("ProfilePage", () => {
 
       renderProfilePage(queryClient);
 
+      const handleInput = await screen.findByRole("textbox", { name: "Profile ID" });
+      await user.clear(handleInput);
+      await user.type(handleInput, "unsaved_handle");
+
       const { displayNameInput, bioInput, profileImageInput } = await submitProfileChanges(user, {
         displayName: "Unsaved User",
         bio: "Unsaved bio",
@@ -600,6 +661,7 @@ describe("ProfilePage", () => {
       });
 
       expect(await screen.findByRole("alert")).toHaveTextContent(mutationError.message);
+      expect(handleInput).toHaveValue("unsaved_handle");
       expect(displayNameInput).toHaveValue("Unsaved User");
       expect(bioInput).toHaveValue("Unsaved bio");
       expect(profileImageInput).toHaveValue("https://example.com/unsaved.jpg");

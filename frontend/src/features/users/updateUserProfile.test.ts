@@ -38,23 +38,36 @@ describe("updateUserProfile", () => {
   });
 
   describe("errors", () => {
-    it("throws a user-facing validation error when the profile input is invalid", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 400 }));
+    it.each([
+      {
+        caseName: "the handle is already taken",
+        status: 409,
+        input: { handle: "taken_handle" },
+        expectedMessage: "This handle is already taken",
+      },
+      {
+        caseName: "the profile input is invalid",
+        status: 400,
+        input: { displayName: "" },
+        expectedMessage: "Invalid profile input",
+      },
+      {
+        caseName: "the response is otherwise unsuccessful",
+        status: 500,
+        input: { displayName: "Updated User" },
+        expectedMessage: UPDATE_USER_PROFILE_ERROR_MESSAGE,
+      },
+    ])(
+      "throws the appropriate user-facing error when $caseName",
+      async ({ status, input, expectedMessage }) => {
+        vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status }));
 
-      const result = updateUserProfile({ displayName: "" });
+        const result = updateUserProfile(input);
 
-      await expect(result).rejects.toBeInstanceOf(UserFacingError);
-      await expect(result).rejects.toThrow("Invalid profile input");
-    });
-
-    it("throws a generic user-facing error for other unsuccessful responses", async () => {
-      vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
-
-      const result = updateUserProfile({ displayName: "Updated User" });
-
-      await expect(result).rejects.toBeInstanceOf(UserFacingError);
-      await expect(result).rejects.toThrow(UPDATE_USER_PROFILE_ERROR_MESSAGE);
-    });
+        await expect(result).rejects.toBeInstanceOf(UserFacingError);
+        await expect(result).rejects.toThrow(expectedMessage);
+      },
+    );
 
     it("preserves the original error when apiFetch rejects", async () => {
       const transportError = new TypeError("Failed to fetch");

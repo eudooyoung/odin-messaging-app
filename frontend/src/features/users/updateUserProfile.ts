@@ -15,6 +15,10 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     throw new UserFacingError("Invalid profile input");
   }
 
+  if (response.status === 409) {
+    throw new UserFacingError("This handle is already taken");
+  }
+
   if (!response.ok) {
     throw new UserFacingError(UPDATE_USER_PROFILE_ERROR_MESSAGE);
   }

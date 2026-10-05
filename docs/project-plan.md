@@ -2,9 +2,9 @@
 
 ## 1. 현재 프로젝트 단계
 
-- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging layout·sidebar와 ConversationPage·Messages·MessageComposer UI.
-- 진행: Frontend UI/CSS의 다음 단계는 ProfilePage·UserProfilePage UI다.
-- 남음: profile 스타일, mobile responsive, 실제 브라우저 smoke test, 배포 전 점검 및 배포. MVP와 배포는 아직 완료되지 않았다.
+- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 history 뒤로가기, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX.
+- 다음 단계: Mobile responsive. 아직 시작하지 않았다.
+- 남음: Mobile responsive, 실제 브라우저 smoke test, 배포 전 점검 및 배포. MVP와 배포는 아직 완료되지 않았다.
 
 ## 2. 요구사항 / 서비스 규칙
 
@@ -23,7 +23,8 @@
 ### Conversation
 
 - 1:1 대화는 두 사용자로 구성하며 동일한 사용자 쌍에는 대화가 하나만 존재한다. 기존 대화는 재사용한다.
-- 목록은 최근 활동순으로 보여주고 상대 이름, handle, 마지막 메시지와 시간을 표시한다.
+- Conversation list는 최근 활동순으로 상대 displayName, 마지막 메시지와 시간을 표시한다. ConversationPage header도 상대 displayName 중심으로 표시하며 공개 프로필 링크를 유지한다.
+- handle/Profile ID는 검색과 공개 프로필에서 확인한다. Conversation list와 header에서는 반복 노출하지 않는다. Conversation API의 otherUser/participant identity에는 handle이 계속 포함되며, 이 결정은 데이터/API 계약 변경이 아닌 UI 표시 정책이다.
 - 대화 나가기와 기록 지우기는 MVP 범위에서 제외한다.
 
 ### Message
@@ -36,7 +37,7 @@
 ### Profile
 
 - 공개 프로필은 handle, displayName, bio, profileImage를 보여준다. 다른 사용자 프로필에서 Message로 대화를 시작한다.
-- 본인은 /profile에서 handle, displayName, bio, profileImage를 수정한다. username은 공개하거나 수정하지 않는다.
+- 본인은 /profile에서 handle, displayName, bio, profileImage를 수정한다. Domain/API 이름은 handle이며 사용자-facing 편집 label은 `Profile ID`다. 입력값에는 `@`를 포함하지 않는다. username은 공개하거나 수정하지 않는다.
 - 프로필 이미지 저장 방식은 추후 결정한다.
 
 ### MVP 제외 범위
@@ -48,7 +49,7 @@
 ### Identity와 데이터 모델
 
 - User는 내부 Int id, private username, public handle, displayName, nullable bio·profileImage를 가진다.
-- handle은 3~30자의 lowercase a-z, 0-9, _, .을 허용한다. _는 양끝에 올 수 있으나 .은 양끝에 올 수 없고 연속 ..은 허용하지 않는다. 가입 시 서버가 user_와 무작위 영소문자·숫자 8자리로 초기 handle을 생성한다.
+- handle은 trim 후 3~30자의 lowercase a-z, 0-9, _, .을 허용한다. _는 양끝에 올 수 있으나 .은 양끝에 올 수 없고 연속 ..은 허용하지 않는다. 가입 시 서버가 user_와 무작위 영소문자·숫자 8자리로 초기 handle을 생성한다.
 - 공개 사용자 identity는 { id, handle, displayName, profileImage }다. Conversation participant·otherUser와 Message sender가 이 shape를 사용한다. public payload에는 username을 노출하지 않는다.
 - auth self 응답은 { id, username, handle, displayName }다. 로그인 전용 username을 유지한다. 안정적인 본인·상대 비교에는 user id를 사용하고 공개 URL과 검색에는 handle을 사용한다.
 - 변경 전 handle의 alias나 redirect는 유지하지 않는다. /users/:oldHandle은 404다.
@@ -114,18 +115,23 @@
 - [x] Identity/API refactor: public identity, auth self, GET public profile과 PATCH self response 구분, handle 변경 cache lifecycle.
 - [x] Desktop messaging layout / sidebar와 ConversationPage header.
 - [x] Messages / MessageComposer UI: message bubble, timestamp·날짜 구분선, loading·empty·pagination UI, 메시지 입력·Send 영역.
-- [ ] UI/CSS: ProfilePage·UserProfilePage와 남은 상태 UI, mobile responsive.
+- [x] ProfilePage·UserProfilePage desktop UI: Profile ID 편집과 기존 messaging theme의 typography/color/spacing.
+- [x] Conversation list·header 표시 정책: handle 반복 노출 제거, displayName 중심 표시와 기존 navigation 유지.
+- [x] Sidebar panel SVG icon과 conversation 미선택 empty state, ConversationPage history 뒤로가기.
+- [x] Leaves branding: Sidebar logo·앱 이름의 홈 링크, 동일한 3-leaf SVG mark의 favicon 적용.
+- [x] Desktop primary 상태 스타일: Conversation hover/selected, Search focus, Sidebar toggle·뒤로가기 hover/focus, empty state icon.
+- [x] Desktop UI polish: Content width/header 정렬, loading/error 표현, profile card와 MessageComposer 입력 영역·action 정렬.
+- [x] 회원가입 성공 후 LoginPage의 일회성 성공 안내.
+- [x] Auth 확인 실패 시 app-level error와 수동 Retry; 기존 WebSocket 자동 recovery 유지와 수동 재시도 조율.
+- [ ] UI/CSS: Mobile responsive.
 
 ## 5. 남은 작업
 
 ### MVP — 우선순위
 
-1. ProfilePage·UserProfilePage와 남은 loading·empty·error 상태 스타일.
-2. 대화 목록과 채팅 화면을 전환할 수 있는 mobile responsive.
-3. Frontend와 Backend를 연결한 실제 브라우저 smoke test로 CORS, cookie, routing, WebSocket 흐름 확인.
-
-- 회원가입 성공 후 Login 화면의 성공 메시지도 smoke test 전에 표시한다.
-- 기능 UI 완료 후 앱 이름·로고 branding을 정리한다.
+1. 다음 큰 UI 단계로 대화 목록과 채팅 화면을 전환할 수 있는 mobile responsive를 진행한다.
+2. Frontend와 Backend를 연결한 실제 브라우저 smoke test로 가입·로그인·auth 복구, profile·대화 흐름과 CORS, cookie, routing, WebSocket을 확인한다.
+3. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 진행한다.
 
 ### Product / behavior follow-up
 
