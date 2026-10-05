@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import sidebarCollapseIcon from "@/assets/sidebar-collapse.svg";
+import sidebarExpandIcon from "@/assets/sidebar-expand.svg";
 import { LogoutButton } from "@/features/auth/LogoutButton.tsx";
 import { ConversationList } from "@/features/conversations/ConversationList.tsx";
 import { UserSearch } from "@/features/users/UserSearch.tsx";
@@ -13,7 +15,16 @@ export function MessagingSidebar() {
       type="button"
       onClick={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
     >
-      <span aria-hidden="true">{isSidebarCollapsed ? "›" : "‹"}</span>
+      <span
+        aria-hidden="true"
+        className="h-5 w-5 bg-current"
+        style={{
+          maskImage: `url("${isSidebarCollapsed ? sidebarExpandIcon : sidebarCollapseIcon}")`,
+          maskPosition: "center",
+          maskRepeat: "no-repeat",
+          maskSize: "contain",
+        }}
+      />
     </button>
   );
 
