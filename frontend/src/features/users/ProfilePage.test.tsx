@@ -210,9 +210,12 @@ describe("ProfilePage", () => {
         name: "Display name",
       });
       const bioInput = screen.getByRole("textbox", { name: "Bio" });
+      const handleInput = screen.getByRole("textbox", { name: "Handle" });
       expect(displayNameInput).toHaveValue("Current User");
       expect(bioInput).toHaveValue("Current bio");
 
+      await user.clear(handleInput);
+      await user.type(handleInput, "unsaved_handle");
       await user.clear(displayNameInput);
       await user.type(displayNameInput, "Unsaved User");
       await user.clear(bioInput);
@@ -226,6 +229,7 @@ describe("ProfilePage", () => {
         expect(screen.getByTestId("profile-query-display-name")).toHaveTextContent("Server User");
       });
       expect(queryClient.getQueryData(profileQueryKey)).toEqual(refreshedProfile);
+      expect(handleInput).toHaveValue("unsaved_handle");
       expect(displayNameInput).toHaveValue("Unsaved User");
       expect(bioInput).toHaveValue("Unsaved bio");
     });
@@ -646,6 +650,10 @@ describe("ProfilePage", () => {
 
       renderProfilePage(queryClient);
 
+      const handleInput = await screen.findByRole("textbox", { name: "Handle" });
+      await user.clear(handleInput);
+      await user.type(handleInput, "unsaved_handle");
+
       const { displayNameInput, bioInput, profileImageInput } = await submitProfileChanges(user, {
         displayName: "Unsaved User",
         bio: "Unsaved bio",
@@ -653,6 +661,7 @@ describe("ProfilePage", () => {
       });
 
       expect(await screen.findByRole("alert")).toHaveTextContent(mutationError.message);
+      expect(handleInput).toHaveValue("unsaved_handle");
       expect(displayNameInput).toHaveValue("Unsaved User");
       expect(bioInput).toHaveValue("Unsaved bio");
       expect(profileImageInput).toHaveValue("https://example.com/unsaved.jpg");
