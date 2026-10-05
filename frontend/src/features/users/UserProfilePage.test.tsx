@@ -105,7 +105,7 @@ describe("UserProfilePage", () => {
       expect(screen.queryByRole("button", { name: "Save profile" })).not.toBeInTheDocument();
     });
 
-    it("navigates explicitly to messages from a read-only profile", async () => {
+    it("returns to the previous history entry from a read-only profile", async () => {
       const profile = {
         id: 2,
         handle: "profile-user",
@@ -120,7 +120,7 @@ describe("UserProfilePage", () => {
 
       await user.click(await screen.findByRole("link", { name: "Close profile" }));
 
-      expect(await screen.findByRole("heading", { name: "Messages" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Previous page" })).toBeInTheDocument();
     });
 
     it("shows the current user's profile without a Message button or redirecting to edit", async () => {

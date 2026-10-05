@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { z } from "zod";
 import { FormField } from "@/components/FormField.tsx";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
@@ -76,6 +76,7 @@ const syncUpdatedProfileToCache = async (
 };
 
 export function ProfilePage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData<AuthUser>(authMeQueryOptions.queryKey);
   const handle = currentUser?.handle ?? "";
@@ -155,7 +156,11 @@ export function ProfilePage() {
         <Link
           aria-label="Close profile"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
-          to="/"
+          to="."
+          onClick={(event) => {
+            event.preventDefault();
+            navigate(-1);
+          }}
         >
           ←
         </Link>

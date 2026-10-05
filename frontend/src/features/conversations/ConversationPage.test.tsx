@@ -26,10 +26,13 @@ afterEach(() => {
   queryClient.clear();
 });
 
-const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conversations/42") =>
+const renderConversationPage = (
+  queryClient: QueryClient,
+  initialEntry: string | string[] = "/conversations/42",
+) =>
   render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialEntry]}>
+      <MemoryRouter initialEntries={Array.isArray(initialEntry) ? initialEntry : [initialEntry]}>
         <Routes>
           <Route path="/conversations/:conversationId" element={<ConversationPage />} />
           <Route path="/users/other-handle" element={<h1>Other User public profile</h1>} />
@@ -116,12 +119,12 @@ describe("ConversationPage", () => {
       });
     };
 
-    it("shows a close icon that navigates home when clicked", async () => {
+    it("returns to the previous history entry when the close icon is clicked", async () => {
       arrangeConversationPageRequests();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
-      renderConversationPage(queryClient);
+      renderConversationPage(queryClient, ["/users/other-handle", "/conversations/42"]);
 
       const closeLink = await screen.findByRole("link", {
         name: "Close conversation",
@@ -131,7 +134,9 @@ describe("ConversationPage", () => {
 
       await user.click(closeLink);
 
-      expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Other User public profile" }),
+      ).toBeInTheDocument();
     });
 
     it("loads the route conversation and shows the other participant", async () => {

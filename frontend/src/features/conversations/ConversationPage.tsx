@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { MessageComposer } from "@/features/messages/MessageComposer.tsx";
@@ -7,6 +7,7 @@ import { Messages } from "@/features/messages/Messages.tsx";
 import { CONVERSATION_QUERY_ERROR_MESSAGE, conversationQueryOptions } from "./conversationQuery.ts";
 
 export function ConversationPage() {
+  const navigate = useNavigate();
   const { conversationId } = useParams();
   const queryClient = useQueryClient();
   const currentUser = queryClient.getQueryData<{ id: number }>(authMeQueryOptions.queryKey);
@@ -50,7 +51,11 @@ export function ConversationPage() {
         <Link
           aria-label="Close conversation"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
-          to="/"
+          to="."
+          onClick={(event) => {
+            event.preventDefault();
+            navigate(-1);
+          }}
         >
           ←
         </Link>

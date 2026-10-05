@@ -131,7 +131,7 @@ const ProfileQueryObserver = () => {
 
 describe("ProfilePage", () => {
   describe("navigation", () => {
-    it("navigates explicitly to messages from the profile editor", async () => {
+    it("returns to the previous history entry from the profile editor", async () => {
       vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
       const user = userEvent.setup();
 
@@ -139,7 +139,7 @@ describe("ProfilePage", () => {
 
       await user.click(await screen.findByRole("link", { name: "Close profile" }));
 
-      expect(await screen.findByRole("heading", { name: "Messages" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Previous page" })).toBeInTheDocument();
     });
   });
 
