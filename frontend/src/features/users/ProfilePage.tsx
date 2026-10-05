@@ -12,6 +12,7 @@ import { USER_PROFILE_QUERY_ERROR_MESSAGE, userProfileQueryOptions } from "./use
 import { updateUserProfile } from "./updateUserProfile.ts";
 
 const profileSchema = z.object({
+  handle: z.string(),
   displayName: z
     .string()
     .trim()
@@ -80,6 +81,7 @@ export function ProfilePage() {
       keepDirtyValues: true,
     },
     values: {
+      handle: profile?.handle ?? "",
       displayName: profile?.displayName ?? "",
       bio: profile?.bio ?? "",
       profileImage: profile?.profileImage ?? "",
@@ -96,6 +98,7 @@ export function ProfilePage() {
       await syncUpdatedProfileToCache(queryClient, handle, updatedProfile);
       reset(
         {
+          handle: updatedProfile.handle,
           displayName: updatedProfile.displayName,
           bio: updatedProfile.bio ?? "",
           profileImage: updatedProfile.profileImage ?? "",
@@ -123,6 +126,8 @@ export function ProfilePage() {
       <Link aria-label="Close profile" to="/">
         ←
       </Link>
+
+      <FormField id="handle" type="text" label="Handle" {...register("handle")} />
 
       <FormField
         id="display-name"

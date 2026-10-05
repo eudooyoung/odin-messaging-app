@@ -173,6 +173,7 @@ describe("ProfilePage", () => {
       expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue(
         "https://example.com/current-user.jpg",
       );
+      expect(screen.getByRole("textbox", { name: "Handle" })).toHaveValue(baseProfile.handle);
     });
 
     it("shows empty inputs when the profile bio and profile image are null", async () => {
