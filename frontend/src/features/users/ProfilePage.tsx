@@ -12,7 +12,20 @@ import { USER_PROFILE_QUERY_ERROR_MESSAGE, userProfileQueryOptions } from "./use
 import { updateUserProfile } from "./updateUserProfile.ts";
 
 const profileSchema = z.object({
-  handle: z.string(),
+  handle: z
+    .string()
+    .trim()
+    .min(3, "Handle must be at least 3 characters")
+    .max(30, "Handle must be at most 30 characters")
+    .regex(
+      /^[a-z0-9_.]+$/,
+      "Handle can only contain lowercase letters, numbers, underscores, and periods",
+    )
+    .refine(
+      (handle) => !handle.startsWith(".") && !handle.endsWith("."),
+      "Handle cannot start or end with a period",
+    )
+    .refine((handle) => !handle.includes(".."), "Handle cannot contain consecutive periods"),
   displayName: z
     .string()
     .trim()
@@ -128,7 +141,13 @@ export function ProfilePage() {
         ←
       </Link>
 
-      <FormField id="handle" type="text" label="Handle" {...register("handle")} />
+      <FormField
+        id="handle"
+        type="text"
+        label="Handle"
+        error={errors.handle?.message}
+        {...register("handle")}
+      />
 
       <FormField
         id="display-name"

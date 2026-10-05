@@ -37,7 +37,7 @@ afterEach(() => {
 const currentUser: AuthUser = {
   id: 1,
   username: "current-user",
-  handle: "current-handle",
+  handle: "current_handle",
   displayName: "Current User",
 };
 
@@ -242,6 +242,43 @@ describe("ProfilePage", () => {
   describe("validation", () => {
     it.each([
       {
+        caseName: "the handle is shorter than 3 characters",
+        fieldName: "Handle",
+        value: "ab",
+        expectedMessage: "Handle must be at least 3 characters",
+      },
+      {
+        caseName: "the handle is longer than 30 characters after trimming",
+        fieldName: "Handle",
+        value: ` ${"a".repeat(31)} `,
+        expectedMessage: "Handle must be at most 30 characters",
+      },
+      {
+        caseName: "the handle contains disallowed characters",
+        fieldName: "Handle",
+        value: "Invalid-Handle",
+        expectedMessage:
+          "Handle can only contain lowercase letters, numbers, underscores, and periods",
+      },
+      {
+        caseName: "the handle starts with a period",
+        fieldName: "Handle",
+        value: ".invalid",
+        expectedMessage: "Handle cannot start or end with a period",
+      },
+      {
+        caseName: "the handle ends with a period",
+        fieldName: "Handle",
+        value: "invalid.",
+        expectedMessage: "Handle cannot start or end with a period",
+      },
+      {
+        caseName: "the handle contains consecutive periods",
+        fieldName: "Handle",
+        value: "invalid..handle",
+        expectedMessage: "Handle cannot contain consecutive periods",
+      },
+      {
         caseName: "the display name is blank after trimming",
         fieldName: "Display name",
         value: "   ",
@@ -262,12 +299,7 @@ describe("ProfilePage", () => {
     ])(
       "shows a validation error and does not update the profile when $caseName",
       async ({ fieldName, value, expectedMessage }) => {
-        vi.mocked(apiFetch).mockResolvedValue(
-          profileResponse({
-            ...baseProfile,
-            profileImage: "https://example.com/current-user.jpg",
-          }),
-        );
+        vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
         const user = userEvent.setup();
 
         renderProfilePage(queryClient);
@@ -287,7 +319,7 @@ describe("ProfilePage", () => {
     it("updates the profile and related caches after a successful submission", async () => {
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: "updated-handle",
+        handle: "updated_handle",
         displayName: "Updated User",
         bio: null,
         profileImage: null,
@@ -353,7 +385,7 @@ describe("ProfilePage", () => {
     it("updates auth and public profile caches using the new handle", async () => {
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: "new-handle",
+        handle: "new_handle",
         displayName: "Updated User",
         bio: "Updated bio",
         profileImage: "https://example.com/updated-user.jpg",
@@ -414,7 +446,7 @@ describe("ProfilePage", () => {
     it("keeps the new-handle profile when an old-handle refetch finishes afterward", async () => {
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: "new-handle",
+        handle: "new_handle",
         displayName: "Saved User",
         bio: "Saved bio",
         profileImage: baseProfile.profileImage,
@@ -506,7 +538,7 @@ describe("ProfilePage", () => {
       };
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: "new-handle",
+        handle: "new_handle",
         displayName: "Saved User",
         bio: profile.bio,
         profileImage: profile.profileImage,
@@ -552,7 +584,7 @@ describe("ProfilePage", () => {
           handle: updatedProfile.handle,
           displayName: "Saved User",
         });
-        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new-handle Saved User");
+        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new_handle Saved User");
       });
 
       await act(async () => {
@@ -577,7 +609,7 @@ describe("ProfilePage", () => {
           handle: updatedProfile.handle,
           displayName: "Saved User",
         });
-        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new-handle Saved User");
+        expect(screen.getByTestId("auth-me-identity")).toHaveTextContent("new_handle Saved User");
       });
     });
 
