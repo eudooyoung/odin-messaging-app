@@ -28,7 +28,14 @@ export function ConversationPage() {
   }
 
   if (isPending) {
-    return <p role="status">Loading conversation...</p>;
+    return (
+      <p
+        className="flex h-full items-center justify-center px-8 py-8 text-center font-body text-sm text-neutral-500"
+        role="status"
+      >
+        Loading conversation...
+      </p>
+    );
   }
 
   if (isError) {
@@ -47,46 +54,50 @@ export function ConversationPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-6 py-4">
-        <Link
-          aria-label="Close conversation"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-primary-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
-          to="."
-          onClick={(event) => {
-            event.preventDefault();
-            navigate(-1);
-          }}
-        >
-          ←
-        </Link>
-        {otherUser.profileImage ? (
-          <img
-            className="h-10 w-10 shrink-0 rounded-full object-cover"
-            src={otherUser.profileImage}
-            alt={`${otherUser.displayName} profile`}
-          />
-        ) : (
-          <span
-            aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 font-heading text-sm font-semibold text-primary-700"
+      <header className="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white">
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-8 py-4">
+          <Link
+            aria-label="Close conversation"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-primary-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+            to="."
+            onClick={(event) => {
+              event.preventDefault();
+              navigate(-1);
+            }}
           >
-            {otherUser.displayName.charAt(0)}
-          </span>
-        )}
-        <Link
-          className="group min-w-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
-          to={`/users/${encodeURIComponent(otherUser.handle)}`}
-        >
-          <h1 className="truncate font-heading text-base font-semibold text-neutral-900 transition-colors group-hover:text-primary-700 group-focus-visible:text-primary-700">
-            {otherUser.displayName}
-          </h1>
-        </Link>
+            ←
+          </Link>
+          {otherUser.profileImage ? (
+            <img
+              className="h-10 w-10 shrink-0 rounded-full object-cover"
+              src={otherUser.profileImage}
+              alt={`${otherUser.displayName} profile`}
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100 font-heading text-sm font-semibold text-primary-700"
+            >
+              {otherUser.displayName.charAt(0)}
+            </span>
+          )}
+          <Link
+            className="group min-w-0 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+            to={`/users/${encodeURIComponent(otherUser.handle)}`}
+          >
+            <h1 className="truncate font-heading text-base font-semibold text-neutral-900 transition-colors group-hover:text-primary-700 group-focus-visible:text-primary-700">
+              {otherUser.displayName}
+            </h1>
+          </Link>
+        </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
         <Messages conversationId={parsedConversationId} currentUserId={currentUser.id} />
       </div>
-      <div className="shrink-0 border-t border-neutral-200 bg-neutral-50 px-6 py-4">
-        <MessageComposer conversationId={parsedConversationId} />
+      <div className="shrink-0 border-t border-neutral-200 bg-neutral-50">
+        <div className="mx-auto w-full max-w-2xl px-8 py-4">
+          <MessageComposer conversationId={parsedConversationId} />
+        </div>
       </div>
     </div>
   );

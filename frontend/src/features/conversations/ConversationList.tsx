@@ -23,7 +23,7 @@ export function ConversationList() {
 
   if (isPending) {
     return (
-      <p className="text-sm text-neutral-500" role="status">
+      <p className="font-body text-sm text-neutral-500" role="status">
         Loading conversations...
       </p>
     );

@@ -79,7 +79,7 @@ export function Messages({ conversationId, currentUserId }: MessagesProps) {
         <div ref={sentinelRef} aria-hidden="true" className="h-0" />
       )}
       {isFetchingNextPage && (
-        <p className="px-6 py-2 text-center text-xs text-neutral-500" role="status">
+        <p className="px-6 py-2 text-center font-body text-xs text-neutral-500" role="status">
           Loading older messages...
         </p>
       )}
@@ -101,7 +101,7 @@ export function Messages({ conversationId, currentUserId }: MessagesProps) {
         </div>
       )}
       <ul
-        className="flex flex-col gap-4 px-6 py-6"
+        className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-8 py-6"
         style={{ visibility: showMessages ? "visible" : "hidden" }}
       >
         {messages.map((message, index) => {

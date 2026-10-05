@@ -32,7 +32,11 @@ export function ProtectedRoute() {
   const isUnauthenticated = currentUser === null;
 
   if (isPending) {
-    return <p role="status">Loading...</p>;
+    return (
+      <p className="px-8 py-10 font-body text-sm text-neutral-500" role="status">
+        Loading...
+      </p>
+    );
   }
 
   if (isAuthStateUnknown) {

@@ -129,7 +129,7 @@ export function ProfilePage() {
   });
   if (isPending) {
     return (
-      <p className="px-8 py-10 text-sm text-neutral-500" role="status">
+      <p className="px-8 py-10 font-body text-sm text-neutral-500" role="status">
         Loading profile...
       </p>
     );
@@ -148,103 +148,106 @@ export function ProfilePage() {
   }
 
   return (
-    <form
-      className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-8 py-10 font-body"
-      onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}
-    >
-      <header className="flex items-center gap-3 pb-6">
-        <Link
-          aria-label="Close profile"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
-          to="."
-          onClick={(event) => {
-            event.preventDefault();
-            navigate(-1);
-          }}
-        >
-          ←
-        </Link>
-        <h2 className="font-heading text-2xl font-semibold tracking-tight text-neutral-900">
-          Profile
-        </h2>
+    <div className="flex min-h-full flex-col font-body">
+      <header className="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white">
+        <div className="mx-auto flex h-18 w-full max-w-2xl items-center gap-3 px-8 py-4">
+          <Link
+            aria-label="Close profile"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+            to="."
+            onClick={(event) => {
+              event.preventDefault();
+              navigate(-1);
+            }}
+          >
+            ←
+          </Link>
+          <h2 className="font-heading text-2xl font-semibold tracking-tight text-neutral-900">
+            Profile
+          </h2>
+        </div>
       </header>
+      <form
+        className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-8 py-10 font-body"
+        onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}
+      >
+        <div className={fieldWrapperClassName}>
+          <FormField
+            id="handle"
+            type="text"
+            label="Profile ID"
+            error={errors.handle?.message}
+            className={inputClassName}
+            {...register("handle")}
+          />
+          <span className="text-sm text-neutral-500">Used in your @ID and profile URL.</span>
+        </div>
 
-      <div className={fieldWrapperClassName}>
-        <FormField
-          id="handle"
-          type="text"
-          label="Profile ID"
-          error={errors.handle?.message}
-          className={inputClassName}
-          {...register("handle")}
-        />
-        <span className="text-sm text-neutral-500">Used in your @ID and profile URL.</span>
-      </div>
+        <div className={fieldWrapperClassName}>
+          <FormField
+            id="display-name"
+            type="text"
+            label="Display name"
+            error={errors.displayName?.message}
+            className={inputClassName}
+            {...register("displayName")}
+          />
+        </div>
 
-      <div className={fieldWrapperClassName}>
-        <FormField
-          id="display-name"
-          type="text"
-          label="Display name"
-          error={errors.displayName?.message}
-          className={inputClassName}
-          {...register("displayName")}
-        />
-      </div>
+        <div className={fieldWrapperClassName}>
+          <label htmlFor="bio">Bio</label>
+          <textarea
+            id="bio"
+            className={`${inputClassName} min-h-32 resize-y`}
+            aria-invalid={Boolean(errors.bio)}
+            aria-describedby={errors.bio ? "bio-error" : undefined}
+            {...register("bio")}
+          />
+          {errors.bio && (
+            <p id="bio-error" role="alert">
+              {errors.bio.message}
+            </p>
+          )}
+        </div>
 
-      <div className={fieldWrapperClassName}>
-        <label htmlFor="bio">Bio</label>
-        <textarea
-          id="bio"
-          className={`${inputClassName} min-h-32 resize-y`}
-          aria-invalid={Boolean(errors.bio)}
-          aria-describedby={errors.bio ? "bio-error" : undefined}
-          {...register("bio")}
-        />
-        {errors.bio && (
-          <p id="bio-error" role="alert">
-            {errors.bio.message}
-          </p>
-        )}
-      </div>
+        <div className={fieldWrapperClassName}>
+          <FormField
+            id="profile-image"
+            type="url"
+            label="Profile image"
+            className={inputClassName}
+            {...register("profileImage")}
+          />
+        </div>
 
-      <div className={fieldWrapperClassName}>
-        <FormField
-          id="profile-image"
-          type="url"
-          label="Profile image"
-          className={inputClassName}
-          {...register("profileImage")}
-        />
-      </div>
-
-      <div className="flex flex-col items-start gap-4 pt-6">
-        <button
-          className="self-end rounded-md bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
-          type="submit"
-          disabled={updateProfileMutation.isPending}
-        >
-          Save profile
-        </button>
-
-        {updateProfileMutation.isSuccess && (
-          <p
-            className="w-full rounded-md border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700"
-            role="status"
+        <div className="flex flex-col items-start gap-4 pt-6">
+          <button
+            className="self-end rounded-md bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
+            type="submit"
+            disabled={updateProfileMutation.isPending}
           >
-            Profile updated
-          </p>
-        )}
+            Save profile
+          </button>
 
-        {updateProfileMutation.isError && (
-          <p
-            className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700"
-            role="alert"
-          >
-            {updateProfileMutation.error.message}
-          </p>
-        )}
-      </div>
-    </form>
+          {updateProfileMutation.isSuccess && (
+            <p
+              className="w-full rounded-md border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700"
+              role="status"
+            >
+              Profile updated
+            </p>
+          )}
+
+          {updateProfileMutation.isError && (
+            <p
+              className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700"
+              role="alert"
+            >
+              {updateProfileMutation.error.message}
+            </p>
+          )}
+        </div>
+      </form>
+    </div>
   );
 }
