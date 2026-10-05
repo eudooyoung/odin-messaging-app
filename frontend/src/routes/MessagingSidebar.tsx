@@ -12,7 +12,7 @@ export function MessagingSidebar() {
   const sidebarToggleButton = (
     <button
       aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${isSidebarCollapsed ? "self-center" : ""}`}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-neutral-300 text-neutral-600 transition-colors hover:border-primary-100 hover:bg-primary-50 hover:text-primary-700 focus-visible:border-primary-500 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-primary-600 ${isSidebarCollapsed ? "self-center" : ""}`}
       type="button"
       onClick={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
     >

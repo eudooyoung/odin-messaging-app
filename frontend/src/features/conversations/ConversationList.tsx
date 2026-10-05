@@ -57,12 +57,12 @@ export function ConversationList() {
           >
             <NavLink
               className={({ isActive }) =>
-                `group grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 px-4 py-3 transition-colors hover:bg-primary-50 focus-visible:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none focus-visible:ring-inset ${isActive ? "bg-primary-50" : ""}`
+                `group grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 px-4 py-3 transition-colors focus-visible:bg-primary-50 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:outline-none focus-visible:ring-inset ${isActive ? "bg-primary-50 ring-1 ring-primary-200 ring-inset" : "hover:bg-primary-50/50"}`
               }
               end
               to={`/conversations/${conversation.id}`}
             >
-              <h2 className="min-w-0 truncate font-heading text-sm font-semibold text-neutral-900 group-hover:text-primary-700">
+              <h2 className="min-w-0 truncate font-heading text-sm font-semibold text-neutral-900">
                 {conversation.otherUser.displayName}
               </h2>
               <time

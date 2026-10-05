@@ -3,7 +3,7 @@ export function ConversationEmptyState() {
     <div className="flex min-h-full flex-col items-center justify-center gap-3 px-8 py-10 text-center">
       <svg
         aria-hidden="true"
-        className="mb-2 h-10 w-10 text-neutral-400"
+        className="mb-2 h-10 w-10 text-primary-400"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

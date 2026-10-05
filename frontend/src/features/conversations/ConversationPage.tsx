@@ -50,7 +50,7 @@ export function ConversationPage() {
       <header className="sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-6 py-4">
         <Link
           aria-label="Close conversation"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-primary-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
           to="."
           onClick={(event) => {
             event.preventDefault();
