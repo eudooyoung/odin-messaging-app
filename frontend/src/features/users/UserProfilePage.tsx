@@ -89,42 +89,44 @@ export function UserProfilePage() {
           </h2>
         </div>
       </header>
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-8 py-10">
-        <div className="flex min-w-0 items-center gap-5">
-          {profile.profileImage && (
-            <img
-              className="h-20 w-20 shrink-0 rounded-full object-cover"
-              src={profile.profileImage}
-              alt={`${profile.displayName} profile`}
-            />
-          )}
-          <div className="flex min-w-0 flex-col gap-2">
-            <p className="text-sm break-words text-neutral-500">@{profile.handle}</p>
-          </div>
-        </div>
-        <p className="text-base leading-relaxed break-words whitespace-pre-wrap text-neutral-700">
-          {profile.bio}
-        </p>
-        {!isCurrentUserProfile && (
-          <>
-            <button
-              className="self-start rounded-md bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
-              type="button"
-              disabled={createConversationMutation.isPending}
-              onClick={() => createConversationMutation.mutate(profile.handle)}
-            >
-              Message
-            </button>
-            {createConversationMutation.isError && (
-              <div className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700">
-                <UserFacingErrorMessage
-                  error={createConversationMutation.error}
-                  fallbackMessage="Failed to create conversation"
-                />
-              </div>
+      <div className="mx-auto w-full max-w-2xl px-8 py-10">
+        <div className="flex flex-col gap-6 rounded-lg border border-primary-200 bg-primary-50 p-6">
+          <div className="flex min-w-0 items-center gap-5">
+            {profile.profileImage && (
+              <img
+                className="h-20 w-20 shrink-0 rounded-full object-cover"
+                src={profile.profileImage}
+                alt={`${profile.displayName} profile`}
+              />
             )}
-          </>
-        )}
+            <div className="flex min-w-0 flex-col gap-2">
+              <p className="text-sm wrap-break-word text-neutral-500">@{profile.handle}</p>
+            </div>
+          </div>
+          <p className="text-base leading-relaxed wrap-break-word whitespace-pre-wrap text-neutral-700">
+            {profile.bio}
+          </p>
+          {!isCurrentUserProfile && (
+            <>
+              <button
+                className="self-start rounded-md bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
+                type="button"
+                disabled={createConversationMutation.isPending}
+                onClick={() => createConversationMutation.mutate(profile.handle)}
+              >
+                Message
+              </button>
+              {createConversationMutation.isError && (
+                <div className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700">
+                  <UserFacingErrorMessage
+                    error={createConversationMutation.error}
+                    fallbackMessage="Failed to create conversation"
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </main>
   );
