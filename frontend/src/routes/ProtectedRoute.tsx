@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, type Query } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
 import { AUTH_QUERY_FALLBACK_MESSAGE, authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
@@ -32,6 +32,13 @@ export function ProtectedRoute() {
     isFetching,
     refetch,
   } = useQuery(authMeQueryOptions);
+  const [hasAuthenticated, setHasAuthenticated] = useState(false);
+
+  // Keep an established session's recovery lifecycle mounted during auth errors.
+  if (!isPending && !isError && currentUser && !hasAuthenticated) {
+    setHasAuthenticated(true);
+  }
+
   const authError = (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 py-10 text-center font-body text-sm text-danger-700">
       <UserFacingErrorMessage error={error} fallbackMessage={AUTH_QUERY_FALLBACK_MESSAGE} />
@@ -40,7 +47,7 @@ export function ProtectedRoute() {
         type="button"
         disabled={isFetching}
         onClick={() => {
-          void refetch();
+          void refetch({ cancelRefetch: false });
         }}
       >
         Retry
@@ -61,11 +68,11 @@ export function ProtectedRoute() {
     );
   }
 
-  if (isError || isAuthStateUnknown) {
+  if ((isError || isAuthStateUnknown) && !hasAuthenticated) {
     return authError;
   }
 
-  if (isUnauthenticated) {
+  if (isUnauthenticated && !isError) {
     return <Navigate to="/login" />;
   }
 
@@ -73,7 +80,7 @@ export function ProtectedRoute() {
     <>
       <ClearSessionCacheOnAuthEnd />
       <AuthenticatedWebSocket />
-      <Outlet />
+      {isError || isAuthStateUnknown ? authError : <Outlet />}
     </>
   );
 }
