@@ -93,7 +93,7 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
           <FormField
             as="textarea"
             autoFocus
-            className="col-start-1 row-start-1 block max-h-40 min-h-11 w-full min-w-0 resize-none overflow-y-auto rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-base leading-6 text-neutral-900 placeholder:text-neutral-400 focus-visible:border-primary-500 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary-100 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-neutral-100"
+            className="col-start-1 row-start-1 block max-h-40 min-h-11 w-full min-w-0 resize-none overflow-y-auto rounded-lg border border-neutral-300 px-3 py-2 text-base leading-6 text-neutral-900 placeholder:text-neutral-400 focus-visible:border-primary-500 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary-100 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-neutral-100"
             id="message-content"
             label="Message"
             rows={1}
