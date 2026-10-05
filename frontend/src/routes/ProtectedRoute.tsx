@@ -26,7 +26,9 @@ function ClearSessionCacheOnAuthEnd() {
 export function ProtectedRoute() {
   const { data: currentUser, isPending, isError, error } = useQuery(authMeQueryOptions);
   const authError = (
-    <UserFacingErrorMessage error={error} fallbackMessage={AUTH_QUERY_FALLBACK_MESSAGE} />
+    <div className="flex min-h-dvh items-center justify-center px-8 py-10 text-center font-body text-sm text-danger-700">
+      <UserFacingErrorMessage error={error} fallbackMessage={AUTH_QUERY_FALLBACK_MESSAGE} />
+    </div>
   );
   const isAuthStateUnknown = currentUser === undefined;
   const isUnauthenticated = currentUser === null;
@@ -42,7 +44,7 @@ export function ProtectedRoute() {
     );
   }
 
-  if (isAuthStateUnknown) {
+  if (isError || isAuthStateUnknown) {
     return authError;
   }
 
@@ -52,7 +54,6 @@ export function ProtectedRoute() {
 
   return (
     <>
-      {isError && authError}
       <ClearSessionCacheOnAuthEnd />
       <AuthenticatedWebSocket />
       <Outlet />

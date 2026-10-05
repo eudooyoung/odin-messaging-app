@@ -40,7 +40,9 @@ export function ConversationPage() {
 
   if (isError) {
     return (
-      <UserFacingErrorMessage error={error} fallbackMessage={CONVERSATION_QUERY_ERROR_MESSAGE} />
+      <div className="flex h-full items-center justify-center px-8 py-8 text-center font-body text-sm text-danger-700">
+        <UserFacingErrorMessage error={error} fallbackMessage={CONVERSATION_QUERY_ERROR_MESSAGE} />
+      </div>
     );
   }
 

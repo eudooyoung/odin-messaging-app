@@ -31,7 +31,9 @@ export function ConversationList() {
 
   if (isError && !isFetchNextPageError) {
     return (
-      <UserFacingErrorMessage error={error} fallbackMessage={CONVERSATIONS_QUERY_ERROR_MESSAGE} />
+      <div className="flex h-full items-center justify-center px-4 py-3 text-center font-body text-sm text-danger-700">
+        <UserFacingErrorMessage error={error} fallbackMessage={CONVERSATIONS_QUERY_ERROR_MESSAGE} />
+      </div>
     );
   }
 
@@ -66,7 +68,7 @@ export function ConversationList() {
                 {conversation.otherUser.displayName}
               </h2>
               <time
-                className="text-xs whitespace-nowrap text-neutral-400"
+                className="text-xs whitespace-nowrap text-neutral-500"
                 dateTime={conversation.lastActivityAt}
               >
                 {new Date(conversation.lastActivityAt).toLocaleString()}

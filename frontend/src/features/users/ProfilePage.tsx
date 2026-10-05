@@ -140,7 +140,7 @@ export function ProfilePage() {
 
   if (isError) {
     return (
-      <div className="px-8 py-10 text-sm text-danger-700">
+      <div className="flex h-full items-center justify-center px-8 py-10 text-center font-body text-sm text-danger-700">
         <UserFacingErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />
       </div>
     );

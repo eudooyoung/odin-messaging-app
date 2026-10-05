@@ -54,7 +54,11 @@ export function Messages({ conversationId, currentUserId }: MessagesProps) {
   }
 
   if (isLoadingError) {
-    return <UserFacingErrorMessage error={error} fallbackMessage={MESSAGES_QUERY_ERROR_MESSAGE} />;
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center px-8 py-8 text-center font-body text-sm text-danger-700">
+        <UserFacingErrorMessage error={error} fallbackMessage={MESSAGES_QUERY_ERROR_MESSAGE} />
+      </div>
+    );
   }
 
   if (!messages) {

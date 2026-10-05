@@ -49,7 +49,10 @@ export function UserProfilePage() {
 
   if (isError && error instanceof UserProfileNotFoundError) {
     return (
-      <p className="px-8 py-10 text-sm text-danger-700" role="alert">
+      <p
+        className="flex h-full items-center justify-center px-8 py-10 text-center font-body text-sm text-danger-700"
+        role="alert"
+      >
         {error.message}
       </p>
     );
@@ -57,7 +60,7 @@ export function UserProfilePage() {
 
   if (isError) {
     return (
-      <div className="px-8 py-10 text-sm text-danger-700">
+      <div className="flex h-full items-center justify-center px-8 py-10 text-center font-body text-sm text-danger-700">
         <UserFacingErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />
       </div>
     );

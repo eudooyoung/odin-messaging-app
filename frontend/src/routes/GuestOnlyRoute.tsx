@@ -19,7 +19,11 @@ export function GuestOnlyRoute() {
   }
 
   if (isError) {
-    return <UserFacingErrorMessage error={error} fallbackMessage={AUTH_QUERY_FALLBACK_MESSAGE} />;
+    return (
+      <div className="flex min-h-dvh items-center justify-center px-8 py-10 text-center font-body text-sm text-danger-700">
+        <UserFacingErrorMessage error={error} fallbackMessage={AUTH_QUERY_FALLBACK_MESSAGE} />
+      </div>
+    );
   }
 
   if (isUnauthenticated) {
