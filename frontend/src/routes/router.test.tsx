@@ -88,6 +88,7 @@ describe("router", () => {
       await renderRouterAt("/login");
 
       await expectLoginPage();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
     it("renders the register page under the guest-only route for an unauthenticated user", async () => {
@@ -99,6 +100,44 @@ describe("router", () => {
       expect(screen.getByRole("textbox", { name: "Display name" })).toBeInTheDocument();
       expect(screen.getByLabelText("Password")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Register" })).toBeInTheDocument();
+    });
+
+    it("shows registration success once without repeating it when returning to login", async () => {
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(new Response(null, { status: 401 }));
+        }
+
+        if (input === "/auth/register") {
+          return Promise.resolve(new Response(null, { status: 201 }));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt("/register");
+
+      await user.type(await screen.findByRole("textbox", { name: "Username" }), "new-user");
+      await user.type(screen.getByRole("textbox", { name: "Display name" }), "New User");
+      await user.type(screen.getByLabelText("Password"), "secure-password");
+      await user.type(screen.getByLabelText("Confirm password"), "secure-password");
+      await user.click(screen.getByRole("button", { name: "Register" }));
+
+      expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "Registration successful. You can now log in.",
+      );
+
+      await user.click(screen.getByRole("link", { name: "Register" }));
+      expect(await screen.findByRole("heading", { name: "Register" })).toBeInTheDocument();
+
+      await act(async () => {
+        await router.navigate(-1);
+      });
+
+      expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
   });
 
