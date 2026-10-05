@@ -129,7 +129,10 @@ export function ProfilePage() {
   });
   if (isPending) {
     return (
-      <p className="px-8 py-10 font-body text-sm text-neutral-500" role="status">
+      <p
+        className="flex h-full items-center justify-center px-8 py-10 text-center font-body text-sm text-neutral-500"
+        role="status"
+      >
         Loading profile...
       </p>
     );

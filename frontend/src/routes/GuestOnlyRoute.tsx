@@ -9,7 +9,10 @@ export function GuestOnlyRoute() {
 
   if (isPending) {
     return (
-      <p className="px-8 py-10 font-body text-sm text-neutral-500" role="status">
+      <p
+        className="flex min-h-dvh items-center justify-center px-8 py-10 text-center font-body text-sm text-neutral-500"
+        role="status"
+      >
         Loading...
       </p>
     );
