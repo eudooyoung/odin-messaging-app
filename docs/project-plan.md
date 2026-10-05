@@ -2,9 +2,9 @@
 
 ## 1. 현재 프로젝트 단계
 
-- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit.
-- 진행: Frontend UI/CSS. Desktop messaging layout·sidebar와 ConversationPage header까지 구현했다.
-- 남음: conversation 본문과 profile 스타일, mobile responsive, 실제 브라우저 smoke test, 배포 전 점검 및 배포. MVP와 배포는 아직 완료되지 않았다.
+- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging layout·sidebar와 ConversationPage·Messages·MessageComposer UI.
+- 진행: Frontend UI/CSS의 다음 단계는 ProfilePage·UserProfilePage UI다.
+- 남음: profile 스타일, mobile responsive, 실제 브라우저 smoke test, 배포 전 점검 및 배포. MVP와 배포는 아직 완료되지 않았다.
 
 ## 2. 요구사항 / 서비스 규칙
 
@@ -113,17 +113,16 @@
 - [x] WebSocket: runtime validation, 실시간 cache 반영, 연결 복구·재연결.
 - [x] Identity/API refactor: public identity, auth self, GET public profile과 PATCH self response 구분, handle 변경 cache lifecycle.
 - [x] Desktop messaging layout / sidebar와 ConversationPage header.
-- [ ] UI/CSS: conversation 본문, message composer, profile 상태 UI, mobile responsive.
+- [x] Messages / MessageComposer UI: message bubble, timestamp·날짜 구분선, loading·empty·pagination UI, 메시지 입력·Send 영역.
+- [ ] UI/CSS: ProfilePage·UserProfilePage와 남은 상태 UI, mobile responsive.
 
 ## 5. 남은 작업
 
 ### MVP — 우선순위
 
-1. MessageList: message bubble, timestamp, loading·empty·pagination UI.
-2. MessageComposer 입력·Send 영역 스타일.
-3. ProfilePage·UserProfilePage와 남은 loading·empty·error 상태 스타일.
-4. 대화 목록과 채팅 화면을 전환할 수 있는 mobile responsive.
-5. Frontend와 Backend를 연결한 실제 브라우저 smoke test로 CORS, cookie, routing, WebSocket 흐름 확인.
+1. ProfilePage·UserProfilePage와 남은 loading·empty·error 상태 스타일.
+2. 대화 목록과 채팅 화면을 전환할 수 있는 mobile responsive.
+3. Frontend와 Backend를 연결한 실제 브라우저 smoke test로 CORS, cookie, routing, WebSocket 흐름 확인.
 
 - 회원가입 성공 후 Login 화면의 성공 메시지도 smoke test 전에 표시한다.
 - 기능 UI 완료 후 앱 이름·로고 branding을 정리한다.
