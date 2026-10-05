@@ -195,7 +195,8 @@ describe("ProtectedRoute", () => {
 
       expect(screen.queryByRole("heading", { name: "Protected content" })).not.toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Login" })).not.toBeInTheDocument();
-      expect(screen.getByRole("alert")).toHaveTextContent("Failed to check authentication");
+      expect(screen.getByRole("alert")).toHaveTextContent("Unable to connect to the server");
+      expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     });
   });
 

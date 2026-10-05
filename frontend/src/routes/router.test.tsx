@@ -8,6 +8,7 @@ import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
 import { messagesQueryOptions } from "@/features/messages/messagesQuery.ts";
 import { createDeferred } from "@/tests/createDeferred.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { router } from "./router.tsx";
 
@@ -138,6 +139,52 @@ describe("router", () => {
 
       expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("auth recovery", () => {
+    it.each([
+      { caseName: "protected route with an authenticated user", path: "/", recoveredUser: currentUser },
+      { caseName: "protected route with an unauthenticated user", path: "/", recoveredUser: null },
+      { caseName: "guest route with an authenticated user", path: "/login", recoveredUser: currentUser },
+      { caseName: "guest route with an unauthenticated user", path: "/login", recoveredUser: null },
+    ])("returns to the normal flow after Retry from a $caseName", async ({ path, recoveredUser }) => {
+      queryClient = createTestQueryClient();
+      let authCheckFails = true;
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          if (authCheckFails) {
+            return Promise.reject(new TypeError("Failed to fetch"));
+          }
+          return Promise.resolve(
+            recoveredUser ? jsonResponse(recoveredUser) : new Response(null, { status: 401 }),
+          );
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt(path);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Unable to connect to the server");
+      expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+
+      authCheckFails = false;
+      await user.click(screen.getByRole("button", { name: "Retry" }));
+
+      if (recoveredUser) {
+        expect(await screen.findByRole("heading", { name: "Select a conversation" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Leaves" })).toBeInTheDocument();
+      } else {
+        expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
+      }
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     });
   });
 
