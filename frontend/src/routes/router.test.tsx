@@ -129,7 +129,7 @@ describe("router", () => {
       expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
-      expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Select a conversation" })).toBeInTheDocument();
     });
 
     it("routes /users/:handle to the read-only user profile inside the protected messaging layout", async () => {

@@ -1,5 +1,6 @@
 import { LoginPage } from "@/features/auth/LoginPage.tsx";
 import { RegisterPage } from "@/features/auth/RegisterPage.tsx";
+import { ConversationEmptyState } from "@/features/conversations/ConversationEmptyState.tsx";
 import { ConversationPage } from "@/features/conversations/ConversationPage.tsx";
 import { ProfilePage } from "@/features/users/ProfilePage.tsx";
 import { UserProfilePage } from "@/features/users/UserProfilePage.tsx";
@@ -18,7 +19,7 @@ const routes = [
         children: [
           {
             index: true,
-            element: <p>Select a conversation</p>,
+            element: <ConversationEmptyState />,
           },
           {
             path: "conversations/:conversationId",
