@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-labelledby="title">
+  <title id="title">Leaves logo mark</title>
+
+  <!-- stem -->
+  <path
+    d="M12 20.5C12 16.8 12.5 13.8 13.7 11.2"
+    fill="none"
+    stroke="#2e7d5a"
+    stroke-width="1.35"
+    stroke-linecap="round"
+  />
+
+  <!-- top leaf -->
+  <path
+    d="M13.6 11.7C12.25 10.3 11.55 8.55 11.9 6.75C12.3 4.7 13.9 3.15 16.35 2.45C16.85 4.95 16.55 7.05 15.45 8.75C14.95 9.5 14.35 10.15 13.6 11.7Z"
+    fill="#2e7d5a"
+  />
+  <path
+    d="M13.15 10.65C13.55 7.95 14.55 5.75 16.15 3.45"
+    fill="none"
+    stroke="#58a37c"
+    stroke-width="0.85"
+    stroke-linecap="round"
+  />
+
+  <!-- left leaf -->
+  <path
+    d="M11.95 14.2C10.15 13.9 8.45 13.15 7.2 11.75C5.95 10.35 5.35 8.65 5.35 6.65C7.55 6.75 9.45 7.55 10.75 8.95C11.9 10.2 12.35 11.95 11.95 14.2Z"
+    fill="#58a37c"
+  />
+  <path
+    d="M11.25 13.2C9.85 11.05 8.15 9.35 6.15 8.15"
+    fill="none"
+    stroke="#87be9f"
+    stroke-width="0.85"
+    stroke-linecap="round"
+  />
+
+  <!-- right leaf -->
+  <path
+    d="M12.3 16.15C12.55 13.9 13.35 12.15 14.75 10.95C16.15 9.75 17.95 9.2 20.15 9.3C19.95 11.4 19.15 13.1 17.75 14.25C16.3 15.45 14.45 16.05 12.3 16.15Z"
+    fill="#225d43"
+  />
+  <path
+    d="M13.1 15.25C14.65 13.35 16.55 11.95 18.8 11.2"
+    fill="none"
+    stroke="#58a37c"
+    stroke-width="0.85"
+    stroke-linecap="round"
+  />
+</svg>

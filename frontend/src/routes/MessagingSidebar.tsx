@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import leavesLogoMark from "@/assets/leaves-logo-mark.svg";
 import sidebarCollapseIcon from "@/assets/sidebar-collapse.svg";
 import sidebarExpandIcon from "@/assets/sidebar-expand.svg";
 import { LogoutButton } from "@/features/auth/LogoutButton.tsx";
@@ -38,8 +39,14 @@ export function MessagingSidebar() {
         <>
           <header className="flex shrink-0 items-center justify-between border-b border-neutral-200 pb-3">
             <div className="flex items-center gap-2">
-              <h1 className="font-heading text-lg font-semibold tracking-tight text-neutral-900">
-                Messages
+              <h1 className="font-heading text-xl font-bold tracking-tight text-primary-700">
+                <Link
+                  className="flex items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+                  to="/"
+                >
+                  <img className="h-6 w-6 shrink-0" src={leavesLogoMark} alt="" />
+                  Leaves
+                </Link>
               </h1>
             </div>
             {sidebarToggleButton}
