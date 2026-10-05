@@ -17,6 +17,6 @@ userRouter.patch(
   updateUserProfileController,
 );
 userRouter.get("/", authenticateAccessToken, validateSearchUsers, searchUsersController);
-userRouter.get("/:username", authenticateAccessToken, getUserProfileController);
+userRouter.get("/:handle", authenticateAccessToken, getUserProfileController);
 
 export default userRouter;

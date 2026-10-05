@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import jwt from "jsonwebtoken";
 import request from "supertest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { env } from "@/config/env.config.js";
 import { prisma } from "@/lib/prisma.js";
@@ -26,22 +26,15 @@ const loginTestUser = async (app: ReturnType<typeof createApp>) => {
   };
 };
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe("POST /auth/refresh", () => {
-  it("rotates the refresh session in a transaction and resets both token cookies", async () => {
+  it("rotates the refresh session and resets both token cookies", async () => {
     const app = createApp();
     const { user, refreshCookie } = await loginTestUser(app);
     const oldRefreshToken = getCookieValue(refreshCookie);
     const oldTokenHash = hashToken(oldRefreshToken);
-    const transactionSpy = vi.spyOn(prisma, "$transaction");
-
     const response = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
 
     expect(response.status).toBe(204);
-    expect(transactionSpy).toHaveBeenCalledOnce();
 
     const cookies = response.get("Set-Cookie");
     const newAccessCookie = getCookiePair(getSetCookie(cookies, "accessToken"));

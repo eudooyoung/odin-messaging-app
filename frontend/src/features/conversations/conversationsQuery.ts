@@ -1,28 +1,10 @@
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { ConversationsPage } from "./conversation.type.ts";
 
 export const CONVERSATIONS_QUERY_ERROR_MESSAGE = "Failed to load conversations";
 const CONVERSATIONS_PAGE_LIMIT = 20;
-
-type ConversationsPage = {
-  conversations: {
-    id: number;
-    otherUser: {
-      username: string;
-      displayName: string;
-      profileImage: string | null;
-    };
-    lastMessage: {
-      id: number;
-      content: string;
-      senderId: number;
-      createdAt: string;
-    } | null;
-    lastActivityAt: string;
-  }[];
-  nextCursor: number | null;
-};
 
 export const conversationsQueryOptions = infiniteQueryOptions({
   queryKey: ["conversations"] as const,

@@ -1,9 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
+import type { PublicUserIdentity } from "@/features/users/user.type.ts";
 import { conversationQueryOptions } from "./conversationQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -26,12 +27,14 @@ describe("conversationQueryOptions", () => {
       id: 42,
       participants: [
         {
-          username: "current-user",
+          id: 1,
+          handle: "current-user",
           displayName: "Current User",
           profileImage: null,
         },
         {
-          username: "other-user",
+          id: 2,
+          handle: "other-user",
           displayName: "Other User",
           profileImage: "https://example.com/other-user.jpg",
         },
@@ -44,6 +47,7 @@ describe("conversationQueryOptions", () => {
 
     const result = await queryClient.query(queryOptions);
 
+    expectTypeOf(result.participants[0]!).toEqualTypeOf<PublicUserIdentity>();
     expect(queryOptions.queryKey).toEqual(["conversations", 42]);
     expect(apiFetch).toHaveBeenCalledWith("/conversations/42", {
       signal: expect.any(AbortSignal),

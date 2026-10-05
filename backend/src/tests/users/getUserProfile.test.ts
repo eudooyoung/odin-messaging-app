@@ -1,14 +1,13 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
-import type { UserProfileResponseBody } from "@/types/api.types";
+import type { GetUserProfileResponseBody } from "@/types/api.types";
 
-const getBody = <T>(response: Response) => response.body as T;
-
-describe("GET /users/:username", () => {
+describe("GET /users/:handle", () => {
   it("returns the user's public profile for an authenticated user", async () => {
     const app = createApp();
     const credentials = {
@@ -18,6 +17,7 @@ describe("GET /users/:username", () => {
     };
     const targetUser = await createTestUser({
       username: "profile-user",
+      handle: "profile_user_handle",
       displayName: "Profile User",
       bio: "Hello, I'm a profile user.",
       profileImage: "https://example.com/profile.jpg",
@@ -26,14 +26,15 @@ describe("GET /users/:username", () => {
     const accessCookie = createAccessTokenCookie(requestingUser.id);
 
     const response = await request(app)
-      .get(`/users/${targetUser.username}`)
+      .get(`/users/${targetUser.handle}`)
       .set("Cookie", accessCookie);
 
     expect(response.status).toBe(200);
 
-    const body = getBody<UserProfileResponseBody>(response);
+    const body = getBody<GetUserProfileResponseBody>(response);
     expect(body).toEqual({
-      username: targetUser.username,
+      id: targetUser.id,
+      handle: targetUser.handle,
       displayName: targetUser.displayName,
       bio: targetUser.bio,
       profileImage: targetUser.profileImage,
@@ -41,7 +42,7 @@ describe("GET /users/:username", () => {
   });
 
   it("returns 401 when the access token cookie is missing", async () => {
-    const response = await request(createApp()).get("/users/profile-user");
+    const response = await request(createApp()).get("/users/profile-user-handle");
 
     expect(response.status).toBe(401);
   });
@@ -56,7 +57,7 @@ describe("GET /users/:username", () => {
     const requestingUser = await createTestUser(credentials);
     const accessCookie = createAccessTokenCookie(requestingUser.id);
 
-    const response = await request(app).get("/users/missing-user").set("Cookie", accessCookie);
+    const response = await request(app).get("/users/missing-handle").set("Cookie", accessCookie);
 
     expect(response.status).toBe(404);
   });

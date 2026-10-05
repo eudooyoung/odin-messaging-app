@@ -1,23 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ForbiddenError from "@/errors/forbiddenError.js";
 import NotFoundError from "@/errors/notFoundError.js";
-import type {
-  findConversationById,
-  updateConversationLastActivityAt,
-} from "@/repositories/conversation.repository.js";
+import type { findConversationById } from "@/repositories/conversation.repository.js";
 import type { createMessage } from "@/repositories/message.repository.js";
 import { createMessageService } from "@/services/message.service.js";
 
-const { createMessageMock, findConversationByIdMock, updateConversationLastActivityAtMock } =
-  vi.hoisted(() => ({
-    createMessageMock: vi.fn<typeof createMessage>(),
-    findConversationByIdMock: vi.fn<typeof findConversationById>(),
-    updateConversationLastActivityAtMock: vi.fn<typeof updateConversationLastActivityAt>(),
-  }));
+const { createMessageMock, findConversationByIdMock } = vi.hoisted(() => ({
+  createMessageMock: vi.fn<typeof createMessage>(),
+  findConversationByIdMock: vi.fn<typeof findConversationById>(),
+}));
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
   findConversationById: findConversationByIdMock,
-  updateConversationLastActivityAt: updateConversationLastActivityAtMock,
 }));
 
 vi.mock("@/repositories/message.repository.js", () => ({
@@ -29,7 +23,7 @@ beforeEach(() => {
 });
 
 describe("createMessageService", () => {
-  it("returns the created message and recipient user ids and updates the conversation activity", async () => {
+  it("returns the created message and recipient user ids", async () => {
     const currentUserId = 1;
     const conversationId = 10;
     const content = "Hello!";
@@ -38,13 +32,13 @@ describe("createMessageService", () => {
       participants: [
         {
           id: currentUserId,
-          username: "current-user",
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
         {
           id: 2,
-          username: "other-user",
+          handle: "other_handle",
           displayName: "Other User",
           profileImage: null,
         },
@@ -56,7 +50,8 @@ describe("createMessageService", () => {
       id: 100,
       content,
       sender: {
-        username: "current-user",
+        id: currentUserId,
+        handle: "current_handle",
         displayName: "Current User",
         profileImage: null,
       },
@@ -70,10 +65,6 @@ describe("createMessageService", () => {
 
     expect(findConversationByIdMock).toHaveBeenCalledWith(conversationId);
     expect(createMessageMock).toHaveBeenCalledWith(conversationId, currentUserId, content);
-    expect(updateConversationLastActivityAtMock).toHaveBeenCalledWith(
-      conversationId,
-      createdMessage.createdAt,
-    );
     expect(result).toEqual({
       message: createdMessage,
       recipientUserIds: [2],
@@ -92,7 +83,6 @@ describe("createMessageService", () => {
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
     await expect(result).rejects.toMatchObject({ statusCode: 404 });
     expect(createMessageMock).not.toHaveBeenCalled();
-    expect(updateConversationLastActivityAtMock).not.toHaveBeenCalled();
   });
 
   it("throws a forbidden error without creating a message when the current user is not a participant", async () => {
@@ -104,13 +94,13 @@ describe("createMessageService", () => {
       participants: [
         {
           id: 2,
-          username: "first-participant",
+          handle: "first_participant",
           displayName: "First Participant",
           profileImage: null,
         },
         {
           id: 3,
-          username: "second-participant",
+          handle: "second_participant",
           displayName: "Second Participant",
           profileImage: null,
         },
@@ -126,6 +116,5 @@ describe("createMessageService", () => {
     await expect(result).rejects.toBeInstanceOf(ForbiddenError);
     await expect(result).rejects.toMatchObject({ statusCode: 403 });
     expect(createMessageMock).not.toHaveBeenCalled();
-    expect(updateConversationLastActivityAtMock).not.toHaveBeenCalled();
   });
 });

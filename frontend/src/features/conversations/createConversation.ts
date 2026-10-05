@@ -1,22 +1,12 @@
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { ConversationDetail } from "./conversation.type.ts";
 
-type Conversation = {
-  id: number;
-  participants: {
-    username: string;
-    displayName: string;
-    profileImage: string | null;
-  }[];
-  createdAt: string;
-  lastActivityAt: string;
-};
-
-export async function createConversation(targetUsername: string) {
+export async function createConversation(targetHandle: string) {
   const response = await apiFetch("/conversations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ targetUsername }),
+    body: JSON.stringify({ targetHandle }),
   });
 
   if (response.status === 400) {
@@ -31,5 +21,5 @@ export async function createConversation(targetUsername: string) {
     throw new UserFacingError("Failed to create conversation");
   }
 
-  return response.json() as Promise<Conversation>;
+  return response.json() as Promise<ConversationDetail>;
 }

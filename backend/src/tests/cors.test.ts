@@ -10,7 +10,6 @@ describe("CORS", () => {
 
     expect(response.status).toBe(401);
     expect(response.headers["access-control-allow-origin"]).toBe(frontendOrigin);
-    expect(response.headers["access-control-allow-origin"]).not.toBe("*");
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
   });
 });

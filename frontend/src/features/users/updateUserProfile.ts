@@ -1,14 +1,8 @@
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
-import type { UserProfile } from "./userProfileQuery.ts";
+import type { UpdatedUserProfile, UpdateUserProfileInput } from "./user.type.ts";
 
 export const UPDATE_USER_PROFILE_ERROR_MESSAGE = "Failed to update profile";
-
-export type UpdateUserProfileInput = {
-  displayName?: string;
-  bio?: string | null;
-  profileImage?: string | null;
-};
 
 export async function updateUserProfile(input: UpdateUserProfileInput) {
   const response = await apiFetch("/users/me", {
@@ -25,5 +19,5 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     throw new UserFacingError(UPDATE_USER_PROFILE_ERROR_MESSAGE);
   }
 
-  return response.json() as Promise<UserProfile>;
+  return response.json() as Promise<UpdatedUserProfile>;
 }

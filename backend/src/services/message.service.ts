@@ -1,9 +1,6 @@
 import ForbiddenError from "@/errors/forbiddenError.js";
 import NotFoundError from "@/errors/notFoundError.js";
-import {
-  findConversationById,
-  updateConversationLastActivityAt,
-} from "@/repositories/conversation.repository.js";
+import { findConversationById } from "@/repositories/conversation.repository.js";
 import * as messageRepository from "@/repositories/message.repository.js";
 
 export const getMessagesService = async (
@@ -53,8 +50,6 @@ export const createMessageService = async (
   }
 
   const message = await messageRepository.createMessage(conversationId, currentUserId, content);
-
-  await updateConversationLastActivityAt(conversationId, message.createdAt);
 
   const recipientUserIds = conversation.participants
     .filter(({ id }) => id !== currentUserId)

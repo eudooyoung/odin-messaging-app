@@ -44,15 +44,16 @@
 1. 요청된 동작을 이해한다.
 2. 관련 구현과 테스트를 확인한다.
 3. 필요한 테스트를 추가하거나 수정한다.
-4. 여기서 멈추고 사용자가 테스트를 확인하고 직접 실행하도록 한다.
-5. 사용자가 확인하면 테스트를 통과하기 위한 최소한의 production 코드를 구현한다.
-6. 다시 멈추고 사용자가 코드를 확인하고 직접 테스트를 실행하도록 한다.
+4. 관련 테스트를 실행해 RED를 확인할 수 있다. 테스트 코드와 결과를 보고하고 여기서 멈춘다.
+5. 사용자가 테스트 코드와 결과를 확인하고 다음 단계 진행을 지시하면, 테스트를 통과하기 위한 최소한의 production 코드를 구현한다.
+6. 관련 테스트를 실행해 GREEN을 확인할 수 있다. production 코드와 결과를 보고하고 다시 멈춘다.
 7. 필요한 경우에만 동작 확인 이후 리팩토링한다.
 
 - 사용자가 명시적으로 요청하지 않는 한 테스트 작성과 구현을 한 번에 진행하지 않는다.
 - 테스트 작성 단계에서는 production 코드를 수정하지 않는다.
 - 구현 단계에서는 합의된 테스트를 임의로 수정하지 않는다.
 - 한 단계를 마친 뒤 자동으로 다음 단계까지 진행하지 않는다.
+- 테스트 실행이나 RED/GREEN 확인은 다음 TDD 단계로 진행할 권한을 의미하지 않는다.
 
 ### 기능 단위 audit
 
@@ -104,7 +105,11 @@
 Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외부 API 전체를 불필요하게 모사하지 않는다.
 
 새 테스트는 주변 테스트 코드의 기존 패턴을 따른다.
-사용자가 명시적으로 요청하지 않는 한 테스트를 실행하지 않는다.
+검증이 필요하면 Codex가 테스트를 직접 실행할 수 있다. 리팩토링, audit, cleanup 작업에서는 관련 테스트를 실행하고, 작업 범위상 필요하면 전체 test suite도 실행할 수 있다.
+현재 변경과 직접 관련된 테스트를 우선 실행하고, 불필요하게 전체 test suite를 반복 실행하지 않는다.
+검증에는 기존 프로젝트 설정을 사용한다. 사용자가 명시적으로 isolated type-check나 별도 검증 환경을 요청하지 않는 한, 다른 영역의 오류를 우회하거나 현재 변경만 통과시키기 위한 임시 `tsconfig`·별도 TypeScript project·임시 설정 파일을 만들지 않는다.
+단계적 refactor에서 관련 테스트가 GREEN이고 전체 TypeScript 검사나 전체 test suite가 아직 전환하지 않은 파일 때문에 실패하면, 해당 단위의 테스트 결과를 우선 보고하고 전체 검사에서 나온 기존 오류도 그대로 보고한다.
+사용자가 명시적으로 테스트를 실행하지 말라고 한 경우에는 실행하지 않는다.
 
 ---
 
@@ -169,7 +174,16 @@ Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외�
 
 ---
 
-## 9. 우선순위
+## 9. 프로젝트 문서 관리
+
+- `docs/messaging-app-project-plan.md`는 장기 project plan 및 제품·설계·roadmap의 SSOT다. 제품 요구사항과 MVP 범위, 확정된 서비스 규칙, 주요 데이터 모델·API·architecture 계약, 기술 스택·배포 정책, 큰 기능 단위의 완료 상태와 남은 MVP·deploy·post-MVP TODO를 기록한다. 완료 작업은 milestone 수준으로 요약하며, RED → GREEN 과정, 개별 테스트·fixture·assertion·mock·helper 수정, 일회성 테스트 수치, audit 작업 로그, 반복된 완료 설명, 세션별 이력은 기록하지 않는다.
+- `docs/project-status.md`는 현재 작업 상태의 SSOT이자 GPT·Codex의 세션 간 handoff 문서다. 현재 branch와 phase, 다음 작업에 직접 필요한 구현·계약 맥락, 최근 완료된 큰 작업, 최신 검증 상태, 진행 중인 작업, 다음 즉시 시작점, 알려진 deferred issue·blocker를 기록한다. 시간순 worklog로 누적하지 않고 상태가 바뀌면 오래된 내용을 교체한다.
+- GPT 또는 Codex 세션 교체 전과 현재 phase 또는 다음 시작점이 크게 바뀔 때 `project-status.md`를 최신화한다. 제품 요구사항, API 계약, architecture 결정, roadmap이 바뀌면 project plan도 함께 갱신한다.
+- 새 세션에서는 루트·관련 하위 `AGENTS.md`, project plan, project status를 기준으로 현재 작업을 파악한다.
+
+---
+
+## 10. 우선순위
 
 지시가 충돌할 경우 다음 우선순위를 따른다.
 
@@ -177,3 +191,55 @@ Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외�
 2. `frontend/AGENTS.md`, `backend/AGENTS.md` 같은 하위 디렉터리의 더 구체적인 지시
 3. 루트 `AGENTS.md`
 4. 기존 저장소의 코드 및 테스트 관례
+
+## Graft
+
+- 저장소 코드 탐색과 구조 파악에는 Graft repo context graph를 우선 사용한다.
+- 여러 파일, 심볼, 의존 관계를 조사할 때는 먼저 Graft로 관련 범위를 좁힌다.
+- Graft만으로 필요한 정보를 충분히 확인할 수 없을 때 직접 파일 검색/열기를 보조적으로 사용한다.
+- 단일 파일의 작은 수정처럼 Graft 탐색 이점이 거의 없는 작업에서는 직접 편집 도구를 사용할 수 있다.
+- `graft/`는 재생성 가능한 로컬 cache로 취급한다.
+
+<!-- graft:start -->
+
+## Graft — repo context graph
+
+This repo is indexed in `graft/`: small linked markdown nodes that explain each
+system and carry exact file:line spans, kept in sync with the code through git.
+
+For ANY task here — understanding how something works, finding where code lives,
+or scoping a change — get context from the graph before grepping or opening
+source files. Re-ask freely (it's cheap) and reuse literal identifiers you
+already have (symbol, error string, file name) as the query. New to this repo?
+Run `graft map` first — a token-budgeted orientation (dir clusters, hubs,
+hotspots), no LLM, no key.
+
+- Run `graft ask "<your question>" --source` → ranked nodes with the relevant
+  code spans inlined (each hit's ≤8-line crux by default; `--full` for whole
+  definitions when the crux isn't enough). Match the tool to the task shape:
+  for understanding or editing, the top node IS the answer — cite its
+  `covers:` file:line spans and edit straight from `--source`. For
+  exhaustive tasks ("every occurrence / every caller of this pattern"), ranked
+  results are top-N, not complete — run `graft grep "<literal>"` instead
+  (exhaustive over indexed files, grouped by enclosing symbol), falling back
+  to raw `grep -rn` only for unindexed files.
+- `graft skeleton <file>` → every definition's signature + span, ~10× cheaper
+  than reading the file; use it to skim an API surface.
+- `graft callers <symbol>` gives precomputed, exact edges — who calls this.
+  Add `--direction out` for what it calls, or `--depth N` to walk
+  transitively for the full blast radius. For structural questions, skip
+  ranking and use this directly.
+- Or browse: `graft/INDEX.md` lists every node; follow the links.
+- Monorepos and folders of multiple repos rank fairly across sub-projects —
+  hits carry `[scope/]` labels naming which one they're from. Narrow with
+  `graft ask "<task>" --in <scope>/` once you know where you're working.
+
+If a returned span is truncated ("+N more lines"), open the file at that exact
+range before finalizing. Only open source files when a node genuinely lacks a
+needed detail, and then at the exact file:line the node points to — never
+re-read whole files.
+
+After big code changes, refresh the graph with `graft build` (deterministic,
+no API key, $0).
+
+<!-- graft:end -->

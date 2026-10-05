@@ -21,6 +21,7 @@ describe("router", () => {
   const currentUser = {
     id: 1,
     username: "current-user",
+    handle: "current-user",
     displayName: "Current User",
   };
 
@@ -130,6 +131,44 @@ describe("router", () => {
       expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
       expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
     });
+
+    it("routes /users/:handle to the read-only user profile inside the protected messaging layout", async () => {
+      const targetProfile = {
+        id: 2,
+        handle: "target-handle",
+        displayName: "Target User",
+        bio: "Hello from the target profile.",
+        profileImage: null,
+      };
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
+        }
+
+        if (input === `/users/${targetProfile.handle}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+
+      await renderRouterAt(`/users/${targetProfile.handle}`);
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(`/users/${targetProfile.handle}`);
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(`@${targetProfile.handle}`)).toBeInTheDocument();
+      expect(screen.getByText(targetProfile.bio)).toBeInTheDocument();
+    });
   });
 
   describe("session lifecycle", () => {
@@ -173,11 +212,13 @@ describe("router", () => {
       const userA = {
         id: 1,
         username: "user-a",
+        handle: "user-a",
         displayName: "User A",
       };
       const userB = {
         id: 2,
         username: "user-b",
+        handle: "user-b",
         displayName: "User B",
       };
       const userAConversations = {
@@ -187,7 +228,8 @@ describe("router", () => {
               {
                 id: 10,
                 otherUser: {
-                  username: "user-a-friend",
+                  id: 3,
+                  handle: "user-a-friend",
                   displayName: "User A Friend",
                   profileImage: null,
                 },
@@ -208,7 +250,8 @@ describe("router", () => {
                 id: 100,
                 content: "Private message for User A",
                 sender: {
-                  username: "user-a-friend",
+                  id: 3,
+                  handle: "user-a-friend",
                   displayName: "User A Friend",
                   profileImage: null,
                 },
@@ -311,12 +354,14 @@ describe("router", () => {
       id: 1,
       participants: [
         {
-          username: "current-user",
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: "Current User",
           profileImage: null,
         },
         {
-          username: "other-user",
+          id: 2,
+          handle: "other-user",
           displayName: "Other User",
           profileImage: null,
         },
@@ -325,7 +370,7 @@ describe("router", () => {
       lastActivityAt: "2026-09-04T01:00:00.000Z",
     };
 
-    it("renders the profile page outside the messaging layout", async () => {
+    it("renders the profile page inside the messaging layout", async () => {
       vi.mocked(apiFetch).mockImplementation((input) => {
         if (input === "/auth/me") {
           return Promise.resolve(jsonResponse(currentUser));
@@ -338,7 +383,8 @@ describe("router", () => {
         if (input === "/users/current-user") {
           return Promise.resolve(
             jsonResponse({
-              username: currentUser.username,
+              id: currentUser.id,
+              handle: currentUser.handle,
               displayName: currentUser.displayName,
               bio: null,
               profileImage: null,
@@ -361,23 +407,29 @@ describe("router", () => {
         "Current User",
       );
       expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
-      expect(screen.queryByRole("combobox", { name: "Search users" })).not.toBeInTheDocument();
-      expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "My profile" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
+      expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
+      expect(screen.getByText("No conversations yet")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
     });
 
     it("refreshes the persistent conversation list after creating a conversation", async () => {
       const targetUser = {
-        username: "target-user",
+        id: 2,
+        handle: "target-user",
         displayName: "Target User",
         profileImage: null,
+      };
+      const targetProfile = {
+        ...targetUser,
+        bio: "Target user bio",
       };
       const createdConversation = {
         id: 42,
         participants: [
           {
-            username: currentUser.username,
+            id: currentUser.id,
+            handle: currentUser.handle,
             displayName: currentUser.displayName,
             profileImage: null,
           },
@@ -418,6 +470,10 @@ describe("router", () => {
           return Promise.resolve(jsonResponse([targetUser]));
         }
 
+        if (input === `/users/${targetUser.handle}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
         if (input === "/conversations") {
           return Promise.resolve(jsonResponse(createdConversation, 201));
         }
@@ -440,19 +496,121 @@ describe("router", () => {
       await user.type(screen.getByRole("combobox", { name: "Search users" }), "target");
       await user.click(await screen.findByRole("option", { name: /Target User @target-user/ }));
 
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Message" }));
+
       expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
       expect(screen.getByText("No messages yet")).toBeInTheDocument();
     });
 
+    it("navigates before the persistent conversation list refetch finishes and later refreshes the sidebar", async () => {
+      const targetUser = {
+        id: 2,
+        handle: "target-user",
+        displayName: "Target User",
+        profileImage: null,
+      };
+      const targetProfile = {
+        ...targetUser,
+        bio: "Target user bio",
+      };
+      const createdConversation = {
+        id: 42,
+        participants: [
+          {
+            id: currentUser.id,
+            handle: currentUser.handle,
+            displayName: currentUser.displayName,
+            profileImage: null,
+          },
+          targetUser,
+        ],
+        createdAt: "2026-09-17T01:00:00.000Z",
+        lastActivityAt: "2026-09-17T01:00:00.000Z",
+      };
+      const refreshedConversationsPage = {
+        conversations: [
+          {
+            id: createdConversation.id,
+            otherUser: targetUser,
+            lastMessage: null,
+            lastActivityAt: createdConversation.lastActivityAt,
+          },
+        ],
+        nextCursor: null,
+      };
+      const pendingConversationListRefetch = createDeferred<Response>();
+      let conversationListRequestCount = 0;
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(jsonResponse(currentUser));
+        }
+
+        if (input === "/conversations?limit=20") {
+          conversationListRequestCount += 1;
+
+          return conversationListRequestCount === 1
+            ? Promise.resolve(jsonResponse(emptyConversationsPage))
+            : pendingConversationListRefetch.promise;
+        }
+
+        if (input === `/users/${targetUser.handle}`) {
+          return Promise.resolve(jsonResponse(targetProfile));
+        }
+
+        if (input === "/conversations") {
+          return Promise.resolve(jsonResponse(createdConversation, 201));
+        }
+
+        if (input === `/conversations/${createdConversation.id}`) {
+          return Promise.resolve(jsonResponse(createdConversation));
+        }
+
+        if (input === `/conversations/${createdConversation.id}/messages?limit=20`) {
+          return Promise.resolve(jsonResponse({ messages: [], nextCursor: null }));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt(`/users/${targetUser.handle}`);
+
+      expect(await screen.findByText("No conversations yet")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: targetProfile.displayName }),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Message" }));
+
+      await waitFor(() => {
+        expect(conversationListRequestCount).toBe(2);
+      });
+      expect(screen.getByText("No conversations yet")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(`/conversations/${createdConversation.id}`);
+      });
+      expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
+
+      act(() => {
+        pendingConversationListRefetch.resolve(jsonResponse(refreshedConversationsPage));
+      });
+
+      expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
+    });
+
     it("updates and reorders the persistent conversation list after sending a message", async () => {
       const firstOtherUser = {
-        username: "first-user",
+        id: 2,
+        handle: "first-user",
         displayName: "First User",
         profileImage: null,
       };
       const secondOtherUser = {
-        username: "second-user",
+        id: 3,
+        handle: "second-user",
         displayName: "Second User",
         profileImage: null,
       };
@@ -460,7 +618,8 @@ describe("router", () => {
         id: 2,
         participants: [
           {
-            username: currentUser.username,
+            id: currentUser.id,
+            handle: currentUser.handle,
             displayName: currentUser.displayName,
             profileImage: null,
           },
@@ -473,7 +632,8 @@ describe("router", () => {
         id: 20,
         content: "Newest message from the sender",
         sender: {
-          username: currentUser.username,
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: currentUser.displayName,
           profileImage: null,
         },
@@ -580,7 +740,8 @@ describe("router", () => {
         id: 11,
         content: "Newest message from the receiver event",
         sender: {
-          username: "other-user",
+          id: 2,
+          handle: "other-user",
           displayName: "Other User",
           profileImage: null,
         },
@@ -683,7 +844,8 @@ describe("router", () => {
         id: 10,
         content: "Hello from the protected route",
         sender: {
-          username: "other-user",
+          id: 2,
+          handle: "other-user",
           displayName: "Other User",
           profileImage: null,
         },
@@ -766,7 +928,8 @@ describe("router", () => {
                 id: 11,
                 content: "New message for the current conversation",
                 sender: {
-                  username: "other-user",
+                  id: 2,
+                  handle: "other-user",
                   displayName: "Other User",
                   profileImage: null,
                 },

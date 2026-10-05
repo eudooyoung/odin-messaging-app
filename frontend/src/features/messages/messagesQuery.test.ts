@@ -1,9 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
+import type { PublicUserIdentity } from "@/features/users/user.type.ts";
 import { MESSAGES_QUERY_ERROR_MESSAGE, messagesQueryOptions } from "./messagesQuery.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -28,7 +29,8 @@ describe("messagesQueryOptions", () => {
           id: 10,
           content: "Hello",
           sender: {
-            username: "other-user",
+            id: 2,
+            handle: "other-user",
             displayName: "Other User",
             profileImage: null,
           },
@@ -42,6 +44,7 @@ describe("messagesQueryOptions", () => {
 
     const result = await queryClient.infiniteQuery(queryOptions);
 
+    expectTypeOf(result.pages[0]!.messages[0]!.sender).toEqualTypeOf<PublicUserIdentity>();
     expect(queryOptions.queryKey).toEqual(["conversations", 42, "messages"]);
     expect(queryOptions.initialPageParam).toBeNull();
     expect(apiFetch).toHaveBeenCalledOnce();
@@ -61,7 +64,8 @@ describe("messagesQueryOptions", () => {
           id: 10,
           content: "Latest message",
           sender: {
-            username: "other-user",
+            id: 2,
+            handle: "other-user",
             displayName: "Other User",
             profileImage: null,
           },
@@ -76,7 +80,8 @@ describe("messagesQueryOptions", () => {
           id: 9,
           content: "Earlier message",
           sender: {
-            username: "current-user",
+            id: 1,
+            handle: "current-user",
             displayName: "Current User",
             profileImage: null,
           },

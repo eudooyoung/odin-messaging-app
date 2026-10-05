@@ -23,6 +23,7 @@ describe("authMeQueryOptions", () => {
     const currentUser = {
       id: 1,
       username: "current-user",
+      handle: "current-handle",
       displayName: "Current User",
     };
     vi.mocked(apiFetch).mockResolvedValue(

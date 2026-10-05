@@ -1,26 +1,26 @@
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { UserProfile } from "./user.type.ts";
 
 export const USER_PROFILE_QUERY_ERROR_MESSAGE = "Failed to load profile";
 
-export type UserProfile = {
-  username: string;
-  displayName: string;
-  bio: string | null;
-  profileImage: string | null;
-};
+export class UserProfileNotFoundError extends UserFacingError {
+  constructor() {
+    super("Profile not found");
+  }
+}
 
-export const userProfileQueryOptions = (username: string) =>
+export const userProfileQueryOptions = (handle: string) =>
   queryOptions({
-    queryKey: ["users", "profile", username] as const,
+    queryKey: ["users", "profile", handle] as const,
     queryFn: async ({ signal }): Promise<UserProfile> => {
-      const response = await apiFetch(`/users/${encodeURIComponent(username)}`, {
+      const response = await apiFetch(`/users/${encodeURIComponent(handle)}`, {
         signal,
       });
 
       if (response.status === 404) {
-        throw new UserFacingError("Profile not found");
+        throw new UserProfileNotFoundError();
       }
 
       if (!response.ok) {

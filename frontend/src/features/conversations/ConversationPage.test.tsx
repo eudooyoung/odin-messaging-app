@@ -1,13 +1,15 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
-import { authMeQueryOptions, type AuthUser } from "@/features/auth/authMeQuery.ts";
+import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
+import type { AuthUser } from "@/features/auth/auth.type.ts";
 import { createDeferred } from "@/tests/createDeferred.ts";
 import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
+import { conversationQueryOptions } from "./conversationQuery.ts";
 import { ConversationPage } from "./ConversationPage.tsx";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -30,6 +32,7 @@ const renderConversationPage = (queryClient: QueryClient, initialEntry = "/conve
       <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/conversations/:conversationId" element={<ConversationPage />} />
+          <Route path="/users/other-handle" element={<h1>Other User public profile</h1>} />
           <Route path="/" element={<h1>Conversations</h1>} />
         </Routes>
       </MemoryRouter>
@@ -41,19 +44,32 @@ describe("ConversationPage", () => {
     const currentUser: AuthUser = {
       id: 1,
       username: "current-user",
+      handle: "current-handle",
       displayName: "Current User",
     };
 
-    const defaultConversation = {
+    const defaultConversation: {
+      id: number;
+      participants: {
+        id: number;
+        handle: string;
+        displayName: string;
+        profileImage: string | null;
+      }[];
+      createdAt: string;
+      lastActivityAt: string;
+    } = {
       id: 42,
       participants: [
         {
-          username: "current-user",
+          id: 1,
+          handle: "current-handle",
           displayName: "Current User",
           profileImage: null,
         },
         {
-          username: "other-user",
+          id: 2,
+          handle: "other-handle",
           displayName: "Other User",
           profileImage: null,
         },
@@ -66,7 +82,8 @@ describe("ConversationPage", () => {
       id: 10,
       content: "Hello from the conversation",
       sender: {
-        username: "other-user",
+        id: 2,
+        handle: "other-handle",
         displayName: "Other User",
         profileImage: null,
       },
@@ -99,18 +116,20 @@ describe("ConversationPage", () => {
       });
     };
 
-    it("shows a link back to conversations and navigates home when clicked", async () => {
+    it("shows a close icon that navigates home when clicked", async () => {
       arrangeConversationPageRequests();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
 
       renderConversationPage(queryClient);
 
-      const backLink = await screen.findByRole("link", {
-        name: "Back to conversations",
+      const closeLink = await screen.findByRole("link", {
+        name: "Close conversation",
       });
+      expect(closeLink).toHaveTextContent("←");
+      expect(screen.queryByText("Back to conversations")).not.toBeInTheDocument();
 
-      await user.click(backLink);
+      await user.click(closeLink);
 
       expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
     });
@@ -122,7 +141,105 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
-      expect(screen.getByText("@other-user")).toBeInTheDocument();
+      expect(screen.getByText("@other-handle")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("img", { name: "Other User profile" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the other participant's public profile from the header identity", async () => {
+      arrangeConversationPageRequests();
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient);
+
+      const identityLink = await screen.findByRole("link", {
+        name: /Other User\s+@other-handle/,
+      });
+      await user.click(identityLink);
+
+      expect(
+        await screen.findByRole("heading", { name: "Other User public profile" }),
+      ).toBeInTheDocument();
+    });
+
+    it("focuses the message textarea when the conversation opens", async () => {
+      arrangeConversationPageRequests();
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+
+      renderConversationPage(queryClient);
+
+      const messageInput = await screen.findByRole("textbox", { name: "Message" });
+      expect(document.activeElement).toBe(messageInput);
+    });
+
+    it("refocuses the message textarea when the conversation route changes", async () => {
+      const nextConversation = {
+        ...defaultConversation,
+        id: 43,
+        participants: defaultConversation.participants.map((participant) =>
+          participant.id === 2 ? { ...participant, displayName: "Next User" } : participant,
+        ),
+      };
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/conversations/42") {
+          return Promise.resolve(jsonResponse(defaultConversation));
+        }
+        if (input === "/conversations/43") {
+          return Promise.resolve(jsonResponse(nextConversation));
+        }
+        if (
+          input === "/conversations/42/messages?limit=20" ||
+          input === "/conversations/43/messages?limit=20"
+        ) {
+          return Promise.resolve(jsonResponse({ messages: [], nextCursor: null }));
+        }
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      queryClient.setQueryData(conversationQueryOptions(43).queryKey, nextConversation);
+      const user = userEvent.setup();
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/conversations/42"]}>
+            <Link to="/conversations/43">Open conversation B</Link>
+            <Routes>
+              <Route path="/conversations/:conversationId" element={<ConversationPage />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+
+      expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
+      const messageInput = screen.getByRole("textbox", { name: "Message" });
+      expect(document.activeElement).toBe(messageInput);
+
+      await user.click(screen.getByRole("link", { name: "Open conversation B" }));
+
+      expect(await screen.findByRole("heading", { name: "Next User" })).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: "Message" })).toBe(messageInput);
+      expect(document.activeElement).toBe(messageInput);
+    });
+
+    it("shows the other participant's profile image when available", async () => {
+      const profileImage = "https://example.com/other-user.jpg";
+      arrangeConversationPageRequests({
+        conversation: {
+          ...defaultConversation,
+          participants: defaultConversation.participants.map((participant) =>
+            participant.id === 2 ? { ...participant, profileImage } : participant,
+          ),
+        },
+      });
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+
+      renderConversationPage(queryClient);
+
+      expect(
+        await screen.findByRole("img", { name: "Other User profile" }),
+      ).toHaveAttribute("src", profileImage);
     });
 
     it("renders the message list for the route conversation", async () => {
@@ -141,7 +258,8 @@ describe("ConversationPage", () => {
         id: 11,
         content: "Hello!",
         sender: {
-          username: "current-user",
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: "Current User",
           profileImage: null,
         },
@@ -167,35 +285,24 @@ describe("ConversationPage", () => {
       });
     });
 
-    it("recovers the messages query and pagination after sending a message following an initial load error", async () => {
+    it("recovers the messages query after sending a message following an initial load error", async () => {
       const createdAfterErrorMessage = {
         id: 11,
         content: "New message after the load error",
         sender: {
-          username: "current-user",
+          id: currentUser.id,
+          handle: currentUser.handle,
           displayName: "Current User",
           profileImage: null,
         },
         createdAt: "2026-09-08T01:00:00.000Z",
       };
-      const olderMessage = {
-        id: 9,
-        content: "An older conversation message",
-        sender: {
-          username: "other-user",
-          displayName: "Other User",
-          profileImage: null,
-        },
-        createdAt: "2026-09-03T01:00:00.000Z",
-      };
       const arrangeMessagesRecoveryRequests = ({
         createdMessage,
         recoveredMessage,
-        olderMessage,
       }: {
         createdMessage: typeof conversationMessage;
         recoveredMessage: typeof conversationMessage;
-        olderMessage: typeof conversationMessage;
       }) => {
         let isInitialMessagesRequest = true;
         const recoveredMessagesResponse = createDeferred<Response>();
@@ -218,10 +325,6 @@ describe("ConversationPage", () => {
             return Promise.resolve(jsonResponse(createdMessage, 201));
           }
 
-          if (input === "/conversations/42/messages?cursor=10&limit=20") {
-            return Promise.resolve(jsonResponse({ messages: [olderMessage], nextCursor: null }));
-          }
-
           return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
         });
 
@@ -236,7 +339,7 @@ describe("ConversationPage", () => {
             recoveredMessagesResponse.resolve(
               jsonResponse({
                 messages: [createdMessage, recoveredMessage],
-                nextCursor: 10,
+                nextCursor: null,
               }),
             ),
         };
@@ -245,7 +348,6 @@ describe("ConversationPage", () => {
         arrangeMessagesRecoveryRequests({
           createdMessage: createdAfterErrorMessage,
           recoveredMessage: conversationMessage,
-          olderMessage,
         });
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
@@ -271,25 +373,19 @@ describe("ConversationPage", () => {
       expect(await screen.findByText(conversationMessage.content)).toBeInTheDocument();
       expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
 
-      await user.click(screen.getByRole("button", { name: "Load older messages" }));
-
-      expect(await screen.findByText(olderMessage.content)).toBeInTheDocument();
-      expect(screen.getByText(createdAfterErrorMessage.content)).toBeInTheDocument();
     });
 
-    it("identifies the other participant by the current user's username", async () => {
-      arrangeConversationPageRequests({
-        conversation: {
-          ...defaultConversation,
-          participants: [...defaultConversation.participants].reverse(),
-        },
+    it("identifies the other participant by id even when the current user's username differs", async () => {
+      arrangeConversationPageRequests();
+      queryClient.setQueryData<typeof currentUser>(authMeQueryOptions.queryKey, {
+        ...currentUser,
+        username: "other-handle",
       });
-      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
 
       renderConversationPage(queryClient);
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
-      expect(screen.getByText("@other-user")).toBeInTheDocument();
+      expect(screen.getByText("@other-handle")).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Current User" })).not.toBeInTheDocument();
     });
   });

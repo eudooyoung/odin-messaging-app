@@ -18,6 +18,7 @@ datasource db {
 model User {
   id              Int              @id @default(autoincrement())
   username        String           @unique @db.VarChar(30)
+  handle          String           @unique @db.VarChar(30)
   passwordHash    String
   displayName     String           @db.VarChar(50)
   bio             String?          @db.VarChar(300)

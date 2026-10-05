@@ -8,16 +8,7 @@ const { findUserByIdMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
-  createUser: vi.fn(),
   findUserById: findUserByIdMock,
-  findUserByUsername: vi.fn(),
-}));
-
-vi.mock("@/repositories/refreshSession.repository.js", () => ({
-  createRefreshSession: vi.fn(),
-  deleteRefreshSessionByTokenHash: vi.fn(),
-  findRefreshSessionByTokenHash: vi.fn(),
-  rotateRefreshSession: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -25,11 +16,12 @@ beforeEach(() => {
 });
 
 describe("getMeService", () => {
-  it("returns the public fields of the user", async () => {
+  it("returns the user's account fields", async () => {
     const userId = 1;
     const user = {
       id: userId,
       username: "existing-user",
+      handle: "existing_user",
       displayName: "Existing User",
     };
 
@@ -41,6 +33,7 @@ describe("getMeService", () => {
     expect(result).toEqual({
       id: user.id,
       username: user.username,
+      handle: user.handle,
       displayName: user.displayName,
     });
   });

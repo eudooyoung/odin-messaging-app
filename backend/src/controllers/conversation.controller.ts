@@ -15,7 +15,8 @@ export const getConversationController: GetConversationHandler = async (_req, re
   res.status(200).json({
     id: conversation.id,
     participants: conversation.participants.map((participant) => ({
-      username: participant.username,
+      id: participant.id,
+      handle: participant.handle,
       displayName: participant.displayName,
       profileImage: participant.profileImage,
     })),
@@ -50,7 +51,7 @@ export const getConversationsController: GetConversationsHandler = async (_req, 
 export const createConversationController: CreateConversationHandler = async (req, res) => {
   const { conversation, created } = await createConversationService(
     res.locals.userId,
-    req.body.targetUsername,
+    req.body.targetHandle,
   );
 
   res.status(created ? 201 : 200).json({

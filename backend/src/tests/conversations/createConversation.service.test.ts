@@ -1,27 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BadRequestError from "@/errors/badRequestError.js";
 import NotFoundError from "@/errors/notFoundError.js";
-import type {
-  createConversation,
-  findConversationByParticipantIds,
-} from "@/repositories/conversation.repository.js";
-import type { findUserByUsername } from "@/repositories/user.repository.js";
+import type { findOrCreateConversation } from "@/repositories/conversation.repository.js";
+import type { findUserByHandle } from "@/repositories/user.repository.js";
 import { createConversationService } from "@/services/conversation.service.js";
 
-const { createConversationMock, findConversationByParticipantIdsMock, findUserByUsernameMock } =
-  vi.hoisted(() => ({
-    createConversationMock: vi.fn<typeof createConversation>(),
-    findConversationByParticipantIdsMock: vi.fn<typeof findConversationByParticipantIds>(),
-    findUserByUsernameMock: vi.fn<typeof findUserByUsername>(),
-  }));
+const { findOrCreateConversationMock, findUserByHandleMock } = vi.hoisted(() => ({
+  findOrCreateConversationMock: vi.fn<typeof findOrCreateConversation>(),
+  findUserByHandleMock: vi.fn<typeof findUserByHandle>(),
+}));
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
-  createConversation: createConversationMock,
-  findConversationByParticipantIds: findConversationByParticipantIdsMock,
+  findOrCreateConversation: findOrCreateConversationMock,
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
-  findUserByUsername: findUserByUsernameMock,
+  findUserByHandle: findUserByHandleMock,
 }));
 
 beforeEach(() => {
@@ -31,22 +25,23 @@ beforeEach(() => {
 describe("createConversationService", () => {
   it("creates and returns a conversation with the current and target users", async () => {
     const currentUserId = 1;
-    const targetUsername = "target-user";
+    const targetHandle = "target_handle";
     const targetUser = {
       id: 2,
-      username: targetUsername,
-      passwordHash: "hashed-password",
+      handle: targetHandle,
     };
     const createdConversation = {
       id: 1,
       participants: [
         {
-          username: "current-user",
+          id: currentUserId,
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
         {
-          username: targetUsername,
+          id: targetUser.id,
+          handle: targetHandle,
           displayName: "Target User",
           profileImage: "https://example.com/target.jpg",
         },
@@ -55,14 +50,16 @@ describe("createConversationService", () => {
       lastActivityAt: new Date("2026-09-01T00:00:00.000Z"),
     };
 
-    findUserByUsernameMock.mockResolvedValue(targetUser);
-    findConversationByParticipantIdsMock.mockResolvedValue(null);
-    createConversationMock.mockResolvedValue(createdConversation);
+    findUserByHandleMock.mockResolvedValue(targetUser);
+    findOrCreateConversationMock.mockResolvedValue({
+      conversation: createdConversation,
+      created: true,
+    });
 
-    const result = await createConversationService(currentUserId, targetUsername);
+    const result = await createConversationService(currentUserId, targetHandle);
 
-    expect(findUserByUsernameMock).toHaveBeenCalledWith(targetUsername);
-    expect(createConversationMock).toHaveBeenCalledWith([currentUserId, targetUser.id]);
+    expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
+    expect(findOrCreateConversationMock).toHaveBeenCalledWith([currentUserId, targetUser.id]);
     expect(result).toEqual({
       conversation: createdConversation,
       created: true,
@@ -71,22 +68,23 @@ describe("createConversationService", () => {
 
   it("returns an existing conversation without creating a new one", async () => {
     const currentUserId = 1;
-    const targetUsername = "target-user";
+    const targetHandle = "target_handle";
     const targetUser = {
       id: 2,
-      username: targetUsername,
-      passwordHash: "hashed-password",
+      handle: targetHandle,
     };
     const existingConversation = {
       id: 1,
       participants: [
         {
-          username: "current-user",
+          id: currentUserId,
+          handle: "current_handle",
           displayName: "Current User",
           profileImage: null,
         },
         {
-          username: targetUsername,
+          id: targetUser.id,
+          handle: targetHandle,
           displayName: "Target User",
           profileImage: "https://example.com/target.jpg",
         },
@@ -95,17 +93,16 @@ describe("createConversationService", () => {
       lastActivityAt: new Date("2026-09-01T00:00:00.000Z"),
     };
 
-    findUserByUsernameMock.mockResolvedValue(targetUser);
-    findConversationByParticipantIdsMock.mockResolvedValue(existingConversation);
+    findUserByHandleMock.mockResolvedValue(targetUser);
+    findOrCreateConversationMock.mockResolvedValue({
+      conversation: existingConversation,
+      created: false,
+    });
 
-    const result = await createConversationService(currentUserId, targetUsername);
+    const result = await createConversationService(currentUserId, targetHandle);
 
-    expect(findUserByUsernameMock).toHaveBeenCalledWith(targetUsername);
-    expect(findConversationByParticipantIdsMock).toHaveBeenCalledWith([
-      currentUserId,
-      targetUser.id,
-    ]);
-    expect(createConversationMock).not.toHaveBeenCalled();
+    expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
+    expect(findOrCreateConversationMock).toHaveBeenCalledWith([currentUserId, targetUser.id]);
     expect(result).toEqual({
       conversation: existingConversation,
       created: false,
@@ -114,36 +111,33 @@ describe("createConversationService", () => {
 
   it("throws a not found error when the target user does not exist", async () => {
     const currentUserId = 1;
-    const targetUsername = "missing-user";
+    const targetHandle = "missing_handle";
 
-    findUserByUsernameMock.mockResolvedValue(null);
+    findUserByHandleMock.mockResolvedValue(null);
 
-    const result = createConversationService(currentUserId, targetUsername);
+    const result = createConversationService(currentUserId, targetHandle);
 
-    expect(findUserByUsernameMock).toHaveBeenCalledWith(targetUsername);
+    expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
     await expect(result).rejects.toMatchObject({ statusCode: 404 });
-    expect(findConversationByParticipantIdsMock).not.toHaveBeenCalled();
-    expect(createConversationMock).not.toHaveBeenCalled();
+    expect(findOrCreateConversationMock).not.toHaveBeenCalled();
   });
 
   it("throws a bad request error when the target user is the current user", async () => {
     const currentUserId = 1;
-    const targetUsername = "current-user";
+    const targetHandle = "current_handle";
     const targetUser = {
       id: currentUserId,
-      username: targetUsername,
-      passwordHash: "hashed-password",
+      handle: targetHandle,
     };
 
-    findUserByUsernameMock.mockResolvedValue(targetUser);
+    findUserByHandleMock.mockResolvedValue(targetUser);
 
-    const result = createConversationService(currentUserId, targetUsername);
+    const result = createConversationService(currentUserId, targetHandle);
 
-    expect(findUserByUsernameMock).toHaveBeenCalledWith(targetUsername);
+    expect(findUserByHandleMock).toHaveBeenCalledWith(targetHandle);
     await expect(result).rejects.toBeInstanceOf(BadRequestError);
     await expect(result).rejects.toMatchObject({ statusCode: 400 });
-    expect(findConversationByParticipantIdsMock).not.toHaveBeenCalled();
-    expect(createConversationMock).not.toHaveBeenCalled();
+    expect(findOrCreateConversationMock).not.toHaveBeenCalled();
   });
 });

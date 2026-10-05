@@ -1,33 +1,35 @@
-import request, { type Response } from "supertest";
+import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
+import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
 import type { SearchUsersResponseBody } from "@/types/api.types.js";
 
-const getBody = <T>(response: Response) => response.body as T;
-
 describe("GET /users?query=", () => {
-  it("returns users whose username or display name contains the query", async () => {
+  it("returns users whose handle or display name contains the query", async () => {
     const app = createApp();
     const credentials = {
       username: "requesting-user",
       password: "secure-password",
       displayName: "Requesting User",
     };
-    const usernameMatch = await createTestUser({
-      username: "alex-user",
+    const handleMatch = await createTestUser({
+      username: "handle-match-user",
+      handle: "alex_handle",
       displayName: "First Match",
       profileImage: null,
     });
     const displayNameMatch = await createTestUser({
       username: "display-name-match",
+      handle: "display_name_match_handle",
       displayName: "Alexandra Lee",
       profileImage: "https://example.com/alexandra.jpg",
     });
     await createTestUser({
-      username: "unrelated-user",
+      username: "alex-username-only",
+      handle: "unrelated_handle",
       displayName: "Unrelated User",
     });
     const requestingUser = await createTestUser(credentials);
@@ -45,17 +47,49 @@ describe("GET /users?query=", () => {
     expect(body).toEqual(
       expect.arrayContaining([
         {
-          username: usernameMatch.username,
-          displayName: usernameMatch.displayName,
-          profileImage: usernameMatch.profileImage,
+          handle: handleMatch.handle,
+          displayName: handleMatch.displayName,
+          profileImage: handleMatch.profileImage,
         },
         {
-          username: displayNameMatch.username,
+          handle: displayNameMatch.handle,
           displayName: displayNameMatch.displayName,
           profileImage: displayNameMatch.profileImage,
         },
       ]),
     );
+  });
+
+  it("excludes the requesting user when both users match the query", async () => {
+    const app = createApp();
+    const requestingUser = await createTestUser({
+      username: "requesting-user",
+      handle: "alex_self",
+      displayName: "Requesting User",
+    });
+    const otherUser = await createTestUser({
+      username: "other-user",
+      handle: "other_handle",
+      displayName: "Alex Other",
+      profileImage: null,
+    });
+    const accessCookie = createAccessTokenCookie(requestingUser.id);
+
+    const response = await request(app)
+      .get("/users")
+      .query({ query: "alex" })
+      .set("Cookie", accessCookie);
+
+    expect(response.status).toBe(200);
+
+    const body = getBody<SearchUsersResponseBody>(response);
+    expect(body).toEqual([
+      {
+        handle: otherUser.handle,
+        displayName: otherUser.displayName,
+        profileImage: otherUser.profileImage,
+      },
+    ]);
   });
 
   it("returns an empty array when no users match the query", async () => {

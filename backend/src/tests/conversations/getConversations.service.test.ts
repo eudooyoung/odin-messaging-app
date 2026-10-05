@@ -7,8 +7,6 @@ const { findConversationsByParticipantIdMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/conversation.repository.js", () => ({
-  createConversation: vi.fn(),
-  findConversationByParticipantIds: vi.fn(),
   findConversationsByParticipantId: findConversationsByParticipantIdMock,
 }));
 
@@ -20,7 +18,8 @@ describe("getConversationsService", () => {
   it("returns conversations for the current user", async () => {
     const currentUserId = 1;
     const otherUser = {
-      username: "other-user",
+      id: 2,
+      handle: "other_user",
       displayName: "Other User",
       profileImage: "https://example.com/other-user.jpg",
     };
@@ -66,7 +65,8 @@ describe("getConversationsService", () => {
       id,
       participants: [
         {
-          username: `user-${id}`,
+          id,
+          handle: `user_${id}`,
           displayName: `User ${id}`,
           profileImage: null,
         },

@@ -24,7 +24,7 @@ describe("usersQueryOptions", () => {
   it("searches users with the given query and returns the results", async () => {
     const users = [
       {
-        username: "other-user",
+        handle: "other-user",
         displayName: "Other User",
         profileImage: null,
       },

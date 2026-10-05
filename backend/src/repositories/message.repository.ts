@@ -13,7 +13,8 @@ export const findMessagesByConversationId = (
       content: true,
       sender: {
         select: {
-          username: true,
+          id: true,
+          handle: true,
           displayName: true,
           profileImage: true,
         },
@@ -30,22 +31,32 @@ export const findMessagesByConversationId = (
   });
 
 export const createMessage = (conversationId: number, senderId: number, content: string) =>
-  prisma.message.create({
-    data: {
-      conversationId,
-      senderId,
-      content,
-    },
-    select: {
-      id: true,
-      content: true,
-      sender: {
-        select: {
-          username: true,
-          displayName: true,
-          profileImage: true,
-        },
+  prisma.$transaction(async (transaction) => {
+    const message = await transaction.message.create({
+      data: {
+        conversationId,
+        senderId,
+        content,
       },
-      createdAt: true,
-    },
+      select: {
+        id: true,
+        content: true,
+        sender: {
+          select: {
+            id: true,
+            handle: true,
+            displayName: true,
+            profileImage: true,
+          },
+        },
+        createdAt: true,
+      },
+    });
+
+    await transaction.conversation.update({
+      where: { id: conversationId },
+      data: { lastActivityAt: message.createdAt },
+    });
+
+    return message;
   });

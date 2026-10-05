@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
 import { UserFacingError } from "@/api/UserFacingError.ts";
+import type { UpdateUserProfileInput } from "./user.type.ts";
 import { UPDATE_USER_PROFILE_ERROR_MESSAGE, updateUserProfile } from "./updateUserProfile.ts";
 
 vi.mock("@/api/apiFetch.ts", () => ({
@@ -10,10 +11,11 @@ vi.mock("@/api/apiFetch.ts", () => ({
 describe("updateUserProfile", () => {
   it("updates and returns the current user's profile", async () => {
     const updateData = {
+      handle: "updated-handle",
       displayName: "Updated User",
       bio: "Updated bio",
       profileImage: "https://example.com/updated-profile.jpg",
-    };
+    } satisfies UpdateUserProfileInput;
     const updatedProfile = {
       username: "current-user",
       ...updateData,

@@ -7,9 +7,7 @@ const { searchUsersMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/repositories/user.repository.js", () => ({
-  findUserProfileByUsername: vi.fn(),
   searchUsers: searchUsersMock,
-  updateUserProfile: vi.fn(),
 }));
 
 beforeEach(() => {
@@ -17,26 +15,22 @@ beforeEach(() => {
 });
 
 describe("searchUsersService", () => {
-  it("returns users matching the search query", async () => {
+  it("passes the query and current user ID to the repository and returns its results", async () => {
     const query = "alex";
+    const currentUserId = 42;
     const users = [
       {
-        username: "alex",
-        displayName: "Alex Kim",
+        handle: "other_user",
+        displayName: "Other User",
         profileImage: null,
-      },
-      {
-        username: "another-user",
-        displayName: "Alexandra Lee",
-        profileImage: "https://example.com/alexandra.jpg",
       },
     ];
 
     searchUsersMock.mockResolvedValue(users);
 
-    const result = await searchUsersService(query);
+    const result = await searchUsersService(query, currentUserId);
 
-    expect(searchUsersMock).toHaveBeenCalledWith(query);
+    expect(searchUsersMock).toHaveBeenCalledWith(query, currentUserId);
     expect(result).toEqual(users);
   });
 });
