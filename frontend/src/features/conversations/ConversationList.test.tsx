@@ -102,7 +102,6 @@ describe("ConversationList", () => {
 
       expect(firstConversationLink).toHaveAttribute("href", "/conversations/1");
       expect(firstConversationLink).toHaveTextContent("First User");
-      expect(firstConversationLink).toHaveTextContent("@first-handle");
       expect(firstConversationLink).toHaveTextContent("Latest message");
       expect(firstConversationLink.querySelector("time")).toHaveAttribute(
         "datetime",
@@ -110,7 +109,6 @@ describe("ConversationList", () => {
       );
       expect(secondConversationLink).toHaveAttribute("href", "/conversations/2");
       expect(secondConversationLink).toHaveTextContent("Second User");
-      expect(secondConversationLink).toHaveTextContent("@second-handle");
       expect(secondConversationLink.querySelector("time")).toHaveAttribute(
         "datetime",
         secondConversation.lastActivityAt,

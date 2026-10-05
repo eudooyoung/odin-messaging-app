@@ -75,7 +75,6 @@ export function ConversationPage() {
           <h1 className="truncate font-heading text-base font-semibold text-neutral-900 transition-colors group-hover:text-primary-700 group-focus-visible:text-primary-700">
             {otherUser.displayName}
           </h1>
-          <p className="truncate text-sm text-neutral-500">@{otherUser.handle}</p>
         </Link>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">

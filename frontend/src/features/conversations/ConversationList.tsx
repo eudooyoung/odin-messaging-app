@@ -71,9 +71,6 @@ export function ConversationList() {
               >
                 {new Date(conversation.lastActivityAt).toLocaleString()}
               </time>
-              <p className="col-span-2 min-w-0 truncate text-xs text-neutral-500">
-                @{conversation.otherUser.handle}
-              </p>
               {conversation.lastMessage ? (
                 <p className="col-span-2 min-w-0 truncate text-sm text-neutral-600">
                   {conversation.lastMessage.content}

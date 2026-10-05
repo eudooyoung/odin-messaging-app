@@ -141,7 +141,6 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
-      expect(screen.getByText("@other-handle")).toBeInTheDocument();
       expect(
         screen.queryByRole("img", { name: "Other User profile" }),
       ).not.toBeInTheDocument();
@@ -155,7 +154,7 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       const identityLink = await screen.findByRole("link", {
-        name: /Other User\s+@other-handle/,
+        name: "Other User",
       });
       await user.click(identityLink);
 
@@ -385,7 +384,6 @@ describe("ConversationPage", () => {
       renderConversationPage(queryClient);
 
       expect(await screen.findByRole("heading", { name: "Other User" })).toBeInTheDocument();
-      expect(screen.getByText("@other-handle")).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Current User" })).not.toBeInTheDocument();
     });
   });
