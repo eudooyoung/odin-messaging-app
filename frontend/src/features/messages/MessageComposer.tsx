@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { FormField } from "@/components/FormField.tsx";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
@@ -26,7 +26,9 @@ type MessageComposerProps = {
 export function MessageComposer({ conversationId }: MessageComposerProps) {
   const queryClient = useQueryClient();
   const activeConversationId = useRef(conversationId);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -37,6 +39,18 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
     resolver: zodResolver(messageSchema),
     defaultValues: { content: "" },
   });
+  const content = useWatch({ control, name: "content" });
+  const contentField = register("content");
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    const borderHeight = textarea.offsetHeight - textarea.clientHeight;
+    textarea.style.height = `${textarea.scrollHeight + borderHeight}px`;
+  }, [content]);
+
   const createMessageMutation = useMutation({
     mutationFn: ({ conversationId, content }: { conversationId: number; content: string }) =>
       createMessage(conversationId, content),
@@ -70,22 +84,26 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
   return (
     <>
       <form
-        className="flex items-center gap-3"
+        className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-3 gap-y-1"
         onSubmit={handleSubmit(({ content }) =>
           createMessageMutation.mutate({ conversationId, content }),
         )}
       >
-        <div className="min-w-0 flex-1 [&>label]:sr-only [&>p]:mt-1 [&>p]:text-xs [&>p]:text-danger-700">
+        <div className="contents [&>label]:sr-only [&>p]:col-span-2 [&>p]:row-start-2 [&>p]:text-xs [&>p]:text-danger-700">
           <FormField
             as="textarea"
             autoFocus
-            className="min-h-11 w-full min-w-0 resize-none rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-base leading-6 text-neutral-900 placeholder:text-neutral-400 focus-visible:border-primary-500 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary-100 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-neutral-100"
+            className="col-start-1 row-start-1 block max-h-40 min-h-11 w-full min-w-0 resize-none overflow-y-auto rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-base leading-6 text-neutral-900 placeholder:text-neutral-400 focus-visible:border-primary-500 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-primary-100 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-neutral-100"
             id="message-content"
             label="Message"
-            rows={2}
+            rows={1}
             disabled={createMessageMutation.isPending}
             error={errors.content?.message}
-            {...register("content")}
+            {...contentField}
+            ref={(element) => {
+              contentField.ref(element);
+              textareaRef.current = element;
+            }}
             onKeyDown={(event) => {
               if (
                 event.key !== "Enter" ||
@@ -102,7 +120,7 @@ export function MessageComposer({ conversationId }: MessageComposerProps) {
           />
         </div>
         <button
-          className="h-11 shrink-0 rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:text-neutral-500"
+          className="col-start-2 row-start-1 h-11 shrink-0 rounded-lg border border-primary-400 bg-white px-5 text-sm font-semibold text-primary-500 transition-colors hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:border-neutral-300 disabled:bg-neutral-300 disabled:text-neutral-500"
           type="submit"
           disabled={createMessageMutation.isPending}
         >
