@@ -37,6 +37,11 @@ const profileSchema = z.object({
 
 type ProfileInput = z.infer<typeof profileSchema>;
 
+const fieldWrapperClassName =
+  "flex flex-col gap-2 [&>label]:text-sm [&>label]:font-medium [&>label]:text-neutral-700 [&>p]:text-sm [&>p]:text-danger-700";
+const inputClassName =
+  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 transition-colors focus-visible:border-primary-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 aria-invalid:border-danger-500 aria-invalid:focus-visible:outline-danger-600";
+
 const syncUpdatedProfileToCache = async (
   queryClient: QueryClient,
   previousHandle: string,
@@ -122,12 +127,18 @@ export function ProfilePage() {
     },
   });
   if (isPending) {
-    return <p role="status">Loading profile...</p>;
+    return (
+      <p className="px-8 py-10 text-sm text-neutral-500" role="status">
+        Loading profile...
+      </p>
+    );
   }
 
   if (isError) {
     return (
-      <UserFacingErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />
+      <div className="px-8 py-10 text-sm text-danger-700">
+        <UserFacingErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />
+      </div>
     );
   }
 
@@ -136,54 +147,99 @@ export function ProfilePage() {
   }
 
   return (
-    <form onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}>
-      <Link aria-label="Close profile" to="/">
-        ←
-      </Link>
+    <form
+      className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-8 py-10 font-body"
+      onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}
+    >
+      <header className="flex items-center gap-3 pb-6">
+        <Link
+          aria-label="Close profile"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+          to="/"
+        >
+          ←
+        </Link>
+        <h2 className="font-heading text-2xl font-semibold tracking-tight text-neutral-900">
+          Profile
+        </h2>
+      </header>
 
-      <FormField
-        id="handle"
-        type="text"
-        label="Handle"
-        error={errors.handle?.message}
-        {...register("handle")}
-      />
+      <div className={fieldWrapperClassName}>
+        <FormField
+          id="handle"
+          type="text"
+          label="Profile ID"
+          error={errors.handle?.message}
+          className={inputClassName}
+          {...register("handle")}
+        />
+        <span className="text-sm text-neutral-500">Used in your @ID and profile URL.</span>
+      </div>
 
-      <FormField
-        id="display-name"
-        type="text"
-        label="Display name"
-        error={errors.displayName?.message}
-        {...register("displayName")}
-      />
+      <div className={fieldWrapperClassName}>
+        <FormField
+          id="display-name"
+          type="text"
+          label="Display name"
+          error={errors.displayName?.message}
+          className={inputClassName}
+          {...register("displayName")}
+        />
+      </div>
 
-      <label htmlFor="bio">Bio</label>
-      <textarea
-        id="bio"
-        aria-invalid={Boolean(errors.bio)}
-        aria-describedby={errors.bio ? "bio-error" : undefined}
-        {...register("bio")}
-      />
-      {errors.bio && (
-        <p id="bio-error" role="alert">
-          {errors.bio.message}
-        </p>
-      )}
+      <div className={fieldWrapperClassName}>
+        <label htmlFor="bio">Bio</label>
+        <textarea
+          id="bio"
+          className={`${inputClassName} min-h-32 resize-y`}
+          aria-invalid={Boolean(errors.bio)}
+          aria-describedby={errors.bio ? "bio-error" : undefined}
+          {...register("bio")}
+        />
+        {errors.bio && (
+          <p id="bio-error" role="alert">
+            {errors.bio.message}
+          </p>
+        )}
+      </div>
 
-      <FormField
-        id="profile-image"
-        type="url"
-        label="Profile image"
-        {...register("profileImage")}
-      />
+      <div className={fieldWrapperClassName}>
+        <FormField
+          id="profile-image"
+          type="url"
+          label="Profile image"
+          className={inputClassName}
+          {...register("profileImage")}
+        />
+      </div>
 
-      <button type="submit" disabled={updateProfileMutation.isPending}>
-        Save profile
-      </button>
+      <div className="flex flex-col items-start gap-4 pt-6">
+        <button
+          className="self-end rounded-md bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
+          type="submit"
+          disabled={updateProfileMutation.isPending}
+        >
+          Save profile
+        </button>
 
-      {updateProfileMutation.isSuccess && <p role="status">Profile updated</p>}
+        {updateProfileMutation.isSuccess && (
+          <p
+            className="w-full rounded-md border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700"
+            role="status"
+          >
+            Profile updated
+          </p>
+        )}
 
-      {updateProfileMutation.isError && <p role="alert">{updateProfileMutation.error.message}</p>}
+        {updateProfileMutation.isError && (
+          <p
+            className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700"
+            role="alert"
+          >
+            {updateProfileMutation.error.message}
+          </p>
+        )}
+      </div>
     </form>
   );
 }

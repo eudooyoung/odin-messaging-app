@@ -173,7 +173,7 @@ describe("ProfilePage", () => {
       expect(screen.getByRole("textbox", { name: "Profile image" })).toHaveValue(
         "https://example.com/current-user.jpg",
       );
-      expect(screen.getByRole("textbox", { name: "Handle" })).toHaveValue(baseProfile.handle);
+      expect(screen.getByRole("textbox", { name: "Profile ID" })).toHaveValue(baseProfile.handle);
     });
 
     it("shows empty inputs when the profile bio and profile image are null", async () => {
@@ -210,7 +210,7 @@ describe("ProfilePage", () => {
         name: "Display name",
       });
       const bioInput = screen.getByRole("textbox", { name: "Bio" });
-      const handleInput = screen.getByRole("textbox", { name: "Handle" });
+      const handleInput = screen.getByRole("textbox", { name: "Profile ID" });
       expect(displayNameInput).toHaveValue("Current User");
       expect(bioInput).toHaveValue("Current bio");
 
@@ -247,38 +247,38 @@ describe("ProfilePage", () => {
     it.each([
       {
         caseName: "the handle is shorter than 3 characters",
-        fieldName: "Handle",
+        fieldName: "Profile ID",
         value: "ab",
         expectedMessage: "Handle must be at least 3 characters",
       },
       {
         caseName: "the handle is longer than 30 characters after trimming",
-        fieldName: "Handle",
+        fieldName: "Profile ID",
         value: ` ${"a".repeat(31)} `,
         expectedMessage: "Handle must be at most 30 characters",
       },
       {
         caseName: "the handle contains disallowed characters",
-        fieldName: "Handle",
+        fieldName: "Profile ID",
         value: "Invalid-Handle",
         expectedMessage:
           "Handle can only contain lowercase letters, numbers, underscores, and periods",
       },
       {
         caseName: "the handle starts with a period",
-        fieldName: "Handle",
+        fieldName: "Profile ID",
         value: ".invalid",
         expectedMessage: "Handle cannot start or end with a period",
       },
       {
         caseName: "the handle ends with a period",
-        fieldName: "Handle",
+        fieldName: "Profile ID",
         value: "invalid.",
         expectedMessage: "Handle cannot start or end with a period",
       },
       {
         caseName: "the handle contains consecutive periods",
-        fieldName: "Handle",
+        fieldName: "Profile ID",
         value: "invalid..handle",
         expectedMessage: "Handle cannot contain consecutive periods",
       },
@@ -349,7 +349,7 @@ describe("ProfilePage", () => {
 
       renderProfilePage(queryClient);
 
-      const handleInput = await screen.findByRole("textbox", { name: "Handle" });
+      const handleInput = await screen.findByRole("textbox", { name: "Profile ID" });
       await user.clear(handleInput);
       await user.type(handleInput, updatedProfile.handle);
 
@@ -650,7 +650,7 @@ describe("ProfilePage", () => {
 
       renderProfilePage(queryClient);
 
-      const handleInput = await screen.findByRole("textbox", { name: "Handle" });
+      const handleInput = await screen.findByRole("textbox", { name: "Profile ID" });
       await user.clear(handleInput);
       await user.type(handleInput, "unsaved_handle");
 
