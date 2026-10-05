@@ -199,19 +199,14 @@ export function ProfilePage() {
           </div>
 
           <div className={fieldWrapperClassName}>
-            <label htmlFor="bio">Bio</label>
-            <textarea
+            <FormField
+              as="textarea"
               id="bio"
+              label="Bio"
+              error={errors.bio?.message}
               className={`${inputClassName} min-h-32 resize-none`}
-              aria-invalid={Boolean(errors.bio)}
-              aria-describedby={errors.bio ? "bio-error" : undefined}
               {...register("bio")}
             />
-            {errors.bio && (
-              <p id="bio-error" role="alert">
-                {errors.bio.message}
-              </p>
-            )}
           </div>
 
           <div className={fieldWrapperClassName}>
