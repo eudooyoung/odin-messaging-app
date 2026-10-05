@@ -90,6 +90,7 @@ export function ProfilePage() {
   const updateProfileMutation = useMutation({
     mutationFn: (input: ProfileInput) =>
       updateUserProfile({
+        handle: input.handle,
         displayName: input.displayName,
         bio: input.bio || null,
         profileImage: input.profileImage || null,

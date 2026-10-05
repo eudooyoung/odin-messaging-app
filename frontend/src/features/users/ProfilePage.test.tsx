@@ -287,21 +287,35 @@ describe("ProfilePage", () => {
     it("updates the profile and related caches after a successful submission", async () => {
       const updatedProfile: UpdatedUserProfile = {
         username: currentUser.username,
-        handle: currentUser.handle,
+        handle: "updated-handle",
         displayName: "Updated User",
         bio: null,
         profileImage: null,
       };
-      vi.mocked(apiFetch).mockResolvedValue(
-        profileResponse({
-          ...baseProfile,
-          profileImage: "https://example.com/current-user.jpg",
-        }),
-      );
+      vi.mocked(apiFetch)
+        .mockResolvedValueOnce(
+          profileResponse({
+            ...baseProfile,
+            profileImage: "https://example.com/current-user.jpg",
+          }),
+        )
+        .mockResolvedValue(
+          profileResponse({
+            id: currentUser.id,
+            handle: updatedProfile.handle,
+            displayName: updatedProfile.displayName,
+            bio: updatedProfile.bio,
+            profileImage: updatedProfile.profileImage,
+          }),
+        );
       vi.mocked(updateUserProfile).mockResolvedValue(updatedProfile);
       const user = userEvent.setup();
 
       renderProfilePage(queryClient);
+
+      const handleInput = await screen.findByRole("textbox", { name: "Handle" });
+      await user.clear(handleInput);
+      await user.type(handleInput, updatedProfile.handle);
 
       const { displayNameInput, bioInput, profileImageInput } = await submitProfileChanges(user, {
         displayName: " Updated User ",
@@ -311,20 +325,26 @@ describe("ProfilePage", () => {
 
       expect(await screen.findByRole("status")).toHaveTextContent("Profile updated");
       expect(updateUserProfile).toHaveBeenCalledWith({
+        handle: updatedProfile.handle,
         displayName: "Updated User",
         bio: null,
         profileImage: null,
       });
-      expect(queryClient.getQueryData(profileQueryKey)).toEqual({
+      expect(
+        queryClient.getQueryData(userProfileQueryOptions(updatedProfile.handle).queryKey),
+      ).toEqual({
         ...baseProfile,
+        handle: updatedProfile.handle,
         displayName: updatedProfile.displayName,
         bio: updatedProfile.bio,
         profileImage: updatedProfile.profileImage,
       });
       expect(queryClient.getQueryData(authMeQueryOptions.queryKey)).toEqual({
         ...currentUser,
+        handle: updatedProfile.handle,
         displayName: "Updated User",
       });
+      expect(handleInput).toHaveValue(updatedProfile.handle);
       expect(displayNameInput).toHaveValue(updatedProfile.displayName);
       expect(bioInput).toHaveValue(updatedProfile.bio ?? "");
       expect(profileImageInput).toHaveValue(updatedProfile.profileImage ?? "");
