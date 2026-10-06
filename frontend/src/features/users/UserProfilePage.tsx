@@ -85,7 +85,7 @@ export function UserProfilePage() {
               navigate(-1);
             }}
           >
-            ←
+            ×
           </Link>
           <h2 className="min-w-0 truncate font-heading text-2xl font-semibold tracking-tight text-neutral-900">
             {profile.displayName}

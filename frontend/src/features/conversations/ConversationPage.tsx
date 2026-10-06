@@ -64,7 +64,12 @@ export function ConversationPage() {
             to="."
             onClick={(event) => {
               event.preventDefault();
-              navigate(-1);
+              // Match the messaging layout's Tailwind md breakpoint.
+              if (window.innerWidth < 768) {
+                navigate("/");
+              } else {
+                navigate(-1);
+              }
             }}
           >
             ←

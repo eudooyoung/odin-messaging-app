@@ -24,6 +24,7 @@ beforeEach(() => {
 
 afterEach(() => {
   queryClient.clear();
+  vi.unstubAllGlobals();
 });
 
 const renderConversationPage = (
@@ -119,7 +120,28 @@ describe("ConversationPage", () => {
       });
     };
 
-    it("returns to the previous history entry when the close icon is clicked", async () => {
+    it.each([
+      { entry: "the conversation list", history: ["/", "/conversations/42"] },
+      {
+        entry: "a public profile",
+        history: ["/users/other-handle", "/conversations/42"],
+      },
+      { entry: "a direct entry", history: ["/conversations/42"] },
+    ])("returns to the conversation list on mobile from $entry", async ({ history }) => {
+      vi.stubGlobal("innerWidth", 375);
+      arrangeConversationPageRequests();
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient, history);
+
+      await user.click(await screen.findByRole("link", { name: "Close conversation" }));
+
+      expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
+    });
+
+    it("returns to the previous history entry on desktop when the close icon is clicked", async () => {
+      vi.stubGlobal("innerWidth", 1024);
       arrangeConversationPageRequests();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
