@@ -477,6 +477,39 @@ describe("ConversationPage", () => {
 
   describe("route parameters", () => {
     it.each([
+      {
+        caseName: "mobile from a public profile",
+        width: 375,
+        history: ["/users/other-handle", "/conversations/invalid"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "mobile from a direct entry",
+        width: 375,
+        history: ["/conversations/invalid"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "desktop from a public profile",
+        width: 1024,
+        history: ["/users/other-handle", "/conversations/invalid"],
+        destination: "Other User public profile",
+      },
+    ])("can close an invalid conversation on $caseName", async ({ width, history, destination }) => {
+      vi.stubGlobal("innerWidth", width);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient, history);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Invalid conversation");
+      expect(apiFetch).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("link", { name: "Close conversation" }));
+
+      expect(await screen.findByRole("heading", { name: destination })).toBeInTheDocument();
+    });
+
+    it.each([
       { caseName: "not a number", conversationId: "invalid" },
       { caseName: "zero", conversationId: "0" },
       { caseName: "negative", conversationId: "-1" },

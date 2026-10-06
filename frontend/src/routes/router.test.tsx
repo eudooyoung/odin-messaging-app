@@ -142,6 +142,45 @@ describe("router", () => {
     });
   });
 
+  describe("unknown routes", () => {
+    it.each([
+      { caseName: "authenticated", authUser: currentUser },
+      { caseName: "unauthenticated", authUser: null },
+    ])("shows Not Found and allows returning home when $caseName", async ({ authUser }) => {
+      queryClient.setQueryData(authMeQueryOptions.queryKey, authUser);
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(
+            authUser ? jsonResponse(authUser) : new Response(null, { status: 401 }),
+          );
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt("/foo/bar");
+
+      expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
+      expect(screen.queryByText("Unexpected Application Error!")).not.toBeInTheDocument();
+      const homeLink = screen.getByRole("link", { name: /home/i });
+      expect(homeLink).toHaveAttribute("href", "/");
+
+      await user.click(homeLink);
+
+      if (authUser) {
+        expect(await screen.findByRole("heading", { name: "Select a conversation" })).toBeInTheDocument();
+      } else {
+        await expectLoginPage();
+      }
+      expect(screen.queryByRole("heading", { name: "Page not found" })).not.toBeInTheDocument();
+    });
+  });
+
   describe("auth recovery", () => {
     it.each([
       { caseName: "protected route with an authenticated user", path: "/", recoveredUser: currentUser },
@@ -587,9 +626,10 @@ describe("router", () => {
       ).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "Message" }));
 
-      expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
+      const conversationLink = await screen.findByRole("link", { name: /Target User/ });
+      expect(conversationLink).toBeInTheDocument();
       expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
-      expect(screen.getByText("No messages yet")).toBeInTheDocument();
+      expect(within(conversationLink).getByText("No messages yet")).toBeInTheDocument();
     });
 
     it("navigates before the persistent conversation list refetch finishes and later refreshes the sidebar", async () => {

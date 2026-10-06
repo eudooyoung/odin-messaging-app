@@ -654,6 +654,40 @@ describe("ProfilePage", () => {
       expect(updateUserProfile).toHaveBeenCalledOnce();
     });
 
+    it("shows the duplicate handle message after a failed save", async () => {
+      vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
+      vi.mocked(updateUserProfile).mockRejectedValue(
+        new UserFacingError("This handle is already taken"),
+      );
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient);
+
+      const handleInput = await screen.findByRole("textbox", { name: "Profile ID" });
+      await user.clear(handleInput);
+      await user.type(handleInput, "taken_handle");
+      await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("This handle is already taken");
+    });
+
+    it.each([
+      { caseName: "transport error", mutationError: new TypeError("Failed to fetch") },
+      { caseName: "unexpected error", mutationError: new Error("Internal profile update failure") },
+    ])("shows the save fallback without exposing a $caseName", async ({ mutationError }) => {
+      vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
+      vi.mocked(updateUserProfile).mockRejectedValue(mutationError);
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient);
+
+      await submitProfileChanges(user, { displayName: "Unsaved User" });
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Failed to update profile");
+      expect(alert).not.toHaveTextContent(mutationError.message);
+    });
+
     it("shows the mutation error and preserves unsaved form values", async () => {
       const mutationError = new UserFacingError("Failed to update profile");
       vi.mocked(apiFetch).mockResolvedValue(

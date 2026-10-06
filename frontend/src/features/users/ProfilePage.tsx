@@ -238,12 +238,12 @@ export function ProfilePage() {
               )}
 
               {updateProfileMutation.isError && (
-                <p
-                  className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700"
-                  role="alert"
-                >
-                  {updateProfileMutation.error.message}
-                </p>
+                <div className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700">
+                  <UserFacingErrorMessage
+                    error={updateProfileMutation.error}
+                    fallbackMessage="Failed to update profile"
+                  />
+                </div>
               )}
             </div>
           </form>

@@ -2,9 +2,9 @@
 
 ## Current branch / phase
 
-- Branch: `style/responsive`. HEAD: `810f4d8` (`style(conversation, profile, userProfile): add error handling tests for mobile and desktop`).
-- Frontend desktop UI polish와 mobile responsive, Leaves branding, 회원가입 성공 안내와 auth 실패 UX 및 recovery 조율은 완료됐다.
-- 다음 즉시 시작점은 존재하지 않는 URL의 404 / Not Found 처리다. MVP와 배포는 아직 완료되지 않았다.
+- Branch: `feat/error-pages`. HEAD: `2fc1147` (`feat(profile): add error handling for profile update failures`).
+- Frontend desktop UI polish와 mobile responsive, Leaves branding, 회원가입 성공 안내와 auth 실패 UX 및 recovery 조율, error/fallback handling은 완료됐다.
+- 다음 즉시 시작점은 개발자 정보/footer 표시 여부와 위치 결정이다. MVP와 배포는 아직 완료되지 않았다.
 
 ## Current implementation context
 
@@ -39,7 +39,15 @@
 - ProfilePage / UserProfilePage는 mobile·desktop 모두 `×`와 `Close profile`을 사용하며 기존 history navigation(`navigate(-1)`)을 유지한다.
 - Conversation header·Messages list·Composer wrapper의 mobile 좌우 padding을 줄이고 desktop padding은 유지한다. Profile 계열도 공통 기준으로 content wrapper의 mobile 좌우·상하 padding과 card padding을 줄였다.
 - ConversationPage / ProfilePage / UserProfilePage는 조회 error 상태에서도 header/navigation escape hatch를 유지하며 content 영역에 기존 danger 오류 안내를 표시한다. Loading과 정상 화면의 기능 동작은 유지한다.
-- iPhone SE급 세로·가로 화면 기준 주요 UI 확인은 완료됐다(사용자 확인). 404 / Not Found 화면 처리는 다음 단계로 남아 있다.
+- iPhone SE급 세로·가로 화면 기준 주요 UI 확인은 완료됐다(사용자 확인).
+
+### Error / fallback handling — complete
+
+- 존재하지 않는 URL은 인증 guard 밖의 catch-all route에서 로그인 여부와 관계없이 동일한 `Page not found` 화면과 `/` 홈 링크를 표시한다.
+- Unexpected route/render error는 최상위 route의 `errorElement`에서 `Something went wrong`과 홈 링크를 표시한다. 내부 error message와 React Router 기본 오류 화면은 사용자에게 노출하지 않으며, 홈 이동 후 기존 인증 상태에 따라 protected home 또는 login 흐름으로 복귀한다.
+- 없는 user / conversation은 기존 feature UI의 `Profile not found` / `Conversation not found`로 처리한다. Conversation 403과 일반 query error의 사용자용 안내 및 header/navigation은 유지한다.
+- Invalid conversation id는 API 요청 없이 `Invalid conversation`을 본문에 표시하며 header와 `Close conversation`을 유지한다. Mobile은 `/`, desktop은 기존 history back으로 이동한다.
+- Profile save는 기존 `UserFacingErrorMessage`를 사용한다. Duplicate handle 등 사용자용 오류 메시지는 유지하고 transport / 일반 Error에는 `Failed to update profile`을 표시한다. Validation, 미저장 입력 보존, 성공 후 reset/cache 동기화와 기존 auth error/recovery 계약은 유지한다.
 
 ### Auth UX / recovery — complete
 
@@ -50,15 +58,15 @@
 
 ## Latest verification
 
-- Mobile responsive 관련 기존 테스트와 error-state navigation regression 테스트, frontend `tsc -b` 및 변경 production 파일 lint 검사 통과.
-- iPhone SE급 주요 UI 확인은 완료됐다. 현재 상태의 전체 frontend/backend suite와 build, Frontend·Backend를 연결한 전체 browser smoke test는 최종 검증으로 남아 있다.
+- Frontend 전체 33개 파일, 296개 테스트 통과. 기존 app·node TypeScript 설정의 `--noEmit` 검사와 error-handling 관련 production 파일 lint 검사 통과.
+- Error/fallback handling audit에서 필수 blocker는 발견되지 않았다. iPhone SE급 주요 UI 확인은 완료됐다. Frontend·Backend를 연결한 실제 browser smoke test와 배포 전 frontend/backend 전체 테스트·build·최종 audit는 남아 있다.
 
 ## Next starting point
 
-1. 존재하지 않는 URL의 404 / Not Found 처리를 진행한다.
-2. 개발자 정보/footer 표시 여부와 위치를 결정한다.
-3. Frontend·Backend를 연결한 전체 browser smoke test로 가입·로그인·auth 복구, profile 편집·공개 profile·대화 흐름과 CORS/cookie/WebSocket을 확인한다.
-4. 배포 전 전체 테스트·build·최종 audit와 배포 점검 후 배포한다.
+1. 개발자 정보/footer 표시 여부와 위치를 결정한다.
+2. Frontend·Backend를 연결한 실제 browser smoke test로 가입·로그인·auth 복구, profile 편집·공개 profile·대화 흐름과 CORS/cookie/routing/WebSocket을 확인한다.
+3. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 수행한다.
+4. 배포한다.
 
 ## Deferred / known follow-ups
 
