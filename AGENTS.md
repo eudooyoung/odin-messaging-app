@@ -176,7 +176,7 @@ Test double / stub은 현재 테스트에 필요한 동작만 구현하고 외�
 
 ## 9. 프로젝트 문서 관리
 
-- `docs/messaging-app-project-plan.md`는 장기 project plan 및 제품·설계·roadmap의 SSOT다. 제품 요구사항과 MVP 범위, 확정된 서비스 규칙, 주요 데이터 모델·API·architecture 계약, 기술 스택·배포 정책, 큰 기능 단위의 완료 상태와 남은 MVP·deploy·post-MVP TODO를 기록한다. 완료 작업은 milestone 수준으로 요약하며, RED → GREEN 과정, 개별 테스트·fixture·assertion·mock·helper 수정, 일회성 테스트 수치, audit 작업 로그, 반복된 완료 설명, 세션별 이력은 기록하지 않는다.
+- `docs/project-plan.md`는 장기 project plan 및 제품·설계·roadmap의 SSOT다. 제품 요구사항과 MVP 범위, 확정된 서비스 규칙, 주요 데이터 모델·API·architecture 계약, 기술 스택·배포 정책, 큰 기능 단위의 완료 상태와 남은 MVP·deploy·post-MVP TODO를 기록한다. 완료 작업은 milestone 수준으로 요약하며, RED → GREEN 과정, 개별 테스트·fixture·assertion·mock·helper 수정, 일회성 테스트 수치, audit 작업 로그, 반복된 완료 설명, 세션별 이력은 기록하지 않는다.
 - `docs/project-status.md`는 현재 작업 상태의 SSOT이자 GPT·Codex의 세션 간 handoff 문서다. 현재 branch와 phase, 다음 작업에 직접 필요한 구현·계약 맥락, 최근 완료된 큰 작업, 최신 검증 상태, 진행 중인 작업, 다음 즉시 시작점, 알려진 deferred issue·blocker를 기록한다. 시간순 worklog로 누적하지 않고 상태가 바뀌면 오래된 내용을 교체한다.
 - GPT 또는 Codex 세션 교체 전과 현재 phase 또는 다음 시작점이 크게 바뀔 때 `project-status.md`를 최신화한다. 제품 요구사항, API 계약, architecture 결정, roadmap이 바뀌면 project plan도 함께 갱신한다.
 - 새 세션에서는 루트·관련 하위 `AGENTS.md`, project plan, project status를 기준으로 현재 작업을 파악한다.

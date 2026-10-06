@@ -127,6 +127,7 @@ export function ProfilePage() {
       );
     },
   });
+
   if (isPending) {
     return (
       <p

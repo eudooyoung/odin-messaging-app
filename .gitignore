@@ -1,2 +1,6 @@
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Archify
+.archify/
+docs/architecture/*.delivery.json

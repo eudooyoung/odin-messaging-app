@@ -1,4 +1,5 @@
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
@@ -81,10 +82,12 @@ describe("POST /conversations concurrent requests", () => {
       const [firstResponse, secondResponse] = await Promise.all([
         request(app)
           .post("/conversations")
+          .set("Origin", env.frontendOrigin)
           .set("Cookie", createAccessTokenCookie(userA.id))
           .send({ targetHandle: userB.handle }),
         request(app)
           .post("/conversations")
+          .set("Origin", env.frontendOrigin)
           .set("Cookie", createAccessTokenCookie(secondRequester.id))
           .send({ targetHandle: secondTarget.handle }),
       ]);

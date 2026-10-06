@@ -1,4 +1,5 @@
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
@@ -15,7 +16,10 @@ describe("POST /auth/register", () => {
       displayName: "New User",
     };
 
-    const res = await request(createApp()).post("/auth/register").send(registration);
+    const res = await request(createApp())
+      .post("/auth/register")
+      .set("Origin", env.frontendOrigin)
+      .send(registration);
 
     expect(res.status).toBe(201);
 
@@ -92,7 +96,10 @@ describe("POST /auth/register", () => {
       },
     },
   ])("returns 400 when $caseName", async ({ registration }) => {
-    const res = await request(createApp()).post("/auth/register").send(registration);
+    const res = await request(createApp())
+      .post("/auth/register")
+      .set("Origin", env.frontendOrigin)
+      .send(registration);
 
     expect(res.status).toBe(400);
   });
@@ -106,7 +113,10 @@ describe("POST /auth/register", () => {
 
     await createTestUser({ username: registration.username });
 
-    const response = await request(createApp()).post("/auth/register").send(registration);
+    const response = await request(createApp())
+      .post("/auth/register")
+      .set("Origin", env.frontendOrigin)
+      .send(registration);
 
     expect(response.status).toBe(409);
   });

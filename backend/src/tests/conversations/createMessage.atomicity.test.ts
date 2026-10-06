@@ -1,4 +1,5 @@
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { expect, it, vi } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
@@ -37,6 +38,7 @@ it("rolls back the message when updating the conversation activity fails", async
 
   const response = await request(createApp())
     .post(`/conversations/${conversation.id}/messages`)
+    .set("Origin", env.frontendOrigin)
     .set("Cookie", createAccessTokenCookie(sender.id))
     .send({ content: "Hello!" });
 

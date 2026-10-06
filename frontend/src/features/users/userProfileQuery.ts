@@ -14,6 +14,8 @@ export class UserProfileNotFoundError extends UserFacingError {
 export const userProfileQueryOptions = (handle: string) =>
   queryOptions({
     queryKey: ["users", "profile", handle] as const,
+    retry: (failureCount, error) =>
+      !(error instanceof UserProfileNotFoundError) && failureCount < 3,
     queryFn: async ({ signal }): Promise<UserProfile> => {
       const response = await apiFetch(`/users/${encodeURIComponent(handle)}`, {
         signal,

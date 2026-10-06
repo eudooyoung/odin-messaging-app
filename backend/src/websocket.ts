@@ -1,5 +1,6 @@
 import type { Server } from "node:http";
 import WebSocket, { WebSocketServer } from "ws";
+import { env } from "@/config/env.config.js";
 import { verifyAccessToken } from "@/lib/accessToken.js";
 import { getCookieValue } from "@/lib/cookie.js";
 import type {
@@ -18,6 +19,12 @@ export const attachWebSocketServer = (
   const webSocketServer = new WebSocketServer({ noServer: true });
 
   httpServer.on("upgrade", (request, socket, head) => {
+    if (request.headers.origin !== env.frontendOrigin) {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
     const accessToken = getCookieValue(request.headers.cookie, "accessToken");
 
     const userId = accessToken ? verifyAccessToken(accessToken) : null;
