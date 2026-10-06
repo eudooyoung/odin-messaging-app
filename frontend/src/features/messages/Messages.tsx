@@ -105,7 +105,7 @@ export function Messages({ conversationId, currentUserId }: MessagesProps) {
         </div>
       )}
       <ul
-        className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-8 py-6"
+        className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6 md:px-8"
         style={{ visibility: showMessages ? "visible" : "hidden" }}
       >
         {messages.map((message, index) => {

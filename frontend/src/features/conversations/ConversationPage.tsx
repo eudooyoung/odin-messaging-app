@@ -57,7 +57,7 @@ export function ConversationPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="sticky top-0 z-10 shrink-0 border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-8 py-4">
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-4 md:px-8">
           <Link
             aria-label="Close conversation"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xl leading-none text-neutral-600 transition-colors hover:bg-primary-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
@@ -102,7 +102,7 @@ export function ConversationPage() {
         <Messages conversationId={parsedConversationId} currentUserId={currentUser.id} />
       </div>
       <div className="shrink-0 border-t border-neutral-200">
-        <div className="mx-auto w-full max-w-2xl px-8 py-4">
+        <div className="mx-auto w-full max-w-2xl px-4 py-4 md:px-8">
           <MessageComposer conversationId={parsedConversationId} />
         </div>
       </div>
