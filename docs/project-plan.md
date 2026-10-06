@@ -4,7 +4,9 @@
 
 - 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 navigation, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX, mobile responsive와 error-state navigation, frontend error/fallback handling, 개발자/GitHub 정보 표시(dev-info).
 - Browser smoke test 완료: Frontend·Backend·dev PostgreSQL 연동 확인과 발견된 404 query retry 문제 수정을 완료했다. 확인 범위는 `docs/project-status.md`에서 관리한다.
-- 현재 다음 단계: frontend/backend 전체 테스트·build·최종 audit와 deploy 점검 → deploy. 배포는 아직 완료되지 않았다.
+- 배포 전 hardening 완료: WebSocket cookie 인증 upgrade의 Origin validation, REST state-changing 요청의 CSRF Origin validation, backend 메시지 content의 trim 후 1~1000자 계약 정합화.
+- Frontend/backend 전체 test·type-check·ESLint·production build 재검증과 최종 audit 완료. 현재 MVP 코드·계약 기준 deploy blocker 없음.
+- 현재 다음 단계: Netlify + Render deploy 설정 점검 → deploy. 설정 점검과 배포는 아직 진행하지 않았다.
 
 ## 2. 요구사항 / 서비스 규칙
 
@@ -78,10 +80,11 @@
 - participants, otherUser, sender는 모두 위 공개 identity shape를 사용한다. GET public profile과 PATCH self profile response는 서로 다른 계약이다.
 - Conversation 생성은 Serializable transaction으로 기존 대화 조회부터 생성까지 처리한다. 동시 충돌은 제한적으로 재시도해 같은 사용자 쌍의 중복 대화를 방지한다.
 - Message 저장과 Conversation.lastActivityAt 갱신은 같은 transaction에서 처리한다. 갱신 실패 시 메시지 저장도 rollback한다.
+- POST/PATCH/PUT/DELETE는 auth register/login/refresh/logout을 포함해 모든 route에서 Origin이 FRONTEND_ORIGIN과 정확히 일치해야 실행된다. 불일치·누락·null Origin은 route 실행 전에 403으로 거부한다. GET/HEAD와 OPTIONS preflight는 기존 동작을 유지하며 서버 측 검증은 CORS response header와 별개다.
 
 ### WebSocket / 인증 / Frontend 상태
 
-- WebSocket은 cookie access token으로 인증한다. message.created는 sender를 제외한 상대 사용자의 연결에 publish한다. event의 message.sender는 REST sender와 동일한 공개 identity다.
+- WebSocket은 upgrade Origin이 FRONTEND_ORIGIN과 정확히 일치할 때 cookie access token으로 인증한다. 불일치·누락·null Origin은 handshake를 403으로 거부한다. message.created는 sender를 제외한 상대 사용자의 연결에 publish한다. event의 message.sender는 REST sender와 동일한 공개 identity다.
 - WebSocket 연결·재연결 시 REST message query로 놓친 메시지를 복구한다. 캐시 반영은 중복을 막고 createdAt DESC, id DESC 순서를 유지한다.
 - 일반 기능 API는 로그인이 필요하다. /auth/me, /users/*, /conversations/*는 인증이 필요하고, 대화·메시지는 participant만 접근한다. 프로필 수정은 본인만 가능하다.
 - Frontend는 앱 진입점에서 QueryClientProvider가 RouterProvider를 감싼다. 인증 source of truth는 GET /auth/me와 ["auth", "me"] query다.
@@ -110,6 +113,8 @@
 - [x] WebSocket: 인증, 사용자별 연결, message.created 전달, reconnect에 필요한 서버 계약.
 - [x] Identity/API refactor: private username과 public handle 계약 전환.
 - [x] Concurrency / atomicity hardening: 동시 대화 생성과 Message 저장·lastActivityAt 갱신의 transaction 보장.
+- [x] Origin security hardening: WebSocket upgrade Origin 검증과 REST state-changing 요청의 CSRF Origin 검증.
+- [x] Message validation 정합화: backend content의 trim 후 1~1000자 계약과 관련 integration test 검증 완료.
 
 ### Frontend
 
@@ -137,7 +142,7 @@
 
 ### MVP — 우선순위
 
-1. Frontend/backend 전체 테스트·build·최종 audit와 deploy 점검을 수행한다.
+1. Netlify + Render deploy 설정을 점검한다.
 2. 배포한다.
 
 ### Product / behavior follow-up
@@ -145,11 +150,15 @@
 - 메시지가 없는 Conversation의 목록 포함 정책 결정. 후보는 GET /conversations에서 메시지가 있는 대화만 반환하는 방식이다.
 - WebSocket reconnect/open gap recovery가 message query 복구 후 conversation 목록도 갱신하도록 보완.
 - 1:1 conversation 나가기·내 기록 지우기의 participant state와 재진입 시 보이는 기록 범위 결정.
+- 선택적 계약 정리: handle trim의 문서/API 정규화 책임. Frontend는 trim하고 backend PATCH validation은 공백 포함 handle을 거부한다. 현재 frontend 사용자 흐름은 정상이며 deploy blocker가 아니다.
 
 ### Deploy / hardening
 
-- WebSocket cookie 인증 upgrade 요청의 허용 Origin 검증.
-- 전체 테스트·build·최종 audit 후 배포.
+- [x] WebSocket cookie 인증 upgrade 요청의 허용 Origin 검증.
+- [x] REST POST/PATCH/PUT/DELETE의 서버 측 CSRF Origin 검증(auth endpoint 포함).
+- [x] Backend 메시지 content의 trim 후 1~1000자 계약 정합화.
+- [x] Frontend/backend 전체 test·type-check·ESLint·production build 재검증과 최종 audit. 현재 MVP 코드·계약 기준 deploy blocker 없음.
+- [ ] Netlify + Render 환경·URL·CORS·cookie·production DB migration·hosting 설정 점검 후 배포.
 - Post-MVP auth hardening: 이전 session에서 시작한 pending mutation·refresh가 session 전환 후 cache·navigation·cookie에 영향을 주지 않도록 방어.
 - 선택적 maintenance: frontend 테스트의 불필요한 mock 호출 접근 정리와 대화 생성 충돌 재시도 한도 소진 경로 검증.
 
