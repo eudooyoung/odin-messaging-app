@@ -23,11 +23,7 @@ export function ConversationPage() {
     enabled: isValidConversationId,
   });
 
-  if (!isValidConversationId) {
-    return <p role="alert">Invalid conversation</p>;
-  }
-
-  if (isPending) {
+  if (isValidConversationId && isPending) {
     return (
       <p
         className="flex h-full items-center justify-center px-8 py-8 text-center font-body text-sm text-neutral-500"
@@ -42,7 +38,7 @@ export function ConversationPage() {
     ? conversation?.participants.find((participant) => participant.id !== currentUser.id)
     : undefined;
 
-  if (!isError && (!currentUser || !otherUser)) {
+  if (isValidConversationId && !isError && (!currentUser || !otherUser)) {
     return null;
   }
 
@@ -95,7 +91,11 @@ export function ConversationPage() {
         </div>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">
-        {isError ? (
+        {!isValidConversationId ? (
+          <div className="flex h-full items-center justify-center px-8 py-8 text-center font-body text-sm text-danger-700">
+            <p role="alert">Invalid conversation</p>
+          </div>
+        ) : isError ? (
           <div className="flex h-full items-center justify-center px-8 py-8 text-center font-body text-sm text-danger-700">
             <UserFacingErrorMessage
               error={error}
@@ -108,7 +108,7 @@ export function ConversationPage() {
           )
         )}
       </div>
-      {!isError && (
+      {isValidConversationId && !isError && (
         <div className="shrink-0 border-t border-neutral-200">
           <div className="mx-auto w-full max-w-2xl px-4 py-4 md:px-8">
             <MessageComposer conversationId={parsedConversationId} />
