@@ -7,6 +7,7 @@ import { UserProfilePage } from "@/features/users/UserProfilePage.tsx";
 import { createBrowserRouter } from "react-router";
 import { GuestOnlyRoute } from "./GuestOnlyRoute.tsx";
 import { MessagingLayout } from "./MessagingLayout.tsx";
+import { NotFoundPage } from "./NotFoundPage.tsx";
 import { ProtectedRoute } from "./ProtectedRoute.tsx";
 
 const routes = [
@@ -49,6 +50,10 @@ const routes = [
         element: <RegisterPage />,
       },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
   },
 ];
 
