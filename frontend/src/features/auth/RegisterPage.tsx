@@ -45,7 +45,7 @@ export function RegisterPage() {
   const registerMutation = useMutation({
     mutationFn: registerUser,
     onSuccess: () => {
-      navigate("/login");
+      navigate("/login", { state: { registrationSuccess: true } });
     },
   });
 

@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider, useInfiniteQuery } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiFetch } from "@/api/apiFetch.ts";
+import type { AuthUser } from "@/features/auth/auth.type.ts";
 import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { ProtectedRoute } from "@/routes/ProtectedRoute.tsx";
 import { createDeferred } from "@/tests/createDeferred.ts";
@@ -338,6 +339,73 @@ describe("AuthenticatedWebSocket", () => {
       queryClient.clear();
     });
 
+    it("reconnects after manual Retry without repeating the scheduled auth recovery", async () => {
+      // Arrange
+      vi.useFakeTimers();
+      vi.stubGlobal("WebSocket", WebSocketStub);
+      vi.mocked(apiFetch)
+        .mockImplementation(() => Promise.resolve(createSuccessfulAuthResponse()))
+        .mockResolvedValueOnce(createFailedAuthResponse());
+      const queryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            refetchOnMount: false,
+            retry: false,
+          },
+        },
+      });
+      const currentUser: AuthUser = {
+        id: 1,
+        username: "user",
+        handle: "user",
+        displayName: "User",
+      };
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const { unmount } = render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/protected"]}>
+            <Routes>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/protected" element={<h1>Protected content</h1>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      const [webSocket] = WebSocketStub.instances;
+
+      // Act: fail recovery and click Retry before the automatic retry delay
+      await act(async () => {
+        webSocket.emitClose();
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(apiFetch).toHaveBeenCalledOnce();
+      expect(screen.getByRole("alert")).toHaveTextContent("Unable to connect to the server");
+      expect(screen.queryByRole("heading", { name: "Protected content" })).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      // Assert: manual recovery restores the route and reconnects immediately
+      expect(screen.getByRole("heading", { name: "Protected content" })).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(apiFetch).toHaveBeenCalledTimes(2);
+      expect.soft(WebSocketStub.instances).toHaveLength(2);
+
+      // Act: pass the previously scheduled automatic retry delay
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+
+      // Assert: no extra auth request follows a successful manual recovery
+      expect.soft(apiFetch).toHaveBeenCalledTimes(2);
+
+      unmount();
+      queryClient.clear();
+    });
+
     it("continues auth recovery retries while ProtectedRoute shows an error", async () => {
       // Arrange
       vi.useFakeTimers();
@@ -381,7 +449,7 @@ describe("AuthenticatedWebSocket", () => {
 
       // Assert: the route shows the error
       expect(apiFetch).toHaveBeenCalledOnce();
-      expect(screen.getByRole("alert")).toHaveTextContent("Failed to check authentication");
+      expect(screen.getByRole("alert")).toHaveTextContent("Unable to connect to the server");
 
       // Act: reach the retry delay
       await act(async () => {

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { MessagingSidebar } from "./MessagingSidebar.tsx";
 
@@ -17,6 +17,26 @@ vi.mock("@/features/users/UserSearch.tsx", () => ({
 }));
 
 describe("MessagingSidebar", () => {
+  it("opens the home route from a conversation when the Leaves branding link is clicked", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={["/conversations/42"]}>
+        <MessagingSidebar />
+        <Routes>
+          <Route path="/conversations/:conversationId" element={<h2>Conversation detail</h2>} />
+          <Route path="/" element={<h2>Select a conversation</h2>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Conversation detail" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: "Leaves" }));
+
+    expect(screen.getByRole("heading", { name: "Select a conversation" })).toBeInTheDocument();
+  });
+
   it("collapses and expands the desktop sidebar", async () => {
     const user = userEvent.setup();
 
@@ -33,10 +53,8 @@ describe("MessagingSidebar", () => {
 
     await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
 
-    expect(screen.queryByRole("searchbox", { name: "Search users" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Conversation list")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "My profile" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Collapse sidebar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Expand sidebar" }));
 

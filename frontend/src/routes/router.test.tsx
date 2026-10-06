@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,7 @@ import { authMeQueryOptions } from "@/features/auth/authMeQuery.ts";
 import { conversationsQueryOptions } from "@/features/conversations/conversationsQuery.ts";
 import { messagesQueryOptions } from "@/features/messages/messagesQuery.ts";
 import { createDeferred } from "@/tests/createDeferred.ts";
+import { createTestQueryClient } from "@/tests/createTestQueryClient.ts";
 import { jsonResponse } from "@/tests/jsonResponse.ts";
 import { router } from "./router.tsx";
 
@@ -88,6 +89,7 @@ describe("router", () => {
       await renderRouterAt("/login");
 
       await expectLoginPage();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 
     it("renders the register page under the guest-only route for an unauthenticated user", async () => {
@@ -99,6 +101,90 @@ describe("router", () => {
       expect(screen.getByRole("textbox", { name: "Display name" })).toBeInTheDocument();
       expect(screen.getByLabelText("Password")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Register" })).toBeInTheDocument();
+    });
+
+    it("shows registration success once without repeating it when returning to login", async () => {
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          return Promise.resolve(new Response(null, { status: 401 }));
+        }
+
+        if (input === "/auth/register") {
+          return Promise.resolve(new Response(null, { status: 201 }));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt("/register");
+
+      await user.type(await screen.findByRole("textbox", { name: "Username" }), "new-user");
+      await user.type(screen.getByRole("textbox", { name: "Display name" }), "New User");
+      await user.type(screen.getByLabelText("Password"), "secure-password");
+      await user.type(screen.getByLabelText("Confirm password"), "secure-password");
+      await user.click(screen.getByRole("button", { name: "Register" }));
+
+      expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "Registration successful. You can now log in.",
+      );
+
+      await user.click(screen.getByRole("link", { name: "Register" }));
+      expect(await screen.findByRole("heading", { name: "Register" })).toBeInTheDocument();
+
+      await act(async () => {
+        await router.navigate(-1);
+      });
+
+      expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("auth recovery", () => {
+    it.each([
+      { caseName: "protected route with an authenticated user", path: "/", recoveredUser: currentUser },
+      { caseName: "protected route with an unauthenticated user", path: "/", recoveredUser: null },
+      { caseName: "guest route with an authenticated user", path: "/login", recoveredUser: currentUser },
+      { caseName: "guest route with an unauthenticated user", path: "/login", recoveredUser: null },
+    ])("returns to the normal flow after Retry from a $caseName", async ({ path, recoveredUser }) => {
+      queryClient = createTestQueryClient();
+      let authCheckFails = true;
+      vi.mocked(apiFetch).mockImplementation((input) => {
+        if (input === "/auth/me") {
+          if (authCheckFails) {
+            return Promise.reject(new TypeError("Failed to fetch"));
+          }
+          return Promise.resolve(
+            recoveredUser ? jsonResponse(recoveredUser) : new Response(null, { status: 401 }),
+          );
+        }
+
+        if (input === "/conversations?limit=20") {
+          return Promise.resolve(jsonResponse(emptyConversationsPage));
+        }
+
+        return Promise.reject(new Error(`Unexpected request: ${input.toString()}`));
+      });
+      const user = userEvent.setup();
+
+      await renderRouterAt(path);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Unable to connect to the server");
+      expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+
+      authCheckFails = false;
+      await user.click(screen.getByRole("button", { name: "Retry" }));
+
+      if (recoveredUser) {
+        expect(await screen.findByRole("heading", { name: "Select a conversation" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Leaves" })).toBeInTheDocument();
+      } else {
+        expect(await screen.findByRole("heading", { name: "Log in" })).toBeInTheDocument();
+      }
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     });
   });
 
@@ -129,7 +215,7 @@ describe("router", () => {
       expect(screen.getByRole("combobox", { name: "Search users" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "My profile" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
-      expect(screen.getByText(/select a conversation/i)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Select a conversation" })).toBeInTheDocument();
     });
 
     it("routes /users/:handle to the read-only user profile inside the protected messaging layout", async () => {
@@ -502,7 +588,7 @@ describe("router", () => {
       await user.click(screen.getByRole("button", { name: "Message" }));
 
       expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
-      expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
+      expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
       expect(screen.getByText("No messages yet")).toBeInTheDocument();
     });
 
@@ -716,10 +802,9 @@ describe("router", () => {
       });
       const user = userEvent.setup();
       const getConversationPaths = () =>
-        screen
+        within(within(screen.getByRole("complementary")).getByRole("list"))
           .getAllByRole("link")
-          .map((link) => link.getAttribute("href"))
-          .filter((href): href is string => href?.startsWith("/conversations/") ?? false);
+          .map((link) => link.getAttribute("href"));
 
       await renderRouterAt("/");
 

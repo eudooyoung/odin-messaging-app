@@ -54,7 +54,11 @@ export function Messages({ conversationId, currentUserId }: MessagesProps) {
   }
 
   if (isLoadingError) {
-    return <UserFacingErrorMessage error={error} fallbackMessage={MESSAGES_QUERY_ERROR_MESSAGE} />;
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center px-8 py-8 text-center font-body text-sm text-danger-700">
+        <UserFacingErrorMessage error={error} fallbackMessage={MESSAGES_QUERY_ERROR_MESSAGE} />
+      </div>
+    );
   }
 
   if (!messages) {
@@ -79,7 +83,7 @@ export function Messages({ conversationId, currentUserId }: MessagesProps) {
         <div ref={sentinelRef} aria-hidden="true" className="h-0" />
       )}
       {isFetchingNextPage && (
-        <p className="px-6 py-2 text-center text-xs text-neutral-500" role="status">
+        <p className="px-6 py-2 text-center font-body text-xs text-neutral-500" role="status">
           Loading older messages...
         </p>
       )}
@@ -101,7 +105,7 @@ export function Messages({ conversationId, currentUserId }: MessagesProps) {
         </div>
       )}
       <ul
-        className="flex flex-col gap-4 px-6 py-6"
+        className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6 md:px-8"
         style={{ visibility: showMessages ? "visible" : "hidden" }}
       >
         {messages.map((message, index) => {

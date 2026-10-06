@@ -1,7 +1,8 @@
 import { type QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 import { z } from "zod";
 import { FormField } from "@/components/FormField.tsx";
 import { UserFacingErrorMessage } from "@/components/UserFacingErrorMessage.tsx";
@@ -40,6 +41,18 @@ export function LoginPage() {
   });
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showRegistrationSuccess] = useState(() => location.state?.registrationSuccess === true);
+
+  useEffect(() => {
+    if (location.state?.registrationSuccess === true) {
+      void navigate(
+        { pathname: location.pathname, search: location.search, hash: location.hash },
+        { replace: true, state: null },
+      );
+    }
+  }, [location, navigate]);
+
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: async () => {
@@ -57,6 +70,15 @@ export function LoginPage() {
         <h1 className="font-heading text-2xl font-semibold tracking-tight text-neutral-900">
           Log in
         </h1>
+
+        {showRegistrationSuccess && (
+          <p
+            className="mt-4 rounded-md border border-success-200 bg-success-50 px-3 py-2 font-body text-sm text-success-700"
+            role="status"
+          >
+            Registration successful. You can now log in.
+          </p>
+        )}
 
         <div className="mt-8 flex flex-col gap-5">
           <div className={authFormFieldWrapperClassName}>

@@ -154,7 +154,7 @@ export function UserSearch() {
           aria-autocomplete="list"
           aria-controls={USER_SEARCH_LISTBOX_ID}
           aria-expanded={isSearchPanelOpen}
-          className={`w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 ${isSearchPanelOpen ? "rounded-t-md rounded-b-none" : "rounded-md"}`}
+          className={`w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition outline-none placeholder:text-neutral-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-200 ${isSearchPanelOpen ? "rounded-t-md rounded-b-none" : "rounded-md"}`}
           id="user-search"
           role="combobox"
           type="search"
