@@ -189,8 +189,8 @@ describe("POST /conversations/:id/messages", () => {
     { caseName: "content is empty", requestBody: { content: "" } },
     { caseName: "content contains only whitespace", requestBody: { content: "   " } },
     {
-      caseName: "content is longer than 2000 characters",
-      requestBody: { content: "a".repeat(2001) },
+      caseName: "content has 1001 characters after trimming",
+      requestBody: { content: `  ${"a".repeat(1001)}  ` },
     },
   ])("returns 400 when $caseName", async ({ requestBody }) => {
     const app = createApp();
