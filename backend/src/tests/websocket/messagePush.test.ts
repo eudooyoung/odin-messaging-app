@@ -4,6 +4,7 @@ import request from "supertest";
 import WebSocket, { type RawData, type WebSocketServer } from "ws";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
+import { env } from "@/config/env.config.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestConversation } from "@/tests/helpers/createTestConversation.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
@@ -106,6 +107,7 @@ describe("new message WebSocket push", () => {
 
     client = new WebSocket(webSocketUrl, {
       headers: {
+        Origin: env.frontendOrigin,
         Cookie: otherUserCookie,
       },
     });
@@ -155,11 +157,13 @@ describe("new message WebSocket push", () => {
 
     client = new WebSocket(webSocketUrl, {
       headers: {
+        Origin: env.frontendOrigin,
         Cookie: otherUserCookie,
       },
     });
     additionalClient = new WebSocket(webSocketUrl, {
       headers: {
+        Origin: env.frontendOrigin,
         Cookie: otherUserCookie,
       },
     });
@@ -209,11 +213,13 @@ describe("new message WebSocket push", () => {
 
     client = new WebSocket(webSocketUrl, {
       headers: {
+        Origin: env.frontendOrigin,
         Cookie: senderCookie,
       },
     });
     additionalClient = new WebSocket(webSocketUrl, {
       headers: {
+        Origin: env.frontendOrigin,
         Cookie: recipientCookie,
       },
     });

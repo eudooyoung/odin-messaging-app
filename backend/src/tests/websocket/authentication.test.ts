@@ -84,13 +84,14 @@ describe("WebSocket connections", () => {
   });
 
   describe("authentication", () => {
-    it("opens with a valid access token cookie", async () => {
+    it("opens when Origin matches FRONTEND_ORIGIN and the access token cookie is valid", async () => {
       const user = await createTestUser();
       const accessTokenCookie = createAccessTokenCookie(user.id);
       const { webSocketUrl } = await startWebSocketServer();
 
       client = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: accessTokenCookie,
         },
       });
@@ -98,6 +99,27 @@ describe("WebSocket connections", () => {
       await once(client, "open");
 
       expect(client.readyState).toBe(WebSocket.OPEN);
+    });
+
+    it.each([
+      { caseName: "a different Origin", origin: "https://untrusted.example" },
+      { caseName: "an Origin with a trailing slash", origin: `${env.frontendOrigin}/` },
+      { caseName: "a missing Origin", origin: undefined },
+      { caseName: "a null Origin", origin: "null" },
+    ])("rejects $caseName even with a valid access token cookie", async ({ origin }) => {
+      const user = await createTestUser();
+      const accessTokenCookie = createAccessTokenCookie(user.id);
+      const { webSocketUrl } = await startWebSocketServer();
+
+      client = new WebSocket(webSocketUrl, {
+        headers: {
+          Cookie: accessTokenCookie,
+          ...(origin === undefined ? {} : { Origin: origin }),
+        },
+      });
+
+      await expect(once(client, "open")).rejects.toThrow("Unexpected server response");
+      expect(client.readyState).not.toBe(WebSocket.OPEN);
     });
 
     it("stores the user id on the server-side connection", async () => {
@@ -108,6 +130,7 @@ describe("WebSocket connections", () => {
 
       client = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: accessTokenCookie,
         },
       });
@@ -123,10 +146,12 @@ describe("WebSocket connections", () => {
     ])("rejects $caseName", async ({ cookie }) => {
       const { webSocketUrl } = await startWebSocketServer();
 
-      client =
-        cookie === undefined
-          ? new WebSocket(webSocketUrl)
-          : new WebSocket(webSocketUrl, { headers: { Cookie: cookie } });
+      client = new WebSocket(webSocketUrl, {
+        headers: {
+          Origin: env.frontendOrigin,
+          ...(cookie === undefined ? {} : { Cookie: cookie }),
+        },
+      });
 
       await expect(once(client, "open")).rejects.toThrow("Unexpected server response: 401");
       expect(client.readyState).not.toBe(WebSocket.OPEN);
@@ -143,6 +168,7 @@ describe("WebSocket connections", () => {
 
       client = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: `accessToken=${expiredAccessToken}`,
         },
       });
@@ -161,6 +187,7 @@ describe("WebSocket connections", () => {
 
       client = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: accessTokenCookie,
         },
       });
@@ -179,6 +206,7 @@ describe("WebSocket connections", () => {
 
       client = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: accessTokenCookie,
         },
       });
@@ -197,6 +225,7 @@ describe("WebSocket connections", () => {
 
       const connectedClient = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: accessTokenCookie,
         },
       });
@@ -222,6 +251,7 @@ describe("WebSocket connections", () => {
       const firstConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
       const firstClient = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: accessTokenCookie,
         },
       });
@@ -234,6 +264,7 @@ describe("WebSocket connections", () => {
       const secondConnectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
       const secondClient = new WebSocket(webSocketUrl, {
         headers: {
+          Origin: env.frontendOrigin,
           Cookie: accessTokenCookie,
         },
       });
