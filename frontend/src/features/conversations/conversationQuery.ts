@@ -7,9 +7,17 @@ export const CONVERSATION_QUERY_ERROR_MESSAGE = "Failed to load conversation";
 const CONVERSATION_FORBIDDEN_ERROR_MESSAGE = "You do not have access to this conversation";
 const CONVERSATION_NOT_FOUND_ERROR_MESSAGE = "Conversation not found";
 
+class ConversationNotFoundError extends UserFacingError {
+  constructor() {
+    super(CONVERSATION_NOT_FOUND_ERROR_MESSAGE);
+  }
+}
+
 export const conversationQueryOptions = (conversationId: number) =>
   queryOptions({
     queryKey: ["conversations", conversationId] as const,
+    retry: (failureCount, error) =>
+      !(error instanceof ConversationNotFoundError) && failureCount < 3,
     queryFn: async ({ signal }): Promise<ConversationDetail> => {
       const response = await apiFetch(`/conversations/${conversationId}`, { signal });
 
@@ -18,7 +26,7 @@ export const conversationQueryOptions = (conversationId: number) =>
       }
 
       if (response.status === 404) {
-        throw new UserFacingError(CONVERSATION_NOT_FOUND_ERROR_MESSAGE);
+        throw new ConversationNotFoundError();
       }
 
       if (!response.ok) {

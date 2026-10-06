@@ -74,12 +74,15 @@ describe("userProfileQueryOptions", () => {
   );
 
   describe("errors", () => {
-    it("throws a profile-not-found error when the requested profile does not exist", async () => {
+    it("does not retry and throws a profile-not-found error when the requested profile does not exist", async () => {
+      // Enable the browser retry policy that the test helper disables.
+      queryClient.setDefaultOptions({ queries: { retry: 3, retryDelay: 0 } });
       vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 404 }));
       const result = queryClient.query(userProfileQueryOptions("missing-user"));
 
       await expect(result).rejects.toBeInstanceOf(UserProfileNotFoundError);
       await expect(result).rejects.toThrow("Profile not found");
+      expect(apiFetch).toHaveBeenCalledTimes(1);
     });
 
     it("throws a generic user-facing error for other unsuccessful responses", async () => {

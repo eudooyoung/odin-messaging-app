@@ -75,6 +75,18 @@ describe("conversationQueryOptions", () => {
     },
   );
 
+  it("does not retry when the requested conversation does not exist", async () => {
+    // Enable the browser retry policy that the test helper disables.
+    queryClient.setDefaultOptions({ queries: { retry: 3, retryDelay: 0 } });
+    vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 404 }));
+
+    await expect(queryClient.query(conversationQueryOptions(42))).rejects.toThrow(
+      "Conversation not found",
+    );
+
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+  });
+
   it("throws a user-facing error when the conversation response is unsuccessful", async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
     const result = queryClient.query(conversationQueryOptions(42));
