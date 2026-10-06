@@ -117,6 +117,7 @@ describe("new message WebSocket push", () => {
     const receivedEventPromise = receiveTextMessage(client);
     const response = await request(httpServer)
       .post(`/conversations/${conversation.id}/messages`)
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", currentUserCookie)
       .send({ content: "Hello!" });
 
@@ -176,6 +177,7 @@ describe("new message WebSocket push", () => {
     ];
     const response = await request(httpServer)
       .post(`/conversations/${conversation.id}/messages`)
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", currentUserCookie)
       .send({ content: "Hello!" });
 
@@ -233,6 +235,7 @@ describe("new message WebSocket push", () => {
     const recipientEventPromise = receiveTextMessage(additionalClient);
     const response = await request(httpServer)
       .post(`/conversations/${conversation.id}/messages`)
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", senderCookie)
       .send({ content: "Hello!" });
 

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
@@ -38,7 +39,10 @@ describe("POST /auth/logout", () => {
       prisma.refreshSession.findUnique({ where: { tokenHash } }),
     ).resolves.not.toBeNull();
 
-    const response = await request(app).post("/auth/logout").set("Cookie", refreshCookie);
+    const response = await request(app)
+      .post("/auth/logout")
+      .set("Origin", env.frontendOrigin)
+      .set("Cookie", refreshCookie);
 
     expect(response.status).toBe(204);
     await expect(prisma.refreshSession.findUnique({ where: { tokenHash } })).resolves.toBeNull();
@@ -56,7 +60,7 @@ describe("POST /auth/logout", () => {
       refreshCookie: "refreshToken=refresh-token-without-session",
     },
   ])("returns 204 and clears both token cookies when $caseName", async ({ refreshCookie }) => {
-    let logoutRequest = request(createApp()).post("/auth/logout");
+    let logoutRequest = request(createApp()).post("/auth/logout").set("Origin", env.frontendOrigin);
 
     if (refreshCookie) {
       logoutRequest = logoutRequest.set("Cookie", refreshCookie);

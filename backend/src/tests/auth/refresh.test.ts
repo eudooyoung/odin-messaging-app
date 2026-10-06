@@ -32,7 +32,10 @@ describe("POST /auth/refresh", () => {
     const { user, refreshCookie } = await loginTestUser(app);
     const oldRefreshToken = getCookieValue(refreshCookie);
     const oldTokenHash = hashToken(oldRefreshToken);
-    const response = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
+    const response = await request(app)
+      .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin)
+      .set("Cookie", refreshCookie);
 
     expect(response.status).toBe(204);
 
@@ -54,7 +57,9 @@ describe("POST /auth/refresh", () => {
   });
 
   it("returns 401 when the refresh cookie is missing", async () => {
-    const response = await request(createApp()).post("/auth/refresh");
+    const response = await request(createApp())
+      .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin);
 
     expect(response.status).toBe(401);
   });
@@ -73,6 +78,7 @@ describe("POST /auth/refresh", () => {
 
     const response = await request(createApp())
       .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", `refreshToken=${invalidToken}`);
 
     expect(response.status).toBe(401);
@@ -94,6 +100,7 @@ describe("POST /auth/refresh", () => {
 
     const response = await request(createApp())
       .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", `refreshToken=${expiredToken}`);
 
     expect(response.status).toBe(401);
@@ -107,6 +114,7 @@ describe("POST /auth/refresh", () => {
 
     const response = await request(createApp())
       .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", `refreshToken=${refreshToken}`);
 
     expect(response.status).toBe(401);
@@ -128,6 +136,7 @@ describe("POST /auth/refresh", () => {
 
     const response = await request(createApp())
       .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", `refreshToken=${refreshToken}`);
 
     expect(response.status).toBe(401);
@@ -137,8 +146,14 @@ describe("POST /auth/refresh", () => {
     const app = createApp();
     const { refreshCookie } = await loginTestUser(app);
 
-    const rotationResponse = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
-    const reuseResponse = await request(app).post("/auth/refresh").set("Cookie", refreshCookie);
+    const rotationResponse = await request(app)
+      .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin)
+      .set("Cookie", refreshCookie);
+    const reuseResponse = await request(app)
+      .post("/auth/refresh")
+      .set("Origin", env.frontendOrigin)
+      .set("Cookie", refreshCookie);
 
     expect(rotationResponse.status).toBe(204);
     expect(reuseResponse.status).toBe(401);

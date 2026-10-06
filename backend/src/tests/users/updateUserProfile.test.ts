@@ -1,4 +1,5 @@
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
@@ -28,6 +29,7 @@ describe("PATCH /users/me", () => {
 
     const response = await request(app)
       .patch("/users/me")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send(updateData);
 
@@ -85,6 +87,7 @@ describe("PATCH /users/me", () => {
 
     const response = await request(app)
       .patch("/users/me")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send(updateData);
 
@@ -127,6 +130,7 @@ describe("PATCH /users/me", () => {
 
     const response = await request(app)
       .patch("/users/me")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ handle: existingUser.handle });
 
@@ -134,9 +138,12 @@ describe("PATCH /users/me", () => {
   });
 
   it("returns 401 when the access token cookie is missing", async () => {
-    const response = await request(createApp()).patch("/users/me").send({
-      displayName: "Updated User",
-    });
+    const response = await request(createApp())
+      .patch("/users/me")
+      .set("Origin", env.frontendOrigin)
+      .send({
+        displayName: "Updated User",
+      });
 
     expect(response.status).toBe(401);
   });
@@ -193,6 +200,7 @@ describe("PATCH /users/me", () => {
 
     const response = await request(app)
       .patch("/users/me")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send(updateData);
 

@@ -1,4 +1,5 @@
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
@@ -28,6 +29,7 @@ describe("POST /conversations", () => {
 
     const response = await request(app)
       .post("/conversations")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ targetHandle: targetUser.handle });
 
@@ -81,6 +83,7 @@ describe("POST /conversations", () => {
 
     const response = await request(app)
       .post("/conversations")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ targetHandle: targetUser.handle });
 
@@ -105,9 +108,12 @@ describe("POST /conversations", () => {
   });
 
   it("returns 401 when the access token cookie is missing", async () => {
-    const response = await request(createApp()).post("/conversations").send({
-      targetHandle: "target_handle",
-    });
+    const response = await request(createApp())
+      .post("/conversations")
+      .set("Origin", env.frontendOrigin)
+      .send({
+        targetHandle: "target_handle",
+      });
 
     expect(response.status).toBe(401);
   });
@@ -136,6 +142,7 @@ describe("POST /conversations", () => {
 
     const response = await request(app)
       .post("/conversations")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ targetHandle });
 
@@ -199,6 +206,7 @@ describe("POST /conversations", () => {
 
     const response = await request(app)
       .post("/conversations")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send(requestBody);
 

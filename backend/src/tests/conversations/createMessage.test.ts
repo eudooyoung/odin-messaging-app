@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import { prisma } from "@/lib/prisma.js";
@@ -11,6 +12,35 @@ import "@/tests/integration.setup.js";
 import type { CreateMessageResponseBody } from "@/types/api.types.js";
 
 describe("POST /conversations/:id/messages", () => {
+  it.each(["json", "form"])(
+    "rejects a cross-origin %s request without storing a message or updating activity",
+    async (contentType) => {
+      const currentUser = await createTestUser();
+      const otherUser = await createTestUser({ username: "other-user" });
+      const lastActivityAt = new Date("2026-09-01T00:00:00.000Z");
+      const conversation = await createTestConversation({
+        participantIds: [currentUser.id, otherUser.id],
+        lastActivityAt,
+      });
+
+      const response = await request(createApp())
+        .post(`/conversations/${conversation.id}/messages`)
+        .set("Origin", "https://untrusted.example")
+        .set("Cookie", createAccessTokenCookie(currentUser.id))
+        .type(contentType)
+        .send({ content: "Forged message" });
+
+      expect.soft(response.status).toBe(403);
+      await expect
+        .soft(prisma.message.count({ where: { conversationId: conversation.id } }))
+        .resolves.toBe(0);
+      const persistedConversation = await prisma.conversation.findUnique({
+        where: { id: conversation.id },
+      });
+      expect(persistedConversation?.lastActivityAt).toEqual(lastActivityAt);
+    },
+  );
+
   it("creates a message and updates the conversation activity", async () => {
     const app = createApp();
     const credentials = {
@@ -36,6 +66,7 @@ describe("POST /conversations/:id/messages", () => {
 
     const response = await request(app)
       .post(`/conversations/${conversation.id}/messages`)
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ content: `  ${content}  ` });
 
@@ -74,6 +105,7 @@ describe("POST /conversations/:id/messages", () => {
   it("returns 401 when the access token cookie is missing", async () => {
     const response = await request(createApp())
       .post("/conversations/1/messages")
+      .set("Origin", env.frontendOrigin)
       .send({ content: "Hello!" });
 
     expect(response.status).toBe(401);
@@ -91,6 +123,7 @@ describe("POST /conversations/:id/messages", () => {
 
     const response = await request(app)
       .post("/conversations/999999/messages")
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ content: "Hello!" });
 
@@ -120,6 +153,7 @@ describe("POST /conversations/:id/messages", () => {
 
     const response = await request(app)
       .post(`/conversations/${conversation.id}/messages`)
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ content: "Hello!" });
 
@@ -143,6 +177,7 @@ describe("POST /conversations/:id/messages", () => {
 
     const response = await request(app)
       .post(`/conversations/${conversationId}/messages`)
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send({ content: "Hello!" });
 
@@ -176,6 +211,7 @@ describe("POST /conversations/:id/messages", () => {
 
     const response = await request(app)
       .post(`/conversations/${conversation.id}/messages`)
+      .set("Origin", env.frontendOrigin)
       .set("Cookie", accessCookie)
       .send(requestBody);
 

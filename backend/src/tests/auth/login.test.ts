@@ -1,4 +1,5 @@
 import request from "supertest";
+import { env } from "@/config/env.config.js";
 import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
 import "@/tests/integration.setup.js";
@@ -15,7 +16,10 @@ describe("POST /auth/login", () => {
 
     await createTestUser(credentials);
 
-    const loginResponse = await request(app).post("/auth/login").send(credentials);
+    const loginResponse = await request(app)
+      .post("/auth/login")
+      .set("Origin", env.frontendOrigin)
+      .send(credentials);
 
     expect(loginResponse.status).toBe(204);
 
@@ -25,10 +29,13 @@ describe("POST /auth/login", () => {
   });
 
   it("returns 401 without token cookies when the user does not exist", async () => {
-    const response = await request(createApp()).post("/auth/login").send({
-      username: "missing-user",
-      password: "secure-password",
-    });
+    const response = await request(createApp())
+      .post("/auth/login")
+      .set("Origin", env.frontendOrigin)
+      .send({
+        username: "missing-user",
+        password: "secure-password",
+      });
 
     expect(response.status).toBe(401);
 
@@ -47,10 +54,13 @@ describe("POST /auth/login", () => {
       displayName: "Existing User",
     });
 
-    const loginResponse = await request(app).post("/auth/login").send({
-      username,
-      password: "wrong-password",
-    });
+    const loginResponse = await request(app)
+      .post("/auth/login")
+      .set("Origin", env.frontendOrigin)
+      .send({
+        username,
+        password: "wrong-password",
+      });
 
     expect(loginResponse.status).toBe(401);
 
@@ -81,10 +91,13 @@ describe("POST /auth/login", () => {
       password: "a".repeat(129),
     },
   ])("returns 400 without token cookies when $caseName", async ({ username, password }) => {
-    const response = await request(createApp()).post("/auth/login").send({
-      username,
-      password,
-    });
+    const response = await request(createApp())
+      .post("/auth/login")
+      .set("Origin", env.frontendOrigin)
+      .send({
+        username,
+        password,
+      });
 
     expect(response.status).toBe(400);
 
