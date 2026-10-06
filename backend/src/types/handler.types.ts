@@ -13,7 +13,6 @@ import type {
   LoginResponseBody,
   LogoutResponseBody,
   MeResponseBody,
-  MessageResponseBody,
   RefreshResponseBody,
   RegisterInput,
   RegisterResponseBody,
