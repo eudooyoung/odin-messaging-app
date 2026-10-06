@@ -1,12 +1,9 @@
 # Messaging App — Project Plan
 
-## 1. 현재 프로젝트 단계
+## 1. 프로젝트 목표 / MVP 범위
 
-- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 navigation, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX, mobile responsive와 error-state navigation, frontend error/fallback handling, 개발자/GitHub 정보 표시(dev-info).
-- Browser smoke test 완료: Frontend·Backend·dev PostgreSQL 연동 확인과 발견된 404 query retry 문제 수정을 완료했다. 확인 범위는 `docs/project-status.md`에서 관리한다.
-- 배포 전 hardening 완료: WebSocket cookie 인증 upgrade의 Origin validation, REST state-changing 요청의 CSRF Origin validation, backend 메시지 content의 trim 후 1~1000자 계약 정합화.
-- Frontend/backend 전체 test·type-check·ESLint·production build 재검증과 최종 audit 완료. 현재 MVP 코드·계약 기준 deploy blocker 없음.
-- 현재 다음 단계: Netlify + Render deploy 설정 점검 → deploy. 설정 점검과 배포는 아직 진행하지 않았다.
+- Leaves는 Node.js / TypeScript + React 기반 1:1 실시간 메시징 애플리케이션이다. Frontend와 backend를 분리하며 REST로 조회·저장하고 WebSocket으로 새 메시지를 전달한다.
+- MVP는 인증·사용자 검색·프로필 수정·1:1 conversation·텍스트 메시지·실시간 전달과 production 배포를 포함한다.
 
 ## 2. 요구사항 / 서비스 규칙
 
@@ -91,6 +88,12 @@
 - 공통 HTTP client는 credentials를 포함한다. 일반 요청의 401은 공유 refresh 요청으로 복구하고 원 요청을 한 번만 재시도한다. refresh의 401과 일시적 non-401 실패는 구분한다. 로그아웃 또는 인증 종료 시 이전 사용자의 비인증 cache를 비운다.
 - ProfilePage는 현재 handle로 공개 profile을 조회한다. PATCH 성공 시 auth cache와 새 handle의 public profile cache를 동기화하고 이전 handle profile refetch 및 오래된 auth refetch가 저장 결과를 덮지 못하게 한다.
 
+### Runtime architecture
+
+- Netlify는 React frontend를 제공한다. 브라우저의 React는 backend origin으로 REST / WebSocket 요청을 직접 보내며 Netlify를 backend proxy로 사용하지 않는다.
+- Render의 같은 Express backend runtime에 REST API와 WebSocket이 속한다. Prisma는 backend 내부 DB access layer이며 PostgreSQL에 접근한다. PostgreSQL hosting provider는 확정하지 않았다.
+- 메시지 저장 transaction이 완료된 뒤 WebSocket으로 상대 사용자에게 `message.created`를 전달한다.
+
 ### Responsive / navigation
 
 - Mobile(`md` breakpoint 아래)은 `/`에서 conversation list/Sidebar를 전체 폭으로 표시하고 conversation·profile route에서는 main pane만 표시한다. Desktop의 2-panel 구조와 Sidebar collapse state를 유지하며 mobile에서는 collapse 버튼을 숨긴다.
@@ -102,69 +105,39 @@
 - Backend: Node.js 24, TypeScript·ESM, Express 5, PostgreSQL, Prisma 7, JWT, Argon2id, ws, Zod, Vitest·Supertest.
 - Frontend: React 19, TypeScript, Vite 8, React Router, TanStack Query, native WebSocket, React Hook Form, Zod, Tailwind CSS, Vitest, React Testing Library.
 
-## 4. 구현 상태
+## 4. 완료 milestone
 
-### Backend
+- [x] Backend MVP: 인증·refresh rotation, 사용자 검색·프로필, 1:1 conversation·message REST API, pagination과 participant authorization.
+- [x] Frontend MVP: 인증·route 접근 제어, 사용자 검색·프로필, conversation·message UI와 서버 상태 cache 연동.
+- [x] 실시간 메시징: cookie 인증 WebSocket, `message.created` 전달·cache 반영, 재연결과 REST 메시지 복구.
+- [x] Identity 전환: private username / public handle 계약과 관련 frontend 상태 동기화.
+- [x] Persistence / security hardening: 동시 대화 생성·메시지 저장의 transaction 보장, REST / WebSocket Origin 검증, 메시지 길이 계약 정합화.
+- [x] 사용자 경험: desktop / mobile responsive, Leaves branding, 메시지 입력 UI, auth recovery와 error / fallback navigation.
 
-- [x] Auth: register, login, refresh rotation, logout, auth self, HttpOnly cookies.
-- [x] User/Profile: handle 기반 공개 검색·조회, self 수정, 초기 handle 생성 및 중복 처리.
-- [x] Conversation: 생성·재사용, 목록·상세, pagination, participant 권한.
-- [x] Message: 생성·조회, pagination, participant 권한.
-- [x] WebSocket: 인증, 사용자별 연결, message.created 전달, reconnect에 필요한 서버 계약.
-- [x] Identity/API refactor: private username과 public handle 계약 전환.
-- [x] Concurrency / atomicity hardening: 동시 대화 생성과 Message 저장·lastActivityAt 갱신의 transaction 보장.
-- [x] Origin security hardening: WebSocket upgrade Origin 검증과 REST state-changing 요청의 CSRF Origin 검증.
-- [x] Message validation 정합화: backend content의 trim 후 1~1000자 계약과 관련 integration test 검증 완료.
+## 5. 장기 roadmap
 
-### Frontend
+### MVP
 
-- [x] Auth: auth self query, protected·guest route, login·register·logout, refresh와 session cache lifecycle.
-- [x] User Search / Profile: handle 기반 검색·recent users·public route·읽기 전용 프로필·대화 시작; self profile 조회·수정.
-- [x] Conversation: 목록·상세·pagination, 선택과 persistent sidebar 갱신.
-- [x] Message: 목록·전송·pagination, cache sync와 REST race 처리.
-- [x] WebSocket: runtime validation, 실시간 cache 반영, 연결 복구·재연결.
-- [x] Identity/API refactor: public identity, auth self, GET public profile과 PATCH self response 구분, handle 변경 cache lifecycle.
-- [x] Desktop messaging layout / sidebar와 ConversationPage header.
-- [x] Messages / MessageComposer UI: message bubble, timestamp·날짜 구분선, loading·empty·pagination UI, 메시지 입력·Send 영역.
-- [x] ProfilePage·UserProfilePage desktop UI: Profile ID 편집과 기존 messaging theme의 typography/color/spacing.
-- [x] Conversation list·header 표시 정책: handle 반복 노출 제거, displayName 중심 표시와 기존 navigation 유지.
-- [x] Sidebar panel SVG icon과 conversation 미선택 empty state, ConversationPage desktop history 뒤로가기.
-- [x] Leaves branding: Sidebar logo·앱 이름의 홈 링크, 동일한 3-leaf SVG mark의 favicon 적용.
-- [x] Desktop primary 상태 스타일: Conversation hover/selected, Search focus, Sidebar toggle·뒤로가기 hover/focus, empty state icon.
-- [x] Desktop UI polish: Content width/header 정렬, loading/error 표현, profile card와 MessageComposer 입력 영역·action 정렬.
-- [x] 회원가입 성공 후 LoginPage의 일회성 성공 안내.
-- [x] Auth 확인 실패 시 app-level error와 수동 Retry; 기존 WebSocket 자동 recovery 유지와 수동 재시도 조율.
-- [x] UI/CSS: Mobile responsive와 Conversation·Profile error-state navigation.
-- [x] Error/fallback handling: Catch-all 404와 사용자용 route error fallback, invalid conversation id의 navigation 유지, Profile save의 일반 오류 fallback. 기존 resource-not-found·403·query error와 auth recovery 계약 유지.
-- [x] Dev-info: 로그인 후 MessagingSidebar 하단, 로그인 전 LoginPage / RegisterPage auth card 아래에 `Built by Dooyoung Kim · GitHub` 표시. 전역 footer와 conversation/profile 본문에는 추가하지 않으며 Sidebar collapsed 상태에서는 숨긴다. GitHub 링크는 `https://github.com/eudooyoung/odin-messaging-app`이다.
-
-## 5. 남은 작업
-
-### MVP — 우선순위
-
-1. Netlify + Render deploy 설정을 점검한다.
-2. 배포한다.
+- Netlify / Render / production PostgreSQL 배포와 production 환경 검증.
 
 ### Product / behavior follow-up
 
 - 메시지가 없는 Conversation의 목록 포함 정책 결정. 후보는 GET /conversations에서 메시지가 있는 대화만 반환하는 방식이다.
 - WebSocket reconnect/open gap recovery가 message query 복구 후 conversation 목록도 갱신하도록 보완.
 - 1:1 conversation 나가기·내 기록 지우기의 participant state와 재진입 시 보이는 기록 범위 결정.
-- 선택적 계약 정리: handle trim의 문서/API 정규화 책임. Frontend는 trim하고 backend PATCH validation은 공백 포함 handle을 거부한다. 현재 frontend 사용자 흐름은 정상이며 deploy blocker가 아니다.
 
-### Deploy / hardening
+### Post-MVP
 
-- [x] WebSocket cookie 인증 upgrade 요청의 허용 Origin 검증.
-- [x] REST POST/PATCH/PUT/DELETE의 서버 측 CSRF Origin 검증(auth endpoint 포함).
-- [x] Backend 메시지 content의 trim 후 1~1000자 계약 정합화.
-- [x] Frontend/backend 전체 test·type-check·ESLint·production build 재검증과 최종 audit. 현재 MVP 코드·계약 기준 deploy blocker 없음.
-- [ ] Netlify + Render 환경·URL·CORS·cookie·production DB migration·hosting 설정 점검 후 배포.
-- Post-MVP auth hardening: 이전 session에서 시작한 pending mutation·refresh가 session 전환 후 cache·navigation·cookie에 영향을 주지 않도록 방어.
-- 선택적 maintenance: frontend 테스트의 불필요한 mock 호출 접근 정리와 대화 생성 충돌 재시도 한도 소진 경로 검증.
+- 이전 session에서 시작한 pending mutation·refresh가 session 전환 후 cache·navigation·cookie에 영향을 주지 않도록 방어.
+
+### Optional maintenance
+
+- Handle trim의 문서/API 정규화 책임 정리. Frontend는 trim하고 backend PATCH validation은 공백 포함 handle을 거부한다. 현재 frontend 사용자 흐름은 정상이다.
+- 대화 생성 충돌 재시도 한도 소진 경로 검증.
 
 ## 6. 배포 / 인증 정책
 
-- Frontend는 Netlify, Backend는 Render에 서로 다른 site로 배포한다. Production은 cross-site credential 요청을 전제로 한다.
+- Frontend는 Netlify, Backend는 Render에서 서로 다른 origin으로 동작하며 데이터 저장소는 PostgreSQL이다. Production은 credentialed cookie 요청으로 인증 상태를 유지한다.
 - Access Token cookie: HttpOnly, Path=/, 15분. Refresh Token cookie: HttpOnly, Path=/auth, 7일.
 - Development cookie: Secure=false, SameSite=Lax. Production cookie: Secure=true, SameSite=None. JWT exp와 cookie Max-Age는 같은 수명으로 맞춘다.
 - Backend CORS는 Netlify frontend origin을 명시하고 credentials: true를 사용한다. credential 요청에 Access-Control-Allow-Origin: *를 사용하지 않는다.
