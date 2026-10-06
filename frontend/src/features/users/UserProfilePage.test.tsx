@@ -29,6 +29,7 @@ beforeEach(() => {
 
 afterEach(() => {
   queryClient.clear();
+  vi.unstubAllGlobals();
 });
 
 function ConversationRoute() {
@@ -61,6 +62,22 @@ describe("UserProfilePage", () => {
   };
 
   describe("profile display", () => {
+    it.each([
+      { viewport: "mobile", width: 375 },
+      { viewport: "desktop", width: 1024 },
+    ])("can close a failed read-only profile on $viewport", async ({ width }) => {
+      vi.stubGlobal("innerWidth", width);
+      vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
+      const user = userEvent.setup();
+
+      renderUserProfilePage("profile-user", ["/previous", "/users/profile-user"]);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(USER_PROFILE_QUERY_ERROR_MESSAGE);
+      await user.click(screen.getByRole("link", { name: "Close profile" }));
+
+      expect(await screen.findByRole("heading", { name: "Previous page" })).toBeInTheDocument();
+    });
+
     it("shows a loading state while the requested profile is pending", () => {
       vi.mocked(apiFetch).mockReturnValue(new Promise<Response>(() => undefined));
 

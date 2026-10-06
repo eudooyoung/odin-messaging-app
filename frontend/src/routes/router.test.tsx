@@ -588,7 +588,7 @@ describe("router", () => {
       await user.click(screen.getByRole("button", { name: "Message" }));
 
       expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
-      expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument();
+      expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
       expect(screen.getByText("No messages yet")).toBeInTheDocument();
     });
 

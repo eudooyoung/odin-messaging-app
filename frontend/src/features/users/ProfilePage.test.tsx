@@ -32,6 +32,7 @@ beforeEach(() => {
 
 afterEach(() => {
   queryClient.clear();
+  vi.unstubAllGlobals();
 });
 
 const currentUser: AuthUser = {
@@ -131,6 +132,22 @@ const ProfileQueryObserver = () => {
 
 describe("ProfilePage", () => {
   describe("navigation", () => {
+    it.each([
+      { viewport: "mobile", width: 375 },
+      { viewport: "desktop", width: 1024 },
+    ])("can close a failed profile editor on $viewport", async ({ width }) => {
+      vi.stubGlobal("innerWidth", width);
+      vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
+      const user = userEvent.setup();
+
+      renderProfilePage(queryClient, undefined, ["/previous", "/profile"]);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load profile");
+      await user.click(screen.getByRole("link", { name: "Close profile" }));
+
+      expect(await screen.findByRole("heading", { name: "Previous page" })).toBeInTheDocument();
+    });
+
     it("returns to the previous history entry from the profile editor", async () => {
       vi.mocked(apiFetch).mockResolvedValue(profileResponse(baseProfile));
       const user = userEvent.setup();

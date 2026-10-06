@@ -24,6 +24,7 @@ beforeEach(() => {
 
 afterEach(() => {
   queryClient.clear();
+  vi.unstubAllGlobals();
 });
 
 const renderConversationPage = (
@@ -119,7 +120,28 @@ describe("ConversationPage", () => {
       });
     };
 
-    it("returns to the previous history entry when the close icon is clicked", async () => {
+    it.each([
+      { entry: "the conversation list", history: ["/", "/conversations/42"] },
+      {
+        entry: "a public profile",
+        history: ["/users/other-handle", "/conversations/42"],
+      },
+      { entry: "a direct entry", history: ["/conversations/42"] },
+    ])("returns to the conversation list on mobile from $entry", async ({ history }) => {
+      vi.stubGlobal("innerWidth", 375);
+      arrangeConversationPageRequests();
+      queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient, history);
+
+      await user.click(await screen.findByRole("link", { name: "Close conversation" }));
+
+      expect(await screen.findByRole("heading", { name: "Conversations" })).toBeInTheDocument();
+    });
+
+    it("returns to the previous history entry on desktop when the close icon is clicked", async () => {
+      vi.stubGlobal("innerWidth", 1024);
       arrangeConversationPageRequests();
       queryClient.setQueryData(authMeQueryOptions.queryKey, currentUser);
       const user = userEvent.setup();
@@ -394,6 +416,44 @@ describe("ConversationPage", () => {
   });
 
   describe("conversation query states", () => {
+    it.each([
+      {
+        caseName: "mobile from the conversation list",
+        width: 375,
+        history: ["/", "/conversations/42"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "mobile from a public profile",
+        width: 375,
+        history: ["/users/other-handle", "/conversations/42"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "mobile from a direct entry",
+        width: 375,
+        history: ["/conversations/42"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "desktop from a public profile",
+        width: 1024,
+        history: ["/users/other-handle", "/conversations/42"],
+        destination: "Other User public profile",
+      },
+    ])("can close a failed conversation on $caseName", async ({ width, history, destination }) => {
+      vi.stubGlobal("innerWidth", width);
+      vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient, history);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversation");
+      await user.click(screen.getByRole("link", { name: "Close conversation" }));
+
+      expect(await screen.findByRole("heading", { name: destination })).toBeInTheDocument();
+    });
+
     it("shows a loading state while the conversation query is pending", () => {
       const pendingConversationResponse = new Promise<Response>(() => undefined);
       vi.mocked(apiFetch).mockReturnValue(pendingConversationResponse);

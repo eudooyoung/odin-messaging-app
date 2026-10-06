@@ -2,10 +2,9 @@
 
 ## Current branch / phase
 
-- Branch: `style/polish`. HEAD: `1922a3c` (`test(AuthenticatedWebSocket): add manual retry test for reconnection`).
-- Frontend desktop messaging/Profile UI polish, MessageComposer UI, Leaves branding, 회원가입 성공 안내와 auth 실패 UX는 완료됐다.
-- 다음 즉시 시작점은 mobile responsive다. 아직 시작하지 않았으며 MVP와 배포도 완료되지 않았다.
-- Auth recovery 조율 보완은 현재 작업 트리에 반영되어 있으며 아직 커밋되지 않았다.
+- Branch: `style/responsive`. HEAD: `810f4d8` (`style(conversation, profile, userProfile): add error handling tests for mobile and desktop`).
+- Frontend desktop UI polish와 mobile responsive, Leaves branding, 회원가입 성공 안내와 auth 실패 UX 및 recovery 조율은 완료됐다.
+- 다음 즉시 시작점은 존재하지 않는 URL의 404 / Not Found 처리다. MVP와 배포는 아직 완료되지 않았다.
 
 ## Current implementation context
 
@@ -15,15 +14,14 @@
 - Handle은 trim 후 3~30자, lowercase a-z·0-9·_·.만 허용한다. period는 처음/끝에 올 수 없고 연속 `..`도 금지한다.
 - PATCH `/users/me` 성공 시 서버 응답으로 form을 reset하고 auth cache와 새 handle의 public profile cache를 동기화한다. 이전 handle profile refetch 및 오래된 auth refetch가 저장 결과를 덮지 못하도록 lifecycle을 유지한다. Refetch와 mutation 실패 후에도 dirty handle을 포함한 미저장 입력을 보존한다.
 - Frontend mutation은 409 duplicate handle을 `This handle is already taken` UserFacingError로 해석한다. 기존 400·기타 HTTP 오류 처리와 transport error passthrough는 유지한다.
-- ProfilePage desktop UI는 `Profile` h2와 네 편집 필드, 오른쪽 정렬 Save profile로 구성된다. UserProfilePage는 displayName h2, @Profile ID, bio, 이미지가 있을 때의 원형 avatar와 타인에게만 표시되는 Message action을 제공한다. 두 화면은 같은 max-width/padding과 messaging theme를 사용한다.
+- ProfilePage는 `Profile` h2와 네 편집 필드, Save profile로 구성된다. UserProfilePage는 displayName h2, @Profile ID, bio, 이미지가 있을 때의 원형 avatar와 타인에게만 표시되는 Message action을 제공한다. 두 화면은 같은 max-width/responsive padding과 messaging theme를 사용한다.
 
 ### Messaging / navigation / branding
 
 - Conversation list와 header는 displayName 중심으로 표시하고 `@handle`을 반복 노출하지 않는다. Handle/Profile ID는 검색과 공개 프로필에서 확인한다. Header의 공개 프로필 링크와 API/query의 handle 계약은 유지한다.
-- Sidebar collapse/expand는 기존 SVG panel asset을 사용한다. 펼침 상태에는 collapse, 접힘 상태에는 expand icon을 표시하며 accessible name과 toggle 동작을 유지한다.
+- Desktop Sidebar collapse/expand는 기존 SVG panel asset을 사용한다. 펼침 상태에는 collapse, 접힘 상태에는 expand icon을 표시하며 accessible name과 toggle 동작을 유지한다.
 - 앱 이름은 `Leaves`다. Sidebar의 24px 장식용 3-leaf logo mark와 텍스트 전체가 하나의 `/` 홈 링크다. 같은 `leaves-logo-mark.svg`를 `index.html`의 favicon에 참조하고 document title도 Leaves다.
-- Conversation 미선택 화면은 중앙 chat icon, `Select a conversation` 제목과 Sidebar 검색을 안내하는 보조 문구를 표시한다. Router index route는 inline JSX 대신 `ConversationEmptyState`를 렌더링한다. 별도 CTA는 없다.
-- ConversationPage의 `Close conversation` 링크는 클릭 시 이전 history entry로 돌아간다. 홈 이동이나 direct-entry fallback은 추가하지 않았다.
+- Desktop Conversation 미선택 화면은 중앙 chat icon, `Select a conversation` 제목과 Sidebar 검색을 안내하는 보조 문구를 표시한다. Router index route는 `ConversationEmptyState`를 렌더링하며 mobile에서는 main pane이 숨겨진다. 별도 CTA는 없다.
 - Conversation hover/selected, Search users input focus, Sidebar toggle hover/focus, empty state icon, ConversationPage 뒤로가기 hover/focus에 primary 색상이 반영되어 있다. Conversation 본문 typography는 neutral을 유지한다.
 - Messages의 initial scroll·follow·prepend 위치 보존·older pagination과 MessageComposer의 Enter/Shift+Enter/IME 보호, pending 조건, focus 복귀, 이전 대화 pending send의 cache 분리는 유지한다.
 
@@ -31,7 +29,17 @@
 
 - MessageComposer는 텍스트 `Send` 버튼을 사용한다. Textarea는 한 줄 높이로 시작해 내용에 따라 늘어나고, 최대 높이 이후 내부 스크롤을 사용한다. Grid의 `items-end` 정렬과 textarea `block`으로 입력 영역과 버튼의 아래선을 맞춘다.
 - Send는 white 배경과 primary text/border, 옅은 primary hover, neutral disabled 상태를 사용한다. Own bubble은 `primary-600 + white`, other bubble은 neutral 계열을 유지한다.
-- Desktop content width/header 정렬, profile content card, loading/error 위치, timestamp 가독성과 interactive state polish는 완료됐다. 현재 표현을 기준으로 mobile responsive를 진행한다. 실제 브라우저 smoke test는 별도로 남아 있다.
+- Desktop content width/header 정렬, profile content card, loading/error 위치, timestamp 가독성과 interactive state polish는 완료됐다. Frontend·Backend를 연결한 전체 browser smoke test는 별도로 남아 있다.
+
+### Mobile responsive — complete
+
+- `md` breakpoint 아래에서는 `/`의 conversation list/Sidebar를 전체 폭으로 표시한다. Conversation·profile route에서는 Sidebar를 숨기고 main pane만 전체 폭으로 표시한다. Desktop은 기존 Sidebar + main pane의 2-panel 구조를 유지한다.
+- Mobile에서는 Sidebar collapse 버튼을 숨긴다. Desktop에서 Sidebar를 접었더라도 mobile에서는 검색·대화 목록·profile·logout이 표시되며 기존 collapse state는 보존한다.
+- ConversationPage의 뒤로가기 아이콘(`←`, `<` 의미)은 mobile에서 진입 경로와 관계없이 conversation list(`/`)로 이동한다. Desktop은 기존 `navigate(-1)`을 유지한다.
+- ProfilePage / UserProfilePage는 mobile·desktop 모두 `×`와 `Close profile`을 사용하며 기존 history navigation(`navigate(-1)`)을 유지한다.
+- Conversation header·Messages list·Composer wrapper의 mobile 좌우 padding을 줄이고 desktop padding은 유지한다. Profile 계열도 공통 기준으로 content wrapper의 mobile 좌우·상하 padding과 card padding을 줄였다.
+- ConversationPage / ProfilePage / UserProfilePage는 조회 error 상태에서도 header/navigation escape hatch를 유지하며 content 영역에 기존 danger 오류 안내를 표시한다. Loading과 정상 화면의 기능 동작은 유지한다.
+- iPhone SE급 세로·가로 화면 기준 주요 UI 확인은 완료됐다(사용자 확인). 404 / Not Found 화면 처리는 다음 단계로 남아 있다.
 
 ### Auth UX / recovery — complete
 
@@ -42,14 +50,15 @@
 
 ## Latest verification
 
-- Auth error UX와 WebSocket recovery 관련 테스트, frontend `tsc -b` 검사 통과. 변경된 auth production 파일의 lint도 통과했다.
-- 위 결과는 관련 범위의 검증이다. 현재 상태의 전체 frontend/backend suite, build와 browser smoke test는 최종 검증으로 남아 있다.
+- Mobile responsive 관련 기존 테스트와 error-state navigation regression 테스트, frontend `tsc -b` 및 변경 production 파일 lint 검사 통과.
+- iPhone SE급 주요 UI 확인은 완료됐다. 현재 상태의 전체 frontend/backend suite와 build, Frontend·Backend를 연결한 전체 browser smoke test는 최종 검증으로 남아 있다.
 
 ## Next starting point
 
-1. 대화 목록과 채팅 화면을 전환할 수 있는 mobile responsive를 진행한다. Profile과 auth 화면도 작은 화면의 사용 흐름을 확인한다.
-2. Frontend·Backend를 연결한 전체 browser smoke test로 가입·로그인·auth 복구, profile 편집·공개 profile·대화 흐름과 CORS/cookie/WebSocket을 확인한다.
-3. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 진행한다.
+1. 존재하지 않는 URL의 404 / Not Found 처리를 진행한다.
+2. 개발자 정보/footer 표시 여부와 위치를 결정한다.
+3. Frontend·Backend를 연결한 전체 browser smoke test로 가입·로그인·auth 복구, profile 편집·공개 profile·대화 흐름과 CORS/cookie/WebSocket을 확인한다.
+4. 배포 전 전체 테스트·build·최종 audit와 배포 점검 후 배포한다.
 
 ## Deferred / known follow-ups
 

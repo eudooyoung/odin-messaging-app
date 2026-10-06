@@ -2,9 +2,9 @@
 
 ## 1. 현재 프로젝트 단계
 
-- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 history 뒤로가기, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX.
-- 다음 단계: Mobile responsive. 아직 시작하지 않았다.
-- 남음: Mobile responsive, 실제 브라우저 smoke test, 배포 전 점검 및 배포. MVP와 배포는 아직 완료되지 않았다.
+- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 navigation, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX, mobile responsive와 error-state navigation.
+- 다음 단계: 존재하지 않는 URL의 404 / Not Found 처리.
+- 남음: 404 / Not Found 처리, 개발자 정보/footer 표시 여부 및 위치 결정, 실제 브라우저 smoke test, 배포 전 전체 검증 및 배포. MVP와 배포는 아직 완료되지 않았다.
 
 ## 2. 요구사항 / 서비스 규칙
 
@@ -88,6 +88,12 @@
 - 공통 HTTP client는 credentials를 포함한다. 일반 요청의 401은 공유 refresh 요청으로 복구하고 원 요청을 한 번만 재시도한다. refresh의 401과 일시적 non-401 실패는 구분한다. 로그아웃 또는 인증 종료 시 이전 사용자의 비인증 cache를 비운다.
 - ProfilePage는 현재 handle로 공개 profile을 조회한다. PATCH 성공 시 auth cache와 새 handle의 public profile cache를 동기화하고 이전 handle profile refetch 및 오래된 auth refetch가 저장 결과를 덮지 못하게 한다.
 
+### Responsive / navigation
+
+- Mobile(`md` breakpoint 아래)은 `/`에서 conversation list/Sidebar를 전체 폭으로 표시하고 conversation·profile route에서는 main pane만 표시한다. Desktop의 2-panel 구조와 Sidebar collapse state를 유지하며 mobile에서는 collapse 버튼을 숨긴다.
+- Mobile ConversationPage의 뒤로가기 아이콘은 진입 경로와 관계없이 `/`로 이동한다. Desktop은 기존 history back을 유지한다. ProfilePage / UserProfilePage는 `×`로 닫고 mobile·desktop 모두 기존 history navigation을 유지한다.
+- Conversation·Profile 계열의 mobile padding을 조정했으며, 조회 error 상태에서도 기존 header/navigation escape hatch와 오류 안내를 제공한다.
+
 ### 기술 스택
 
 - Backend: Node.js 24, TypeScript·ESM, Express 5, PostgreSQL, Prisma 7, JWT, Argon2id, ws, Zod, Vitest·Supertest.
@@ -117,21 +123,22 @@
 - [x] Messages / MessageComposer UI: message bubble, timestamp·날짜 구분선, loading·empty·pagination UI, 메시지 입력·Send 영역.
 - [x] ProfilePage·UserProfilePage desktop UI: Profile ID 편집과 기존 messaging theme의 typography/color/spacing.
 - [x] Conversation list·header 표시 정책: handle 반복 노출 제거, displayName 중심 표시와 기존 navigation 유지.
-- [x] Sidebar panel SVG icon과 conversation 미선택 empty state, ConversationPage history 뒤로가기.
+- [x] Sidebar panel SVG icon과 conversation 미선택 empty state, ConversationPage desktop history 뒤로가기.
 - [x] Leaves branding: Sidebar logo·앱 이름의 홈 링크, 동일한 3-leaf SVG mark의 favicon 적용.
 - [x] Desktop primary 상태 스타일: Conversation hover/selected, Search focus, Sidebar toggle·뒤로가기 hover/focus, empty state icon.
 - [x] Desktop UI polish: Content width/header 정렬, loading/error 표현, profile card와 MessageComposer 입력 영역·action 정렬.
 - [x] 회원가입 성공 후 LoginPage의 일회성 성공 안내.
 - [x] Auth 확인 실패 시 app-level error와 수동 Retry; 기존 WebSocket 자동 recovery 유지와 수동 재시도 조율.
-- [ ] UI/CSS: Mobile responsive.
+- [x] UI/CSS: Mobile responsive와 Conversation·Profile error-state navigation.
 
 ## 5. 남은 작업
 
 ### MVP — 우선순위
 
-1. 다음 큰 UI 단계로 대화 목록과 채팅 화면을 전환할 수 있는 mobile responsive를 진행한다.
-2. Frontend와 Backend를 연결한 실제 브라우저 smoke test로 가입·로그인·auth 복구, profile·대화 흐름과 CORS, cookie, routing, WebSocket을 확인한다.
-3. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 진행한다.
+1. 존재하지 않는 URL의 404 / Not Found 처리를 진행한다.
+2. 개발자 정보/footer 표시 여부와 위치를 결정한다.
+3. Frontend와 Backend를 연결한 실제 브라우저 smoke test로 가입·로그인·auth 복구, profile·대화 흐름과 CORS, cookie, routing, WebSocket을 확인한다.
+4. 배포 전 전체 테스트·build·최종 audit와 배포 점검 후 배포한다.
 
 ### Product / behavior follow-up
 
