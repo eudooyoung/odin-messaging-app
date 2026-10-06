@@ -138,15 +138,7 @@ export function ProfilePage() {
     );
   }
 
-  if (isError) {
-    return (
-      <div className="flex h-full items-center justify-center px-8 py-10 text-center font-body text-sm text-danger-700">
-        <UserFacingErrorMessage error={error} fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE} />
-      </div>
-    );
-  }
-
-  if (!profile) {
+  if (!isError && !profile) {
     return null;
   }
 
@@ -170,84 +162,93 @@ export function ProfilePage() {
           </h2>
         </div>
       </header>
-      <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-8 md:py-10">
-        <form
-          className="flex flex-col gap-6 rounded-lg border border-primary-200 bg-primary-50 p-4 md:p-6"
-          onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}
-        >
-          <div className={fieldWrapperClassName}>
-            <FormField
-              id="handle"
-              type="text"
-              label="Profile ID"
-              error={errors.handle?.message}
-              className={inputClassName}
-              {...register("handle")}
-            />
-            <span className="text-sm text-neutral-500">Used in your @ID and profile URL.</span>
-          </div>
+      {isError ? (
+        <div className="flex flex-1 items-center justify-center px-8 py-10 text-center font-body text-sm text-danger-700">
+          <UserFacingErrorMessage
+            error={error}
+            fallbackMessage={USER_PROFILE_QUERY_ERROR_MESSAGE}
+          />
+        </div>
+      ) : (
+        <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-8 md:py-10">
+          <form
+            className="flex flex-col gap-6 rounded-lg border border-primary-200 bg-primary-50 p-4 md:p-6"
+            onSubmit={handleSubmit((input) => updateProfileMutation.mutate(input))}
+          >
+            <div className={fieldWrapperClassName}>
+              <FormField
+                id="handle"
+                type="text"
+                label="Profile ID"
+                error={errors.handle?.message}
+                className={inputClassName}
+                {...register("handle")}
+              />
+              <span className="text-sm text-neutral-500">Used in your @ID and profile URL.</span>
+            </div>
 
-          <div className={fieldWrapperClassName}>
-            <FormField
-              id="display-name"
-              type="text"
-              label="Display name"
-              error={errors.displayName?.message}
-              className={inputClassName}
-              {...register("displayName")}
-            />
-          </div>
+            <div className={fieldWrapperClassName}>
+              <FormField
+                id="display-name"
+                type="text"
+                label="Display name"
+                error={errors.displayName?.message}
+                className={inputClassName}
+                {...register("displayName")}
+              />
+            </div>
 
-          <div className={fieldWrapperClassName}>
-            <FormField
-              as="textarea"
-              id="bio"
-              label="Bio"
-              error={errors.bio?.message}
-              className={`${inputClassName} min-h-32 resize-none`}
-              {...register("bio")}
-            />
-          </div>
+            <div className={fieldWrapperClassName}>
+              <FormField
+                as="textarea"
+                id="bio"
+                label="Bio"
+                error={errors.bio?.message}
+                className={`${inputClassName} min-h-32 resize-none`}
+                {...register("bio")}
+              />
+            </div>
 
-          <div className={fieldWrapperClassName}>
-            <FormField
-              id="profile-image"
-              type="url"
-              label="Profile image"
-              className={inputClassName}
-              {...register("profileImage")}
-            />
-          </div>
+            <div className={fieldWrapperClassName}>
+              <FormField
+                id="profile-image"
+                type="url"
+                label="Profile image"
+                className={inputClassName}
+                {...register("profileImage")}
+              />
+            </div>
 
-          <div className="flex flex-col items-start gap-4 pt-2">
-            <button
-              className="self-start rounded-md bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
-              type="submit"
-              disabled={updateProfileMutation.isPending}
-            >
-              Save profile
-            </button>
-
-            {updateProfileMutation.isSuccess && (
-              <p
-                className="w-full rounded-md border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700"
-                role="status"
+            <div className="flex flex-col items-start gap-4 pt-2">
+              <button
+                className="self-start rounded-md bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-500"
+                type="submit"
+                disabled={updateProfileMutation.isPending}
               >
-                Profile updated
-              </p>
-            )}
+                Save profile
+              </button>
 
-            {updateProfileMutation.isError && (
-              <p
-                className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700"
-                role="alert"
-              >
-                {updateProfileMutation.error.message}
-              </p>
-            )}
-          </div>
-        </form>
-      </div>
+              {updateProfileMutation.isSuccess && (
+                <p
+                  className="w-full rounded-md border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700"
+                  role="status"
+                >
+                  Profile updated
+                </p>
+              )}
+
+              {updateProfileMutation.isError && (
+                <p
+                  className="w-full rounded-md border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700"
+                  role="alert"
+                >
+                  {updateProfileMutation.error.message}
+                </p>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

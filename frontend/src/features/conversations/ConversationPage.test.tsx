@@ -416,6 +416,44 @@ describe("ConversationPage", () => {
   });
 
   describe("conversation query states", () => {
+    it.each([
+      {
+        caseName: "mobile from the conversation list",
+        width: 375,
+        history: ["/", "/conversations/42"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "mobile from a public profile",
+        width: 375,
+        history: ["/users/other-handle", "/conversations/42"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "mobile from a direct entry",
+        width: 375,
+        history: ["/conversations/42"],
+        destination: "Conversations",
+      },
+      {
+        caseName: "desktop from a public profile",
+        width: 1024,
+        history: ["/users/other-handle", "/conversations/42"],
+        destination: "Other User public profile",
+      },
+    ])("can close a failed conversation on $caseName", async ({ width, history, destination }) => {
+      vi.stubGlobal("innerWidth", width);
+      vi.mocked(apiFetch).mockRejectedValue(new TypeError("Failed to fetch"));
+      const user = userEvent.setup();
+
+      renderConversationPage(queryClient, history);
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load conversation");
+      await user.click(screen.getByRole("link", { name: "Close conversation" }));
+
+      expect(await screen.findByRole("heading", { name: destination })).toBeInTheDocument();
+    });
+
     it("shows a loading state while the conversation query is pending", () => {
       const pendingConversationResponse = new Promise<Response>(() => undefined);
       vi.mocked(apiFetch).mockReturnValue(pendingConversationResponse);
