@@ -2,10 +2,9 @@
 
 ## 1. 현재 프로젝트 단계
 
-- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 navigation, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX, mobile responsive와 error-state navigation, frontend error/fallback handling.
-- 개발자/GitHub 정보 표시 완료: Sidebar 하단과 LoginPage / RegisterPage auth card 아래에 표시하며 전역 footer는 도입하지 않는다.
-- 다음 단계: Frontend·Backend를 연결한 실제 브라우저 smoke test.
-- 남음: 실제 브라우저 smoke test, 배포 전 전체 테스트·build·최종 audit, 배포. MVP와 배포는 아직 완료되지 않았다.
+- 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 navigation, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX, mobile responsive와 error-state navigation, frontend error/fallback handling, 개발자/GitHub 정보 표시(dev-info).
+- Browser smoke test 완료: Frontend·Backend·dev PostgreSQL 연동 확인과 발견된 404 query retry 문제 수정을 완료했다. 확인 범위는 `docs/project-status.md`에서 관리한다.
+- 현재 다음 단계: frontend/backend 전체 테스트·build·최종 audit와 deploy 점검 → deploy. 배포는 아직 완료되지 않았다.
 
 ## 2. 요구사항 / 서비스 규칙
 
@@ -132,14 +131,14 @@
 - [x] Auth 확인 실패 시 app-level error와 수동 Retry; 기존 WebSocket 자동 recovery 유지와 수동 재시도 조율.
 - [x] UI/CSS: Mobile responsive와 Conversation·Profile error-state navigation.
 - [x] Error/fallback handling: Catch-all 404와 사용자용 route error fallback, invalid conversation id의 navigation 유지, Profile save의 일반 오류 fallback. 기존 resource-not-found·403·query error와 auth recovery 계약 유지.
+- [x] Dev-info: 로그인 후 MessagingSidebar 하단, 로그인 전 LoginPage / RegisterPage auth card 아래에 `Built by Dooyoung Kim · GitHub` 표시. 전역 footer와 conversation/profile 본문에는 추가하지 않으며 Sidebar collapsed 상태에서는 숨긴다. GitHub 링크는 `https://github.com/eudooyoung/odin-messaging-app`이다.
 
 ## 5. 남은 작업
 
 ### MVP — 우선순위
 
-1. Frontend와 Backend를 연결한 실제 browser smoke test로 가입·로그인·auth 복구, profile·대화 흐름과 CORS, cookie, routing, WebSocket을 확인한다.
-2. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 수행한다.
-3. 배포한다.
+1. Frontend/backend 전체 테스트·build·최종 audit와 deploy 점검을 수행한다.
+2. 배포한다.
 
 ### Product / behavior follow-up
 

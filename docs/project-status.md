@@ -2,9 +2,10 @@
 
 ## Current branch / phase
 
-- Branch: `feat/error-pages`. HEAD: `2fc1147` (`feat(profile): add error handling for profile update failures`).
+- Branch: `chore/wrap-up`. HEAD: `0e372d5` (`error: reduce unnecessary retry for users and conversations not exists`).
+- Working tree: `docs/project-status.md`, `docs/project-plan.md` 문서 변경만 있으며 production/test 미커밋 변경은 없다.
 - Frontend desktop UI polish와 mobile responsive, Leaves branding, 회원가입 성공 안내와 auth 실패 UX 및 recovery 조율, error/fallback handling은 완료됐다.
-- 개발자/GitHub 정보 표시가 완료됐다. 다음 즉시 시작점은 Frontend·Backend를 연결한 실제 browser smoke test다. MVP와 배포는 아직 완료되지 않았다.
+- 개발자/GitHub 정보 표시, Frontend·Backend·dev PostgreSQL 연동 browser smoke test와 smoke test에서 발견한 404 query retry 수정은 완료됐다. 다음 즉시 시작점은 frontend/backend 전체 테스트·build·최종 audit와 deploy 점검이다. 배포는 아직 완료되지 않았다.
 
 ## Current implementation context
 
@@ -18,7 +19,7 @@
 
 ### Messaging / navigation / branding
 
-- `Built by Dooyoung Kim · GitHub`를 Sidebar의 My profile / Log out 아래와 LoginPage / RegisterPage auth card 아래에 표시한다. GitHub는 `https://github.com/eudooyoung/odin-messaging-app`을 새 탭으로 여는 외부 링크다. 작은 neutral 텍스트와 primary hover/focus를 사용한다.
+- `Built by Dooyoung Kim · GitHub`를 로그인 후 MessagingSidebar의 My profile / Log out 아래와 로그인 전 LoginPage / RegisterPage auth card 아래에 표시한다. GitHub는 `https://github.com/eudooyoung/odin-messaging-app`을 새 탭으로 여는 외부 링크다. 작은 neutral 텍스트와 primary hover/focus를 사용하며 실제 브라우저에서 Sidebar 표시를 확인했다.
 - Sidebar 정보는 기존 콘텐츠 영역의 responsive/collapse 규칙을 따른다. Desktop 접힘 상태에서는 숨기고 mobile `/`에서는 표시하며 mobile conversation/profile에서는 Sidebar와 함께 숨긴다. 본문에는 추가하지 않고 전역 footer나 공통 layout도 도입하지 않는다. Auth는 `min-h-dvh`와 기존 padding을 유지하며 카드와 정보를 세로 중앙 정렬한다.
 - Conversation list와 header는 displayName 중심으로 표시하고 `@handle`을 반복 노출하지 않는다. Handle/Profile ID는 검색과 공개 프로필에서 확인한다. Header의 공개 프로필 링크와 API/query의 handle 계약은 유지한다.
 - Desktop Sidebar collapse/expand는 기존 SVG panel asset을 사용한다. 펼침 상태에는 collapse, 접힘 상태에는 expand icon을 표시하며 accessible name과 toggle 동작을 유지한다.
@@ -31,7 +32,7 @@
 
 - MessageComposer는 텍스트 `Send` 버튼을 사용한다. Textarea는 한 줄 높이로 시작해 내용에 따라 늘어나고, 최대 높이 이후 내부 스크롤을 사용한다. Grid의 `items-end` 정렬과 textarea `block`으로 입력 영역과 버튼의 아래선을 맞춘다.
 - Send는 white 배경과 primary text/border, 옅은 primary hover, neutral disabled 상태를 사용한다. Own bubble은 `primary-600 + white`, other bubble은 neutral 계열을 유지한다.
-- Desktop content width/header 정렬, profile content card, loading/error 위치, timestamp 가독성과 interactive state polish는 완료됐다. Frontend·Backend를 연결한 전체 browser smoke test는 별도로 남아 있다.
+- Desktop content width/header 정렬, profile content card, loading/error 위치, timestamp 가독성과 interactive state polish 및 Frontend·Backend 연동 browser smoke test는 완료됐다.
 
 ### Mobile responsive — complete
 
@@ -48,6 +49,7 @@
 - 존재하지 않는 URL은 인증 guard 밖의 catch-all route에서 로그인 여부와 관계없이 동일한 `Page not found` 화면과 `/` 홈 링크를 표시한다.
 - Unexpected route/render error는 최상위 route의 `errorElement`에서 `Something went wrong`과 홈 링크를 표시한다. 내부 error message와 React Router 기본 오류 화면은 사용자에게 노출하지 않으며, 홈 이동 후 기존 인증 상태에 따라 protected home 또는 login 흐름으로 복귀한다.
 - 없는 user / conversation은 기존 feature UI의 `Profile not found` / `Conversation not found`로 처리한다. Conversation 403과 일반 query error의 사용자용 안내 및 header/navigation은 유지한다.
+- Public profile / conversation detail query의 404는 재시도하지 않는다. Transport / 5xx 등 다른 오류는 기존 브라우저 기본 정책인 최대 3회 재시도와 기본 지연을 유지한다.
 - Invalid conversation id는 API 요청 없이 `Invalid conversation`을 본문에 표시하며 header와 `Close conversation`을 유지한다. Mobile은 `/`, desktop은 기존 history back으로 이동한다.
 - Profile save는 기존 `UserFacingErrorMessage`를 사용한다. Duplicate handle 등 사용자용 오류 메시지는 유지하고 transport / 일반 Error에는 `Failed to update profile`을 표시한다. Validation, 미저장 입력 보존, 성공 후 reset/cache 동기화와 기존 auth error/recovery 계약은 유지한다.
 
@@ -60,18 +62,43 @@
 
 ## Latest verification
 
-- 개발자/GitHub 정보 추가 후 기존 Sidebar·LoginPage·RegisterPage·router 테스트 4개 파일, 45개 테스트 통과. 변경한 production 파일 3개의 Prettier·ESLint 검사 통과. 새 테스트는 추가하지 않았으며 실제 브라우저 responsive 확인은 남아 있다.
-- Frontend 전체 33개 파일, 296개 테스트 통과. 기존 app·node TypeScript 설정의 `--noEmit` 검사와 error-handling 관련 production 파일 lint 검사 통과.
-- Error/fallback handling audit에서 필수 blocker는 발견되지 않았다. iPhone SE급 주요 UI 확인은 완료됐다. Frontend·Backend를 연결한 실제 browser smoke test와 배포 전 frontend/backend 전체 테스트·build·최종 audit는 남아 있다.
+- 기존 자동 검증 기록: Frontend 전체 33개 파일, 296개 테스트 및 app·node TypeScript 설정의 `--noEmit` 검사 통과. Error-handling·dev-info 관련 lint/format 검사와 기능 audit도 통과했으며 audit에서 필수 blocker는 발견되지 않았다. 전체 검증 기록은 404 retry 수정 전 결과다.
+- 404 retry 수정 후 public profile / conversation detail query 관련 테스트는 GREEN이다. 실제 브라우저에서도 두 404 조회가 요청 1회로 종료되는 것을 확인했다.
+- Browser smoke test는 아래 범위로 완료됐다(사용자 확인). 다음은 frontend/backend 전체 테스트·build·최종 audit와 deploy 점검이며, 이번 문서 갱신에서는 테스트·build를 실행하지 않았다.
+
+## Browser smoke test — complete
+
+실제 Frontend·Backend·dev PostgreSQL을 연결한 사용자 확인 결과다. Browser smoke test와 발견된 404 retry 문제 수정은 완료됐으며, 배포 환경 점검은 별도 다음 단계다.
+
+### 확인 완료
+
+- 환경: PostgreSQL 응답 정상, dev DB migration 최신 상태, backend/frontend 개발 서버 정상 구동.
+- Dev-info: 실제 브라우저에서 Sidebar의 개발자/GitHub 정보 표시 확인.
+- 가입·로그인: 회원가입 후 Login 이동과 registration success 안내, 잘못된 비밀번호 login error, 정상 login과 home 진입.
+- 인증 유지·종료: 새로고침 후 login 유지, accessToken 삭제 후 `/auth/refresh` 204와 access token 재발급, logout 후 cookie 제거와 protected route 차단, 두 사용자 독립 session 동작.
+- Profile: 수정과 새로고침 후 저장값 유지, public profile의 수정 내용 반영과 private username 비노출, duplicate handle 오류 `This handle is already taken`, 실패 후 미저장 form 입력 유지.
+- 대화 시작: user search → public profile 이동, Message로 conversation 생성, 동일 상대에 대한 Message 재실행 시 기존 conversation 재사용.
+- 메시지·실시간 반영: 양방향 REST 전송, WebSocket 101 연결, 상대방의 `message.created` 수신과 양방향 실시간 표시, 발신 메시지 중복 없음.
+- 목록: 새 메시지 수신 시 conversation list의 last message / time / ordering 실시간 갱신.
+- MessageComposer: Enter 전송 / Shift+Enter 줄바꿈 / whitespace 전송 방지 확인. IME 보호는 기존 구현·테스트 계약으로 확인했고 수동 조합 테스트는 생략했다.
+- 메시지 상태 복구: 새로고침 / WebSocket reconnect / 놓친 메시지 복구 확인.
+- Auth connection error·manual recovery: backend 중단 후 오류 화면과 manual Retry 복구 확인. Automatic WebSocket recovery는 기존 구현·자동 테스트 계약으로 확인했으며, 브라우저 수동 재현은 환경 의존적이라 별도 강제 재현하지 않았다.
+- Mobile 주요 navigation 간단 재확인 완료.
+- 오류 route: unmatched URL 404, nonexistent profile / conversation, invalid conversation id 확인. Nonexistent profile / conversation의 불필요한 404 query retry를 수정했고 브라우저에서 요청 1회로 확인했다.
+- 실제 브라우저의 CORS / cookie / direct routing / WebSocket 최종 확인 완료.
+
+### 현재 관찰 사항 — blocker 아님
+
+- 메시지가 0개인 새 conversation 생성 직후 생성자 쪽 list는 즉시 갱신되지만 상대방 쪽 list는 즉시 갱신되지 않는다. 첫 메시지를 보내면 상대방도 새로고침 없이 conversation과 last message가 list에 반영된다. 기존 `메시지가 없는 Conversation의 목록 포함 정책` follow-up에 연결되는 관찰이며, 새로운 구현 결정이나 요구사항으로 확정하지 않는다.
+- 새로고침 중 Chrome console에 `WebSocket is closed before the connection is established` 경고가 한 번 나타났다. 이후 실제 app WebSocket이 101/Pending으로 정상 연결되고 메시지 수신도 확인됐다. 현재 blocker로 보지 않으며 원인을 확정하지 않는다.
 
 ## Next starting point
 
-1. Frontend·Backend를 연결한 실제 browser smoke test로 가입·로그인·auth 복구, profile 편집·공개 profile·대화 흐름과 CORS/cookie/routing/WebSocket 및 개발자 정보의 responsive 표시를 확인한다.
-2. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 수행한다.
-3. 배포한다.
+1. Frontend/backend 전체 테스트·build·최종 audit와 deploy 점검을 수행한다.
+2. 배포한다.
 
 ## Deferred / known follow-ups
 
 - 메시지가 없는 Conversation의 목록 포함 정책, WebSocket reconnect/open gap recovery 후 conversation 목록 갱신, conversation leave/history clear semantics.
-- WebSocket Origin validation, 전체 browser smoke test와 배포 전 최종 점검.
+- WebSocket Origin validation, 배포 전 최종 점검.
 - Post-MVP: 이전 session에서 시작한 pending mutation·refresh race 방어.
