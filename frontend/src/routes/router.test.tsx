@@ -587,9 +587,10 @@ describe("router", () => {
       ).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "Message" }));
 
-      expect(await screen.findByRole("link", { name: /Target User/ })).toBeInTheDocument();
+      const conversationLink = await screen.findByRole("link", { name: /Target User/ });
+      expect(conversationLink).toBeInTheDocument();
       expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
-      expect(screen.getByText("No messages yet")).toBeInTheDocument();
+      expect(within(conversationLink).getByText("No messages yet")).toBeInTheDocument();
     });
 
     it("navigates before the persistent conversation list refetch finishes and later refreshes the sidebar", async () => {
