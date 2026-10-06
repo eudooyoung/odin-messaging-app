@@ -9,10 +9,12 @@ import { GuestOnlyRoute } from "./GuestOnlyRoute.tsx";
 import { MessagingLayout } from "./MessagingLayout.tsx";
 import { NotFoundPage } from "./NotFoundPage.tsx";
 import { ProtectedRoute } from "./ProtectedRoute.tsx";
+import { RouteErrorPage } from "./RouteErrorPage.tsx";
 
 const routes = [
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         path: "/",
@@ -40,6 +42,7 @@ const routes = [
   },
   {
     element: <GuestOnlyRoute />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         path: "/login",
@@ -54,6 +57,7 @@ const routes = [
   {
     path: "*",
     element: <NotFoundPage />,
+    errorElement: <RouteErrorPage />,
   },
 ];
 
