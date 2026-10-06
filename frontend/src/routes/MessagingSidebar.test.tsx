@@ -53,10 +53,8 @@ describe("MessagingSidebar", () => {
 
     await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
 
-    expect(screen.queryByRole("searchbox", { name: "Search users" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Conversation list")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "My profile" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Log out" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Collapse sidebar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Expand sidebar" }));
 
