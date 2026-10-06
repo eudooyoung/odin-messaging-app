@@ -92,8 +92,8 @@ export function UserProfilePage() {
           </h2>
         </div>
       </header>
-      <div className="mx-auto w-full max-w-2xl px-8 py-10">
-        <div className="flex flex-col gap-6 rounded-lg border border-primary-200 bg-primary-50 p-6">
+      <div className="mx-auto w-full max-w-2xl px-4 py-8 md:px-8 md:py-10">
+        <div className="flex flex-col gap-6 rounded-lg border border-primary-200 bg-primary-50 p-4 md:p-6">
           <div className="flex min-w-0 items-center gap-5">
             {profile.profileImage && (
               <img
