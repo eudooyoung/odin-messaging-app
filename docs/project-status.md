@@ -4,7 +4,7 @@
 
 - Branch: `feat/error-pages`. HEAD: `2fc1147` (`feat(profile): add error handling for profile update failures`).
 - Frontend desktop UI polish와 mobile responsive, Leaves branding, 회원가입 성공 안내와 auth 실패 UX 및 recovery 조율, error/fallback handling은 완료됐다.
-- 다음 즉시 시작점은 개발자 정보/footer 표시 여부와 위치 결정이다. MVP와 배포는 아직 완료되지 않았다.
+- 개발자/GitHub 정보 표시가 완료됐다. 다음 즉시 시작점은 Frontend·Backend를 연결한 실제 browser smoke test다. MVP와 배포는 아직 완료되지 않았다.
 
 ## Current implementation context
 
@@ -18,6 +18,8 @@
 
 ### Messaging / navigation / branding
 
+- `Built by Dooyoung Kim · GitHub`를 Sidebar의 My profile / Log out 아래와 LoginPage / RegisterPage auth card 아래에 표시한다. GitHub는 `https://github.com/eudooyoung/odin-messaging-app`을 새 탭으로 여는 외부 링크다. 작은 neutral 텍스트와 primary hover/focus를 사용한다.
+- Sidebar 정보는 기존 콘텐츠 영역의 responsive/collapse 규칙을 따른다. Desktop 접힘 상태에서는 숨기고 mobile `/`에서는 표시하며 mobile conversation/profile에서는 Sidebar와 함께 숨긴다. 본문에는 추가하지 않고 전역 footer나 공통 layout도 도입하지 않는다. Auth는 `min-h-dvh`와 기존 padding을 유지하며 카드와 정보를 세로 중앙 정렬한다.
 - Conversation list와 header는 displayName 중심으로 표시하고 `@handle`을 반복 노출하지 않는다. Handle/Profile ID는 검색과 공개 프로필에서 확인한다. Header의 공개 프로필 링크와 API/query의 handle 계약은 유지한다.
 - Desktop Sidebar collapse/expand는 기존 SVG panel asset을 사용한다. 펼침 상태에는 collapse, 접힘 상태에는 expand icon을 표시하며 accessible name과 toggle 동작을 유지한다.
 - 앱 이름은 `Leaves`다. Sidebar의 24px 장식용 3-leaf logo mark와 텍스트 전체가 하나의 `/` 홈 링크다. 같은 `leaves-logo-mark.svg`를 `index.html`의 favicon에 참조하고 document title도 Leaves다.
@@ -58,15 +60,15 @@
 
 ## Latest verification
 
+- 개발자/GitHub 정보 추가 후 기존 Sidebar·LoginPage·RegisterPage·router 테스트 4개 파일, 45개 테스트 통과. 변경한 production 파일 3개의 Prettier·ESLint 검사 통과. 새 테스트는 추가하지 않았으며 실제 브라우저 responsive 확인은 남아 있다.
 - Frontend 전체 33개 파일, 296개 테스트 통과. 기존 app·node TypeScript 설정의 `--noEmit` 검사와 error-handling 관련 production 파일 lint 검사 통과.
 - Error/fallback handling audit에서 필수 blocker는 발견되지 않았다. iPhone SE급 주요 UI 확인은 완료됐다. Frontend·Backend를 연결한 실제 browser smoke test와 배포 전 frontend/backend 전체 테스트·build·최종 audit는 남아 있다.
 
 ## Next starting point
 
-1. 개발자 정보/footer 표시 여부와 위치를 결정한다.
-2. Frontend·Backend를 연결한 실제 browser smoke test로 가입·로그인·auth 복구, profile 편집·공개 profile·대화 흐름과 CORS/cookie/routing/WebSocket을 확인한다.
-3. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 수행한다.
-4. 배포한다.
+1. Frontend·Backend를 연결한 실제 browser smoke test로 가입·로그인·auth 복구, profile 편집·공개 profile·대화 흐름과 CORS/cookie/routing/WebSocket 및 개발자 정보의 responsive 표시를 확인한다.
+2. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 수행한다.
+3. 배포한다.
 
 ## Deferred / known follow-ups
 

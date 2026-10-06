@@ -3,8 +3,9 @@
 ## 1. 현재 프로젝트 단계
 
 - 완료: Backend·Frontend 핵심 기능, identity/API 전환, 기능 단위 audit, desktop messaging/Profile UI polish와 MessageComposer UI, Sidebar panel icon, conversation empty state와 navigation, Leaves branding·logo·favicon, 회원가입 성공 안내와 auth 실패 UX, mobile responsive와 error-state navigation, frontend error/fallback handling.
-- 다음 단계: 개발자 정보/footer 표시 여부 및 위치 결정.
-- 남음: 개발자 정보/footer 결정, 실제 브라우저 smoke test, 배포 전 전체 테스트·build·최종 audit, 배포. MVP와 배포는 아직 완료되지 않았다.
+- 개발자/GitHub 정보 표시 완료: Sidebar 하단과 LoginPage / RegisterPage auth card 아래에 표시하며 전역 footer는 도입하지 않는다.
+- 다음 단계: Frontend·Backend를 연결한 실제 브라우저 smoke test.
+- 남음: 실제 브라우저 smoke test, 배포 전 전체 테스트·build·최종 audit, 배포. MVP와 배포는 아직 완료되지 않았다.
 
 ## 2. 요구사항 / 서비스 규칙
 
@@ -136,10 +137,9 @@
 
 ### MVP — 우선순위
 
-1. 개발자 정보/footer 표시 여부 및 위치를 결정한다.
-2. Frontend와 Backend를 연결한 실제 browser smoke test로 가입·로그인·auth 복구, profile·대화 흐름과 CORS, cookie, routing, WebSocket을 확인한다.
-3. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 수행한다.
-4. 배포한다.
+1. Frontend와 Backend를 연결한 실제 browser smoke test로 가입·로그인·auth 복구, profile·대화 흐름과 CORS, cookie, routing, WebSocket을 확인한다.
+2. 배포 전 전체 테스트·build·최종 audit와 배포 점검을 수행한다.
+3. 배포한다.
 
 ### Product / behavior follow-up
 

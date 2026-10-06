@@ -64,6 +64,17 @@ export function MessagingSidebar({ isHomeRoute = true }: { isHomeRoute?: boolean
           </Link>
           <LogoutButton />
         </nav>
+        <p className="mt-3 shrink-0 text-center text-xs leading-5 text-neutral-500">
+          Built by Dooyoung Kim ·{" "}
+          <a
+            className="rounded-sm transition-colors hover:text-primary-700 hover:underline focus-visible:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            href="https://github.com/eudooyoung/odin-messaging-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+        </p>
       </div>
     </aside>
   );
