@@ -37,7 +37,7 @@
 
 - 공개 프로필은 handle, displayName, bio, profileImage를 보여준다. 다른 사용자 프로필에서 Message로 대화를 시작한다.
 - 본인은 /profile에서 handle, displayName, bio, profileImage를 수정한다. Domain/API 이름은 handle이며 사용자-facing 편집 label은 `Profile ID`다. 입력값에는 `@`를 포함하지 않는다. username은 공개하거나 수정하지 않는다.
-- 프로필 이미지 저장 방식은 추후 결정한다.
+- MVP의 프로필 이미지는 URL 입력으로 설정·수정하고 `profileImage`에 nullable 문자열로 저장해 표시하며, 입력을 비우면 `null`로 해제하고 별도 이미지 업로드·파일 저장 기능은 제공하지 않는다.
 
 ### MVP 제외 범위
 
@@ -113,13 +113,9 @@
 - [x] Identity 전환: private username / public handle 계약과 관련 frontend 상태 동기화.
 - [x] Persistence / security hardening: 동시 대화 생성·메시지 저장의 transaction 보장, REST / WebSocket Origin 검증, 메시지 길이 계약 정합화.
 - [x] 사용자 경험: desktop / mobile responsive, Leaves branding, 메시지 입력 UI, auth recovery와 error / fallback navigation.
-- [x] Production 배포: Netlify frontend, Render backend, Neon PostgreSQL.
+- [x] Production 배포·검증: Netlify frontend, Render backend, Neon PostgreSQL 배포와 실제 환경의 인증·대화·메시지·WebSocket·SPA fallback smoke test 완료.
 
 ## 5. 장기 roadmap
-
-### MVP
-
-- Production smoke test로 Netlify / Render / Neon 환경의 주요 사용자 흐름 최종 확인.
 
 ### Product / behavior follow-up
 

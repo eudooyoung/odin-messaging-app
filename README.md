@@ -64,7 +64,7 @@ WebSocket 연결·재연결 시 메시지를 REST로 다시 조회해 놓친 데
 - **Frontend:** Vitest·React Testing Library로 query/mutation 계약, 사용자 interaction, route 접근 제어와 비동기 cache lifecycle을 검증합니다.
 - **Backend:** Vitest·Supertest로 HTTP·WebSocket 계약을 검증하고, service의 비즈니스 규칙은 별도 unit test로 확인합니다. DB integration test는 개발 DB와 분리된 테스트 DB를 사용합니다.
 
-[최신 검증 기록](docs/project-status.md#latest-verification) 기준으로 프론트엔드·백엔드 전체 test, type-check, lint, production build가 통과했습니다. 실제 프론트엔드·백엔드·개발 DB를 연결한 browser smoke test도 완료했습니다.
+[검증 기록](docs/project-status.md#latest-verification)에는 프론트엔드·백엔드 test, type-check, lint, production build와 local / production browser smoke 결과를 정리했습니다.
 
 ## 로컬 실행
 
@@ -126,6 +126,13 @@ npm run dev
 | Frontend | Netlify         | [leaves-messaging.netlify.app](https://leaves-messaging.netlify.app) |
 | Backend  | Render          | [odin-messaging-app-sg0a.onrender.com](https://odin-messaging-app-sg0a.onrender.com) |
 | Database | Neon PostgreSQL | —   |
+
+| 대상 | 디렉터리 | Build Command | Start / Publish |
+| --- | --- | --- | --- |
+| Netlify | Base: `frontend` | `npm run build` | Publish: `dist` |
+| Render | Root: `backend` | `npm ci && npm run build` | Start: `npm start` |
+
+Third-party cookie를 차단하는 브라우저 설정에서는 cross-site 인증 쿠키가 차단되어 로그인이 제한될 수 있습니다. 이 경우 해당 사이트에서 third-party cookie를 허용해야 합니다.
 
 ## 향후 개선
 
