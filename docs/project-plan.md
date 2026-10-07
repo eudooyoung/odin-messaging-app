@@ -91,7 +91,7 @@
 ### Runtime architecture
 
 - Netlify는 React frontend를 제공한다. 브라우저의 React는 backend origin으로 REST / WebSocket 요청을 직접 보내며 Netlify를 backend proxy로 사용하지 않는다.
-- Render의 같은 Express backend runtime에 REST API와 WebSocket이 속한다. Prisma는 backend 내부 DB access layer이며 PostgreSQL에 접근한다. PostgreSQL hosting provider는 확정하지 않았다.
+- Render의 같은 Express backend runtime에 REST API와 WebSocket이 속한다. Prisma는 backend 내부 DB access layer이며 Neon PostgreSQL에 접근한다.
 - 메시지 저장 transaction이 완료된 뒤 WebSocket으로 상대 사용자에게 `message.created`를 전달한다.
 
 ### Responsive / navigation
@@ -113,12 +113,13 @@
 - [x] Identity 전환: private username / public handle 계약과 관련 frontend 상태 동기화.
 - [x] Persistence / security hardening: 동시 대화 생성·메시지 저장의 transaction 보장, REST / WebSocket Origin 검증, 메시지 길이 계약 정합화.
 - [x] 사용자 경험: desktop / mobile responsive, Leaves branding, 메시지 입력 UI, auth recovery와 error / fallback navigation.
+- [x] Production 배포: Netlify frontend, Render backend, Neon PostgreSQL.
 
 ## 5. 장기 roadmap
 
 ### MVP
 
-- Netlify / Render / production PostgreSQL 배포와 production 환경 검증.
+- Production smoke test로 Netlify / Render / Neon 환경의 주요 사용자 흐름 최종 확인.
 
 ### Product / behavior follow-up
 
@@ -137,7 +138,7 @@
 
 ## 6. 배포 / 인증 정책
 
-- Frontend는 Netlify, Backend는 Render에서 서로 다른 origin으로 동작하며 데이터 저장소는 PostgreSQL이다. Production은 credentialed cookie 요청으로 인증 상태를 유지한다.
+- Frontend는 Netlify, Backend는 Render에서 서로 다른 origin으로 동작하며 데이터 저장소는 Neon PostgreSQL이다. Production은 credentialed cookie 요청으로 인증 상태를 유지한다.
 - Access Token cookie: HttpOnly, Path=/, 15분. Refresh Token cookie: HttpOnly, Path=/auth, 7일.
 - Development cookie: Secure=false, SameSite=Lax. Production cookie: Secure=true, SameSite=None. JWT exp와 cookie Max-Age는 같은 수명으로 맞춘다.
 - Backend CORS는 Netlify frontend origin을 명시하고 credentials: true를 사용한다. credential 요청에 Access-Control-Allow-Origin: *를 사용하지 않는다.

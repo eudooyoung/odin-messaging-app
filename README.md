@@ -31,7 +31,7 @@ REST API로 서버 데이터를 조회·변경하고, WebSocket으로 새 메시
 | Frontend       | React, TypeScript, Vite, React Router, TanStack Query, React Hook Form, Zod, Tailwind CSS, native WebSocket |
 | Backend        | Node.js, TypeScript, Express, PostgreSQL, Prisma, JWT, Argon2id, ws, Zod                                    |
 | Test           | Vitest, React Testing Library, Supertest                                                                    |
-| Infrastructure | Netlify · Render                                                                                            |
+| Infrastructure | Netlify · Render · Neon PostgreSQL                                                                          |
 
 ## 주요 설계와 구현
 
@@ -119,15 +119,13 @@ npm run dev
 
 ## Deployment
 
-프론트엔드는 Netlify, 백엔드는 Render, 데이터 저장소는 PostgreSQL을 사용하는 구성입니다.
+프론트엔드는 Netlify, 백엔드는 Render, 데이터 저장소는 Neon PostgreSQL로 production 배포했습니다.
 
-| 대상     | 배포 구성  | URL |
-| -------- | ---------- | --- |
-| Frontend | Netlify    | —   |
-| Backend  | Render     | —   |
-| Database | PostgreSQL | —   |
-
-공개 서비스 URL은 확인 후 추가합니다.
+| 대상     | 배포 구성       | URL |
+| -------- | --------------- | --- |
+| Frontend | Netlify         | [leaves-messaging.netlify.app](https://leaves-messaging.netlify.app) |
+| Backend  | Render          | [odin-messaging-app-sg0a.onrender.com](https://odin-messaging-app-sg0a.onrender.com) |
+| Database | Neon PostgreSQL | —   |
 
 ## 향후 개선
 
