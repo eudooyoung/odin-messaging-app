@@ -11,7 +11,7 @@
     "ws": "^8.21.3",
     "zod": "^4.4.3"
   },
-  "name": "odin-express-template",
+  "name": "leaves-messaging-backend",
   "version": "1.0.2",
   "description": "",
   "main": "dist/src/server.js",
