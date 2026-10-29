@@ -1,11 +1,5 @@
-import { once } from "node:events";
-import { createServer, type Server } from "node:http";
-import jwt from "jsonwebtoken";
-import WebSocket, { type WebSocketServer } from "ws";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app.js";
 import { env } from "@/config/env.config.js";
-import { attachWebSocketServer, createWebSocketConnectionRegistry } from "@/websocket.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
 import {
@@ -16,15 +10,18 @@ import {
   listen,
 } from "@/tests/helpers/websocket.js";
 import "@/tests/integration.setup.js";
-import type {
-  AuthenticatedWebSocket,
-  WebSocketConnectionRegistry,
-} from "@/types/websocket.types.js";
+import type { WebSocketConnectionRegistry } from "@/types/websocket.types.js";
+import { attachWebSocketServer, createWebSocketConnectionRegistry } from "@/websocket.js";
+import jwt from "jsonwebtoken";
+import { once } from "node:events";
+import { createServer, type Server } from "node:http";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import WebSocket, { type WebSocketServer } from "ws";
 
 const waitForAuthenticatedConnection = (webSocketServer: WebSocketServer) =>
-  new Promise<AuthenticatedWebSocket>((resolve) => {
+  new Promise<WebSocket>((resolve) => {
     webSocketServer.once("connection", (connection) => {
-      resolve(connection as AuthenticatedWebSocket);
+      resolve(connection);
     });
   });
 
@@ -120,24 +117,6 @@ describe("WebSocket connections", () => {
 
       await expect(once(client, "open")).rejects.toThrow("Unexpected server response");
       expect(client.readyState).not.toBe(WebSocket.OPEN);
-    });
-
-    it("stores the user id on the server-side connection", async () => {
-      const user = await createTestUser();
-      const accessTokenCookie = createAccessTokenCookie(user.id);
-      const { attachedWebSocketServer, webSocketUrl } = await startWebSocketServer();
-      const connectionPromise = waitForAuthenticatedConnection(attachedWebSocketServer);
-
-      client = new WebSocket(webSocketUrl, {
-        headers: {
-          Origin: env.frontendOrigin,
-          Cookie: accessTokenCookie,
-        },
-      });
-
-      const [connection] = await Promise.all([connectionPromise, once(client, "open")]);
-
-      expect(connection.userId).toBe(user.id);
     });
 
     it.each([

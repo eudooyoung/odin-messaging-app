@@ -1,16 +1,15 @@
-import type { Server } from "node:http";
-import WebSocket, { WebSocketServer } from "ws";
 import { env } from "@/config/env.config.js";
 import { verifyAccessToken } from "@/lib/accessToken.js";
 import { getCookieValue } from "@/lib/cookie.js";
 import type {
-  AuthenticatedWebSocket,
   MessageCreatedPublisher,
   WebSocketConnectionRegistry,
 } from "@/types/websocket.types.js";
+import type { Server } from "node:http";
+import WebSocket, { WebSocketServer } from "ws";
 
 export const createWebSocketConnectionRegistry = (): WebSocketConnectionRegistry =>
-  new Map<number, Set<AuthenticatedWebSocket>>();
+  new Map<number, Set<WebSocket>>();
 
 export const attachWebSocketServer = (
   httpServer: Server,
@@ -36,29 +35,26 @@ export const attachWebSocketServer = (
     }
 
     webSocketServer.handleUpgrade(request, socket, head, (webSocket) => {
-      const authenticatedWebSocket = webSocket as AuthenticatedWebSocket;
-      authenticatedWebSocket.userId = userId;
-
       let userConnections = connectionRegistry.get(userId);
 
       if (!userConnections) {
-        userConnections = new Set<AuthenticatedWebSocket>();
+        userConnections = new Set<WebSocket>();
         connectionRegistry.set(userId, userConnections);
       }
 
-      userConnections.add(authenticatedWebSocket);
-      authenticatedWebSocket.on("error", (error) => {
+      userConnections.add(webSocket);
+      webSocket.on("error", (error) => {
         console.error(error);
       });
-      authenticatedWebSocket.once("close", () => {
-        userConnections.delete(authenticatedWebSocket);
+      webSocket.once("close", () => {
+        userConnections.delete(webSocket);
 
         if (userConnections.size === 0) {
           connectionRegistry.delete(userId);
         }
       });
 
-      webSocketServer.emit("connection", authenticatedWebSocket, request);
+      webSocketServer.emit("connection", webSocket, request);
     });
   });
 
@@ -76,8 +72,8 @@ export const createMessageCreatedPublisher =
       },
     });
 
-    for (const userId of recipientUserIds) {
-      const connections = connectionRegistry.get(userId);
+    for (const recipientUserId of recipientUserIds) {
+      const connections = connectionRegistry.get(recipientUserId);
 
       for (const connection of connections ?? []) {
         if (connection.readyState === WebSocket.OPEN) {
