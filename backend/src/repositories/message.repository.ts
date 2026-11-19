@@ -31,8 +31,8 @@ export const findMessagesByConversationId = (
   });
 
 export const createMessage = (conversationId: number, senderId: number, content: string) =>
-  prisma.$transaction(async (transaction) => {
-    const message = await transaction.message.create({
+  prisma.$transaction(async (tx) => {
+    const message = await tx.message.create({
       data: {
         conversationId,
         senderId,
@@ -53,10 +53,11 @@ export const createMessage = (conversationId: number, senderId: number, content:
       },
     });
 
-    await transaction.conversation.update({
-      where: { id: conversationId },
-      data: { lastActivityAt: message.createdAt },
-    });
+    await tx.$executeRaw`
+                        UPDATE "Conversation"
+                           SET "lastActivityAt" = GREATEST("lastActivityAt", ${message.createdAt})
+                         WHERE id = ${conversationId}
+                         `;
 
     return message;
   });
