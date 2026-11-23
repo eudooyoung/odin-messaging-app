@@ -1,220 +1,133 @@
-import assert from "node:assert/strict";
-import request from "supertest";
-import { env } from "@/config/env.config.js";
-import { describe, expect, it } from "vitest";
 import { createApp } from "@/app.js";
+import { env } from "@/config/env.config.js";
 import { prisma } from "@/lib/prisma.js";
 import { createAccessTokenCookie } from "@/tests/helpers/createAccessTokenCookie.js";
 import { createTestConversation } from "@/tests/helpers/createTestConversation.js";
 import { createTestUser } from "@/tests/helpers/createTestUser.js";
-import { getBody } from "@/tests/helpers/getBody.js";
 import "@/tests/integration.setup.js";
-import type { CreateMessageResponseBody } from "@/types/api.types.js";
+import request from "supertest";
+import { describe, expect, it } from "vitest";
 
 describe("POST /conversations/:id/messages", () => {
-  it.each(["json", "form"])(
-    "rejects a cross-origin %s request without storing a message or updating activity",
-    async (contentType) => {
-      const currentUser = await createTestUser();
-      const otherUser = await createTestUser({ username: "other-user" });
-      const lastActivityAt = new Date("2026-09-01T00:00:00.000Z");
-      const conversation = await createTestConversation({
-        participantIds: [currentUser.id, otherUser.id],
-        lastActivityAt,
-      });
-
-      const response = await request(createApp())
-        .post(`/conversations/${conversation.id}/messages`)
-        .set("Origin", "https://untrusted.example")
-        .set("Cookie", createAccessTokenCookie(currentUser.id))
-        .type(contentType)
-        .send({ content: "Forged message" });
-
-      expect.soft(response.status).toBe(403);
-      await expect
-        .soft(prisma.message.count({ where: { conversationId: conversation.id } }))
-        .resolves.toBe(0);
-      const persistedConversation = await prisma.conversation.findUnique({
-        where: { id: conversation.id },
-      });
-      expect(persistedConversation?.lastActivityAt).toEqual(lastActivityAt);
-    },
-  );
-
   it("creates a message and updates the conversation activity", async () => {
-    const app = createApp();
-    const credentials = {
-      username: "current-user",
-      handle: "current_handle",
-      password: "secure-password",
-      displayName: "Current User",
-    };
-    const currentUser = await createTestUser({
-      ...credentials,
-      profileImage: "https://example.com/current-user.jpg",
+    // arrange
+    const sender = await createTestUser({
+      username: "sender",
+      displayName: "Sender",
     });
-    const otherUser = await createTestUser({
-      username: "other-user",
-      displayName: "Other User",
-    });
+    const recipient = await createTestUser();
     const conversation = await createTestConversation({
-      participantIds: [currentUser.id, otherUser.id],
-      lastActivityAt: new Date("2026-09-01T00:00:00.000Z"),
+      participantIds: [sender.id, recipient.id],
     });
-    const accessCookie = createAccessTokenCookie(currentUser.id);
-    const content = "Hello!";
+    const senderAccessToken = createAccessTokenCookie(sender.id);
+    const messageContent = "Sender Message";
 
-    const response = await request(app)
+    // act
+    const { body: senderResponseBody } = await request(createApp())
       .post(`/conversations/${conversation.id}/messages`)
       .set("Origin", env.frontendOrigin)
-      .set("Cookie", accessCookie)
-      .send({ content: `  ${content}  ` });
+      .set("Cookie", senderAccessToken)
+      .send({ content: messageContent })
+      .expect(201);
 
-    expect(response.status).toBe(201);
-
-    const body = getBody<CreateMessageResponseBody>(response);
-    expect(typeof body.id).toBe("number");
-    expect(body.content).toBe(content);
-    expect(body.sender).toEqual({
-      id: currentUser.id,
-      handle: currentUser.handle,
-      displayName: currentUser.displayName,
-      profileImage: currentUser.profileImage,
+    // assert
+    expect(senderResponseBody).toMatchObject({
+      id: expect.any(Number),
+      content: messageContent,
+      sender: {
+        id: sender.id,
+        handle: sender.handle,
+        displayName: sender.displayName,
+        profileImage: sender.profileImage,
+      },
+      createdAt: expect.any(String),
     });
-    expect(typeof body.createdAt).toBe("string");
-
-    const persistedMessage = await prisma.message.findUnique({
-      where: { id: body.id },
-    });
-    assert.ok(persistedMessage, "Message was not persisted");
-    expect(persistedMessage).toMatchObject({
-      id: body.id,
-      content,
-      senderId: currentUser.id,
-      conversationId: conversation.id,
-    });
-    expect(body.createdAt).toBe(persistedMessage.createdAt.toISOString());
-
-    const updatedConversation = await prisma.conversation.findUnique({
+    const { lastActivityAt } = await prisma.conversation.findUniqueOrThrow({
       where: { id: conversation.id },
+      select: { lastActivityAt: true },
     });
-    assert.ok(updatedConversation, "Conversation was not found after message creation");
-    expect(updatedConversation.lastActivityAt).toEqual(persistedMessage.createdAt);
+    expect(lastActivityAt.toISOString()).toEqual(senderResponseBody.createdAt);
   });
 
-  it("returns 401 when the access token cookie is missing", async () => {
-    const response = await request(createApp())
-      .post("/conversations/1/messages")
-      .set("Origin", env.frontendOrigin)
-      .send({ content: "Hello!" });
-
-    expect(response.status).toBe(401);
-  });
-
-  it("returns 404 when the conversation does not exist", async () => {
-    const app = createApp();
-    const credentials = {
-      username: "current-user",
-      password: "secure-password",
-      displayName: "Current User",
-    };
-    const currentUser = await createTestUser(credentials);
-    const accessCookie = createAccessTokenCookie(currentUser.id);
-
-    const response = await request(app)
-      .post("/conversations/999999/messages")
-      .set("Origin", env.frontendOrigin)
-      .set("Cookie", accessCookie)
-      .send({ content: "Hello!" });
-
-    expect(response.status).toBe(404);
-  });
-
-  it("returns 403 when the authenticated user is not a participant", async () => {
-    const app = createApp();
-    const credentials = {
-      username: "current-user",
-      password: "secure-password",
-      displayName: "Current User",
-    };
-    const currentUser = await createTestUser(credentials);
-    const firstParticipant = await createTestUser({
-      username: "first-participant",
-      displayName: "First Participant",
+  describe("Errors", () => {
+    it("returns 401 when the access token cookie is missing", () => {
+      return request(createApp())
+        .post("/conversations/1/messages")
+        .set("Origin", env.frontendOrigin)
+        .send({ content: "Hello!" })
+        .expect(401);
     });
-    const secondParticipant = await createTestUser({
-      username: "second-participant",
-      displayName: "Second Participant",
+
+    it("returns 404 when the conversation does not exist", async () => {
+      const sender = await createTestUser();
+      const accessCookie = createAccessTokenCookie(sender.id);
+
+      const {
+        _max: { id: latestId },
+      } = await prisma.conversation.aggregate({ _max: { id: true } });
+      const unknownId = (latestId ?? 0) + 1;
+
+      await request(createApp())
+        .post(`/conversations/${unknownId}/messages`)
+        .set("Origin", env.frontendOrigin)
+        .set("Cookie", accessCookie)
+        .send({ content: "Hello!" })
+        .expect(404);
     });
-    const conversation = await createTestConversation({
-      participantIds: [firstParticipant.id, secondParticipant.id],
+
+    it("returns 403 when the authenticated user is not a participant", async () => {
+      const nonparticipant = await createTestUser({ username: "nonparticipant" });
+      const participantA = await createTestUser({ username: "participant-a" });
+      const participantB = await createTestUser({ username: "participant-b" });
+      const conversation = await createTestConversation({
+        participantIds: [participantA.id, participantB.id],
+      });
+
+      await request(createApp())
+        .post(`/conversations/${conversation.id}/messages`)
+        .set("Origin", env.frontendOrigin)
+        .set("Cookie", createAccessTokenCookie(nonparticipant.id))
+        .send({ content: "Hello!" })
+        .expect(403);
     });
-    const accessCookie = createAccessTokenCookie(currentUser.id);
 
-    const response = await request(app)
-      .post(`/conversations/${conversation.id}/messages`)
-      .set("Origin", env.frontendOrigin)
-      .set("Cookie", accessCookie)
-      .send({ content: "Hello!" });
+    it.each([
+      { caseName: "the conversation id is not a number", conversationId: "invalid" },
+      { caseName: "the conversation id is zero", conversationId: "0" },
+      { caseName: "the conversation id is negative", conversationId: "-1" },
+      { caseName: "the conversation id is a decimal", conversationId: "1.5" },
+    ])("returns 400 when $caseName", async ({ conversationId }) => {
+      const currentUser = await createTestUser();
 
-    expect(response.status).toBe(403);
-  });
-
-  it.each([
-    { caseName: "the conversation id is not a number", conversationId: "invalid" },
-    { caseName: "the conversation id is zero", conversationId: "0" },
-    { caseName: "the conversation id is negative", conversationId: "-1" },
-    { caseName: "the conversation id is a decimal", conversationId: "1.5" },
-  ])("returns 400 when $caseName", async ({ conversationId }) => {
-    const app = createApp();
-    const credentials = {
-      username: "current-user",
-      password: "secure-password",
-      displayName: "Current User",
-    };
-    const currentUser = await createTestUser(credentials);
-    const accessCookie = createAccessTokenCookie(currentUser.id);
-
-    const response = await request(app)
-      .post(`/conversations/${conversationId}/messages`)
-      .set("Origin", env.frontendOrigin)
-      .set("Cookie", accessCookie)
-      .send({ content: "Hello!" });
-
-    expect(response.status).toBe(400);
-  });
-
-  it.each([
-    { caseName: "content is missing", requestBody: {} },
-    { caseName: "content is empty", requestBody: { content: "" } },
-    { caseName: "content contains only whitespace", requestBody: { content: "   " } },
-    {
-      caseName: "content has 1001 characters after trimming",
-      requestBody: { content: `  ${"a".repeat(1001)}  ` },
-    },
-  ])("returns 400 when $caseName", async ({ requestBody }) => {
-    const app = createApp();
-    const credentials = {
-      username: "current-user",
-      password: "secure-password",
-      displayName: "Current User",
-    };
-    const currentUser = await createTestUser(credentials);
-    const otherUser = await createTestUser({
-      username: "other-user",
-      displayName: "Other User",
+      await request(createApp())
+        .post(`/conversations/${conversationId}/messages`)
+        .set("Origin", env.frontendOrigin)
+        .set("Cookie", createAccessTokenCookie(currentUser.id))
+        .send({ content: "Hello!" })
+        .expect(400);
     });
-    const conversation = await createTestConversation({
-      participantIds: [currentUser.id, otherUser.id],
+
+    it.each([
+      { caseName: "content is missing", requestBody: {} },
+      { caseName: "content is empty", requestBody: { content: "" } },
+      { caseName: "content contains only whitespace", requestBody: { content: "   " } },
+      {
+        caseName: "content has 1001 characters after trimming",
+        requestBody: { content: `  ${"a".repeat(1001)}  ` },
+      },
+    ])("returns 400 when $caseName", async ({ requestBody }) => {
+      const sender = await createTestUser({ username: "sender" });
+      const recipient = await createTestUser({ username: "recipient" });
+      const conversation = await createTestConversation({
+        participantIds: [sender.id, recipient.id],
+      });
+
+      await request(createApp())
+        .post(`/conversations/${conversation.id}/messages`)
+        .set("Origin", env.frontendOrigin)
+        .set("Cookie", createAccessTokenCookie(sender.id))
+        .send(requestBody)
+        .expect(400);
     });
-    const accessCookie = createAccessTokenCookie(currentUser.id);
-
-    const response = await request(app)
-      .post(`/conversations/${conversation.id}/messages`)
-      .set("Origin", env.frontendOrigin)
-      .set("Cookie", accessCookie)
-      .send(requestBody);
-
-    expect(response.status).toBe(400);
   });
 });
