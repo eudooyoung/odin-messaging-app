@@ -4,6 +4,12 @@ Leaves는 Node.js / TypeScript와 React로 만든 **1:1 실시간 메시징 애�
 
 REST API로 서버 데이터를 조회·변경하고, WebSocket으로 새 메시지를 전달합니다. 인증 만료와 연결 끊김, 비동기 요청과 실시간 이벤트가 겹치는 상황에서도 화면이 서버 상태와 일치하도록 설계했습니다.
 
+[데모 링크](https://leaves-messaging.netlify.app)
+| 테스트 아이디 | PW |
+|--|--|
+|demo-user|qwer1234qwer|
+|demo-user-2|qwer1234qwer|
+
 ## 주요 기능
 
 - 회원가입·로그인·로그아웃과 refresh session을 통한 인증 유지
@@ -117,20 +123,20 @@ npm run dev
 
 브라우저에서 `http://localhost:5173`에 접속합니다. WebSocket URL은 `VITE_API_URL`에서 자동으로 생성합니다.
 
-## Deployment
+## Deployment {#deploy}
 
 프론트엔드는 Netlify, 백엔드는 Render, 데이터 저장소는 Neon PostgreSQL로 production 배포했습니다.
 
-| 대상     | 배포 구성       | URL |
-| -------- | --------------- | --- |
-| Frontend | Netlify         | [leaves-messaging.netlify.app](https://leaves-messaging.netlify.app) |
+| 대상     | 배포 구성       | URL                                                                                  |
+| -------- | --------------- | ------------------------------------------------------------------------------------ |
+| Frontend | Netlify         | [leaves-messaging.netlify.app](https://leaves-messaging.netlify.app)                 |
 | Backend  | Render          | [odin-messaging-app-sg0a.onrender.com](https://odin-messaging-app-sg0a.onrender.com) |
-| Database | Neon PostgreSQL | —   |
+| Database | Neon PostgreSQL | —                                                                                    |
 
-| 대상 | 디렉터리 | Build Command | Start / Publish |
-| --- | --- | --- | --- |
-| Netlify | Base: `frontend` | `npm run build` | Publish: `dist` |
-| Render | Root: `backend` | `npm ci && npm run build` | Start: `npm start` |
+| 대상    | 디렉터리         | Build Command             | Start / Publish    |
+| ------- | ---------------- | ------------------------- | ------------------ |
+| Netlify | Base: `frontend` | `npm run build`           | Publish: `dist`    |
+| Render  | Root: `backend`  | `npm ci && npm run build` | Start: `npm start` |
 
 Third-party cookie를 차단하는 브라우저 설정에서는 cross-site 인증 쿠키가 차단되어 로그인이 제한될 수 있습니다. 이 경우 해당 사이트에서 third-party cookie를 허용해야 합니다.
 
